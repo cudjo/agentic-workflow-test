@@ -1,9 +1,8 @@
 # Notes Service — docker-compose (T-12, PLAN §6). Однопроцессный сервис: API + SPA.
 #
-# Секрет SESSION_SECRET НЕ хранится в репозитории (NFR-8): задайте его в окружении или в
-# локальном `.env` (в .gitignore) перед запуском:
-#   SESSION_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")" \
-#     docker compose up --build
+# Секретов не требуется (NFR-8): `SESSION_SECRET` конфигом игнорируется — сессии это opaque-токен
+# с SHA-256 в БД, CSRF — сверка csrf_token (см. `server/src/config.ts`). Достаточно:
+#   docker compose up --build
 #
 # Прод-гейт: поднятие в прод — только через ручной апрув человека. Здесь — локальное/тестовое окружение.
 
@@ -29,8 +28,7 @@ services:
       # SPA и API одного происхождения; значение нужно только для dev-фронтенда Vite.
       CORS_ORIGIN: http://localhost:3000
       LOG_LEVEL: info
-      # Обязательный секрет — вне репозитория. Отсутствие → явная ошибка старта.
-      SESSION_SECRET: ${SESSION_SECRET:?задайте SESSION_SECRET в окружении или .env (в репозитории секретов нет)}
+      # SESSION_SECRET не передаётся: он опционален и конфигом не используется.
     volumes:
       - notes-data:/data
     # HEALTHCHECK описан в Dockerfile (GET /health).

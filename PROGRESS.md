@@ -1320,4 +1320,45 @@ node server/scripts/e2e-smoke.mjs     # NFR-28: 28 проверок
 
 **Коммит:** `fix(review): SESSION_SECRET необязателен (opaque-сессии) + безопасный Cookie Secure по умолчанию в prod`
 
+---
+
+## 14.10.2026 — DevOps-правка: `docker-compose.yml` больше не требует `SESSION_SECRET`
+
+**Задача:** T-12 (остаточный пункт из review `aaa314b`, см. §13 выше). Точечная правка `docker-compose.yml`.
+
+### Проблема
+
+После фикса `aaa314b` конфиг (`server/src/config.ts`) полностью игнорирует `SESSION_SECRET`
+(сессии — opaque `randomBytes(32)` + SHA-256 в БД; CSRF — `timingSafeEqual`), но compose объявлял
+переменную через `:?` — обязательную интерполяцию. `docker compose up --build` без заданного в
+окружении/.env `SESSION_SECRET` падал бы ещё до старта контейнера («required variable … is missing»),
+хотя приложение секрет не использует.
+
+### Что сделано
+
+- **`docker-compose.yml`:** удалена строка `SESSION_SECRET: ${SESSION_SECRET:?…}` из блока
+  `environment` — переменная мертва (конфигом не читается), её проброс не нужен; вместо неё короткий
+  комментарий, почему она не передаётся. Заголовочный комментарий переписан: больше не инструктирует
+  генерировать/задавать `SESSION_SECRET` перед `docker compose up` (теперь достаточно одной команды);
+  прод-гейт (ручной апрув) на месте.
+- **Обоснование выбора:** удаление, а не `${SESSION_SECRET:-}`, — в compose не остаётся ни одного
+  `${…}`, значит нет и необязательного проброса неиспользуемой переменной и предупреждений
+  интерполяции; `.env.example` уже описывает `SESSION_SECRET` как опциональный, правки не требуются.
+
+### Результаты проверок (14.10.2026, Node v26.11.1, Windows; Docker в песочнице отсутствует — PLAN R7)
+
+- **Статическая корректность YAML:** `js-yaml` разобрал файл без ошибок → `YAML OK`;
+  `services: [notes]`, `volumes: [notes-data]`, `environment` содержит 8 ключей
+  (NODE_ENV/HOST/PORT/DATABASE_PATH/STATIC_DIR/COOKIE_SECURE/CORS_ORIGIN/LOG_LEVEL),
+  `SESSION_SECRET` отсутствует (проверка `'SESSION_SECRET' in env` → `false`, exit 0).
+- **Обязательные переменные:** `grep` по `:?` во всех `*.yml` → совпадений нет; `grep` по `${` в
+  `docker-compose.yml` → пусто, т.е. необъявленных/обязательных интерполяций не осталось.
+- Docker не запускался (CLI недоступен, PLAN R7) — проверка статическая, как и предписано.
+
+### Артефакты
+
+`docker-compose.yml`, `PROGRESS.md`
+
+**Коммит:** `fix(devops): docker-compose больше не требует SESSION_SECRET (мёртвая env, opaque-сессии)`
+
 
