@@ -1,0 +1,125 @@
+# CI — Пепельный Бастион (T-02).
+# Джоба test: импорт ресурсов Godot + прогон GUT-тестов headless.
+# Джоба export: сборка release-пресетов Windows Desktop (*.exe) и Linux (*.x86_64).
+# Godot ставится как portable-сборка (переменная GODOT_PATH), шаблоны экспорта —
+# из официального .tpz в стандартный каталог ~/.local/share/godot/export_templates/<версия>/.
+
+name: CI
+
+on:
+  push:
+    branches: [main, v2]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.4.1"
+  GODOT_RELEASE: "4.4.1-stable"
+  # GODOT_PATH — путь к portable-редактору; совпадает с конвенцией docs/init.ps1 / docs/init.sh.
+  GODOT_PATH: ${{ github.workspace }}/godot
+
+jobs:
+  test:
+    name: Import + GUT (headless)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot editor (portable)
+        uses: actions/cache@v4
+        with:
+          path: godot
+          key: godot-${{ env.GODOT_RELEASE }}-linux
+
+      - name: Install Godot ${{ env.GODOT_VERSION }}
+        run: |
+          if [ ! -e "$GODOT_PATH"/Godot_v*.x86_64 ]; then
+            curl -L --fail --retry 3 --retry-delay 5 -o /tmp/godot.zip \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"
+            mkdir -p "$GODOT_PATH"
+            unzip -o -q /tmp/godot.zip -d "$GODOT_PATH"
+            chmod +x "$GODOT_PATH"/Godot_v*.x86_64
+          fi
+          "$GODOT_PATH"/Godot_v*.x86_64 --version
+
+      - name: Import project resources
+        working-directory: game
+        run: '"$GODOT_PATH"/Godot_v*.x86_64 --headless --import'
+
+      - name: Run GUT tests
+        working-directory: game
+        run: '"$GODOT_PATH"/Godot_v*.x86_64 --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit'
+
+  export:
+    name: Export Windows/Linux (release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot editor (portable)
+        uses: actions/cache@v4
+        with:
+          path: godot
+          key: godot-${{ env.GODOT_RELEASE }}-linux
+
+      - name: Cache export templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-templates-${{ env.GODOT_RELEASE }}
+
+      - name: Install Godot editor and export templates
+        run: |
+          if [ ! -e "$GODOT_PATH"/Godot_v*.x86_64 ]; then
+            curl -L --fail --retry 3 --retry-delay 5 -o /tmp/godot.zip \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"
+            mkdir -p "$GODOT_PATH"
+            unzip -o -q /tmp/godot.zip -d "$GODOT_PATH"
+            chmod +x "$GODOT_PATH"/Godot_v*.x86_64
+          fi
+          TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/${GODOT_RELEASE/-/.}"
+          if [ ! -f "$TEMPLATES_DIR/version.txt" ]; then
+            curl -L --fail --retry 3 --retry-delay 5 -o /tmp/templates.tpz \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}/Godot_v${GODOT_RELEASE}_export_templates.tpz"
+            mkdir -p /tmp/tpl "$TEMPLATES_DIR"
+            unzip -o -q /tmp/templates.tpz -d /tmp/tpl
+            mv /tmp/tpl/templates/* "$TEMPLATES_DIR"/
+          fi
+          ls "$TEMPLATES_DIR" | sort | head -n 20
+
+      - name: Import project resources
+        working-directory: game
+        run: '"$GODOT_PATH"/Godot_v*.x86_64 --headless --import'
+
+      - name: Create export output directories
+        run: mkdir -p game/build/windows game/build/linux
+
+      - name: Export Windows Desktop (release)
+        working-directory: game
+        run: '"$GODOT_PATH"/Godot_v*.x86_64 --headless --export-release "Windows Desktop" build/windows/AshenBastion.exe'
+
+      - name: Export Linux (release)
+        working-directory: game
+        run: '"$GODOT_PATH"/Godot_v*.x86_64 --headless --export-release "Linux" build/linux/AshenBastion.x86_64'
+
+      - name: Verify artifacts exist
+        run: |
+          ls -lh game/build/windows game/build/linux
+          test -s game/build/windows/AshenBastion.exe
+          test -s game/build/linux/AshenBastion.x86_64
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ashen-bastion-${{ github.sha }}
+          path: |
+            game/build/windows/AshenBastion.exe
+            game/build/linux/AshenBastion.x86_64
+          if-no-files-found: error
+          retention-days: 14

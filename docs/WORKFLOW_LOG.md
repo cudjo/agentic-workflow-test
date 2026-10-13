@@ -62,6 +62,10 @@
 - **⚠️ Предупреждение:** Godot не установлен. Нужен Godot 4.4+ до этапа 1 (T-03+).
 - **Решение:** Начало реализации. Первые задачи — T-01/T-02 (инициализация Godot-проекта).
 
+## 2026-10-14 — T-01 выполнен (tasker-devops)
+- Коммит `78be26f`. Godot 4.4.1 portable, GUT 9.4.0, 10 autoload-заглушек, Main.tscn, InputMap. Верификация headless: import + quit + GUT smoke — OK.
+- T-02 и T-03 разблокированы. Запуск параллельно.
+
 ## 2026-10-14 — Planner: План, декомпозиция, инициализация
 
 - **Действие:** Проанализированы `docs/SPEC.md` (гейт 1), `docs/DESIGN.md` и `docs/mockups/` (гейт 2), состояние репозитория. Подготовлены артефакты инициализации.
@@ -95,3 +99,21 @@
   - GUT smoke: `-s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit` — exit 0 (0 тестов), команда CI (T-02) валидна.
 - **Примечания:** Godot в окружении не установлен — каркас проверен portable-сборкой 4.4.1 во временном каталоге (в систему не устанавливался); `docs/init.ps1` найдёт Godot через `GODOT_PATH`. Статус задачи остаётся `pending` — отметит QA/Guardian по гейтам.
 - **Следующий шаг:** T-02 (CI + export_presets) — разблокирована.
+
+## 2026-10-14 — tasker-devops: T-02 CI и экспорт-пресеты (Windows/Linux)
+
+- **Артефакты:**
+  - `.github/workflows/ci.yml` — джоба `test` (кэш Godot portable → `--headless --import` → GUT `-gdir=res://tests -ginclude_subdirs -gexit`) и джоба `export` (needs: test; шаблоны 4.4.1 из официального `.tpz` в `~/.local/share/godot/export_templates/4.4.1.stable/` → импорт → `--export-release "Windows Desktop"` и `"Linux"` → проверка артефактов → upload). Godot — portable-сборка через `GODOT_PATH` (конвенция `docs/init.*`); шаблоны и редактор кэшируются по версии. Триггеры: push (main, v2) + все PR; concurrency-cancel.
+  - `game/export_presets.cfg` — пресеты «Windows Desktop» (`build/windows/AshenBastion.exe`) и «Linux» (`build/linux/AshenBastion.x86_64`): release-режим, `debug/export_console_wrapper=0`, PCK встроен (`embed_pck=true`), `exclude_filter="addons/gut/*,tests/*"` (GUT и тесты не попадают в поставку), `application/modify_resources=false` (rcedit недоступен headless без wine — иначе предупреждение сборки; иконка/название берутся из project.godot в рантайме).
+  - `game/.gitignore` — добавлен `build/` (артефакты экспорта не коммитятся).
+- **Проверки (Godot 4.4.1-stable portable, headless, эквивалент шагов CI):**
+  - `--headless --import` — exit 0. GUT — exit 0. `actionlint` по workflow — exit 0.
+  - Экспорт-шаблоны 4.4.1 скачаны (1150 МБ .tpz) и установлены в стандартный каталог → `--export-release "Windows Desktop"` — exit 0, без ошибок/предупреждений (93 МБ exe, PCK встроен); `--export-release "Linux"` — exit 0 (66.5 МБ, ELF-магия валидна). Smoke exe: `AshenBastion.exe --headless --quit` — exit 0.
+  - Оба экспорта запускались на текущем рабочем дереве, включающем незакоммиченную реализацию InputManager из параллельной T-03.
+- **Найденные и исправленные проблемы:**
+  1. `game/autoload/InputManager.gd` (файл T-03, изменён параллельно): `class_name InputManager` конфликтовал с именем autoload («Class "InputManager" hides an autoload singleton») — скрипт не компилировался, экспорт падал. Убрал `class_name` (канон для autoload); `game/tests/unit/test_input_manager.gd` переключён на `preload("res://autoload/InputManager.gd")` как тип. ⚠️ Встречные правки чужих файлов — на контроль Guardian.
+  2. export_presets.cfg: многострочные `ssh_remote_deploy/run_script|cleanup_script` с неэкранированными внутренними кавычками ломали парсер ConfigFile (ключ `[preset.1]` «съедался» → пресет Linux не загружался, «Invalid export preset name»). Экранировано как делает редактор Godot (`\"`). Проверено дампом ConfigFile: оба пресета читаются.
+  3. GUT без `-ginclude_subdirs` молча гоняет 0 тестов при тестах в `tests/unit/` (exit 0 — ложный зелёный). В CI добавлен флаг.
+  4. Godot не создаёт каталоги экспорта → в CI добавлен `mkdir -p game/build/{windows,linux}`.
+- **Известное, вне скоупа T-02:** тест T-03 `test_device_changed_keyboard_event` падает (сигнал `device_changed` не эмитится при событии клавиатуры) — поведенческая логика InputManager, домен tasker-backend (T-03 в работе). CI-инфраструктура к этому готова.
+- **Коммит:** T-02-артефакты + минимальные кросс-фиксы (п.1) + файлы `game/core/input/input_buffer.gd` и `game/tests/unit/test_input_*.gd` параллельной T-03 — включены в коммит, т.к. закоммиченный `InputManager.gd` ссылается на глобальный класс `InputBuffer` (без них HEAD не компилируется). Статус задачи остаётся `pending` — отметит QA/Guardian.
