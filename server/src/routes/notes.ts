@@ -9,8 +9,12 @@
  *   * порядок списка — `updated_at DESC` (Q-S3), контракт ответа — `{items, total}`;
  *   * `Note = {id, title, bodyMarkdown, tags, createdAt, updatedAt}` (PLAN §3.2).
  *
- * Теги: базовая поддержка `tags[]` (нормализация + `note_tags`); лимиты, `GET /api/tags`,
- * поиск/фильтр и чистка осиротевших тегов — T-05.
+ * Поиск/фильтр (T-05): `GET /api/notes?q=&tag=` — подстрочный регистронезависимый поиск по
+ * `title` + `body_markdown` (спецсимволы LIKE — литералы), фильтр по тегу, комбинация по «И»
+ * (AC-40/AC-41), всегда в пределах владельца (AC-44/S7). Детали — `lib/search.ts`.
+ *
+ * Теги (T-05): лимиты (≤20/≤50) в `parseTags()`, `GET /api/tags` — в `routes/tags.ts`,
+ * чистка осиротевших тегов — `deleteOrphanTagsForUser` после операций, меняющих набор тегов.
  */
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { nowIso, runInsert, transaction } from '../db/client.js';
@@ -23,6 +27,7 @@ import {
   type Note,
   type NoteRow,
 } from '../lib/notes.js';
+import { parseNotesFilter } from '../lib/search.js';
 import { requireAuth } from '../middleware/auth.js';
 
 interface TagRow {
@@ -79,14 +84,25 @@ function replaceNoteTags(
     const tagId = existing ? existing.id : runInsert(app.stmts.insertTag, userId, name, norm);
     app.stmts.linkNoteTag.run(noteId, tagId);
   }
+  // Теги, потерявшие последнюю заметку, удаляем — «нет битых ссылок и пустых тегов» (T6).
+  app.stmts.deleteOrphanTagsForUser.run(userId);
 }
 
 export async function notesRoutes(app: FastifyInstance): Promise<void> {
   const auth = { preHandler: requireAuth };
 
-  // GET /api/notes — только свои заметки, свежие сверху (AC-13, Q-S3).
+  // GET /api/notes — только свои заметки, свежие сверху (AC-13, Q-S3); поиск `q` + фильтр `tag` (T-05).
   app.get('/api/notes', auth, async (request) => {
-    const rows = app.stmts.listNotesByUser.all(ownerId(request)) as unknown as NoteRow[];
+    const userId = ownerId(request);
+    const { qPattern, tagNorm } = parseNotesFilter(request.query);
+    const rows = app.stmts.listNotesFiltered.all(
+      userId,
+      qPattern,
+      qPattern,
+      qPattern,
+      tagNorm,
+      tagNorm,
+    ) as unknown as NoteRow[];
     const items: Note[] = rows.map((row) => toNote(row, noteTags(app, row.id)));
     return { items, total: items.length };
   });
@@ -155,6 +171,8 @@ export async function notesRoutes(app: FastifyInstance): Promise<void> {
     transaction(app.db, () => {
       const result = app.stmts.deleteNote.run(noteId, userId);
       if (Number(result.changes) === 0) throw noteNotFound();
+      // FK-каскад убрал note_tags; подчищаем теги, оставшиеся без заметок (T6).
+      app.stmts.deleteOrphanTagsForUser.run(userId);
     });
 
     return reply.code(204).send();

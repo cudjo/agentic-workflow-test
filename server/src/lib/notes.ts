@@ -15,6 +15,9 @@ import { AppError } from './errors.js';
 /** Границы валидации (PLAN §3.2/NFR-7). */
 export const MAX_TITLE_LENGTH = 200;
 export const MAX_BODY_LENGTH = 100_000;
+/** Лимиты тегов (Q-T3): количество на заметку и длина одного тега. */
+export const MAX_TAGS_PER_NOTE = 20;
+export const MAX_TAG_LENGTH = 50;
 
 /** Единое сообщение для «пустой заметки» (AC-17/E1). */
 export const EMPTY_NOTE_MESSAGE = 'Заметка не может быть пустой — добавьте заголовок или текст';
@@ -103,8 +106,14 @@ function parseBody(value: unknown): string {
 }
 
 /**
- * Нормализует список тегов: тримминг, отбрасывание пустых, дедупликация без учёта регистра
- * с сохранением первого написания (Q-T2). Лимиты количества/длины — зона T-05.
+ * Нормализует список тегов: тримминг, отбрасывание пустых (AC-33/AC-36/T1), дедупликация
+ * без учёта регистра с сохранением первого написания (Q-T2/AC-37) и лимиты Q-T3:
+ * не более `MAX_TAGS_PER_NOTE` уникальных тегов и не длиннее `MAX_TAG_LENGTH` символов.
+ *
+ * Лимит количества применяется к результату дедупликации (тому, что реально сохранится);
+ * превышение любого лимита → `422 VALIDATION_ERROR` с `field=tags`. Спецсимволы и юникод в
+ * теле тега допустимы (T4) — ограничение касается только длины/количества.
+ * @throws AppError 422
  */
 export function parseTags(value: unknown): string[] {
   if (!Array.isArray(value)) {
@@ -118,10 +127,16 @@ export function parseTags(value: unknown): string[] {
     }
     const name = item.trim();
     if (name === '') continue;
+    if (name.length > MAX_TAG_LENGTH) {
+      throw fieldError(`Тег не должен превышать ${MAX_TAG_LENGTH} символов`, 'tags');
+    }
     const norm = name.toLowerCase();
     if (seen.has(norm)) continue;
     seen.add(norm);
     names.push(name);
+  }
+  if (names.length > MAX_TAGS_PER_NOTE) {
+    throw fieldError(`К заметке можно добавить не более ${MAX_TAGS_PER_NOTE} тегов`, 'tags');
   }
   return names;
 }

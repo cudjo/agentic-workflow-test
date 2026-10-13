@@ -351,3 +351,122 @@ npm start         # :3000
   `listNotesByUser`.
 - Предупреждение по окружению: `curl.exe -o $null` в PowerShell 5.1 создаёт файл с именем `--max-time`
   (пустой аргумент); в скриптах использовать `-o NUL`.
+
+---
+
+## T-05 — Теги (many-to-many) + серверный поиск/фильтр — tasker-backend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `typescript-node`
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **`server/src/lib/notes.ts`** — лимиты тегов Q-T3 в `parseTags()`: константы
+  `MAX_TAGS_PER_NOTE = 20`, `MAX_TAG_LENGTH = 50`. Тег длиннее 50 → `422 VALIDATION_ERROR
+  field=tags`; после тримминга/дедупа более 20 уникальных тегов → `422 field=tags`. Пустой/
+  пробельный тег по-прежнему отбрасывается (AC-33/36/T1), дубликат в другом регистре схлопывается
+  с сохранением первого написания (Q-T2/AC-37). Лимит количества считается по результату
+  дедупликации (тому, что реально сохранится). Спецсимволы/юникод в теле тега допустимы (T4).
+- **`server/src/lib/search.ts`** (новый, PLAN §2) — поиск/фильтр (`q`/`tag`):
+  `normalizeForSearch` (Unicode `toLowerCase`), `escapeLikePattern` (экранирование `\`, `%`, `_` —
+  литералы, S1), `toLikePattern`, `parseNotesFilter` (пустые `q`/`tag` → нет фильтра, S4) и
+  `registerSearchFunctions` — регистрирует на соединении SQL-функцию **`search_norm`** из JS.
+- **`server/src/db/client.ts`** — `prepareStatements()` регистрирует `search_norm`; новый statement
+  `listNotesFiltered` (один подготовленный запрос под все комбинации через `? IS NULL`): поиск
+  `search_norm(COALESCE(title,'')) LIKE ? ESCAPE '\' OR search_norm(body_markdown) LIKE ? ESCAPE '\'`
+  + фильтр тега через `EXISTS` с `t.user_id = notes.user_id` (AC-44/S7), комбинация «И» (AC-41),
+  порядок `updated_at DESC, id DESC` (Q-S3). `listTagsByUser` дополнен `HAVING COUNT(nt.note_id) > 0`
+  (без заметок не возвращается). Новый statement `deleteOrphanTagsForUser` (T6).
+- **`server/src/routes/tags.ts`** (новый) — `GET /api/tags` (`preHandler: requireAuth`) →
+  `200 {items:[{name,count}]}`, только теги текущего пользователя (`WHERE t.user_id = ?`, Q-T4/AC-44).
+- **`server/src/routes/notes.ts`** — `GET /api/notes` принимает `?q=&tag=` через `parseNotesFilter` и
+  `listNotesFiltered`; `replaceNoteTags()` и `DELETE` вызывают `deleteOrphanTagsForUser()` в той же
+  транзакции — теги без заметок удаляются, битых ссылок `note_tags` не остаётся (T6).
+- **`server/src/app.ts`** — зарегистрирован `tagsRoutes` (после `notesRoutes`; порядок обработчиков
+  ошибок/404 не менялся).
+- **Тесты:** `server/tests/tags.test.ts` (29 тестов).
+
+### Как реализован регистронезависимый поиск с кириллицей
+
+SQLite-функции `LOWER()`/`COLLATE NOCASE` работают **только с ASCII** — проверено: заметка с текстом
+`ПРИВЕТ` не находится запросом `lower(body) LIKE lower('%ПРИВЕТ%')`. Поэтому при `prepareStatements()`
+на соединении регистрируется JS-функция `search_norm` (`DatabaseSync.function`, `deterministic`),
+внутри — `String(value).toLowerCase()` (Unicode-aware). SQL сравнивает **нормализованную копию**
+колонки с **нормализованным в JS** паттерном:
+
+```sql
+search_norm(COALESCE(title,'')) LIKE ? ESCAPE '\' OR search_norm(body_markdown) LIKE ? ESCAPE '\'
+-- ? = '%' || escapeLikePattern(q.toLowerCase()) || '%'
+```
+
+Это тот же приём, что в T-04 для `tags.name_norm`/`users.email_norm` (нормализация регистра в JS):
+без миграции и бэкфилла, работает и для уже существующих строк, и для кириллицы, при этом спецсимволы
+LIKE остаются литералами. Для PostgreSQL замена прозрачна: там `lower()` юникод-корректен, поэтому
+`search_norm(...)` меняется на `lower(...)` (SQL ANSI-совместим, риск R1).
+
+### Принятые решения по неоднозначностям
+
+| Вопрос | Решение |
+|---|---|
+| Лимит ≤ 20 тегов | Считается по количеству **уникальных** тегов после тримминга/дедупа (то, что сохранится). |
+| Длина тега ≤ 50 | В символах JS (`.length`); проверяется до дедупликации. |
+| Пустой `q`/`tag` | Отсутствие фильтра (S4); непереданный, `null` и `''` эквивалентны; `tag` триммится. |
+| Спецсимволы поиска | `%`, `_`, `\` экранируются и трактуются как литералы (S1); `*`, `#` и markdown-синтаксис — обычный текст (S3). |
+| Фильтр по тегу | Сопоставление по `name_norm` (регистронезависимо), в пределах `t.user_id = notes.user_id`. |
+
+### Как проверить
+
+```powershell
+cd server
+npm test          # vitest (все файлы)
+npm run typecheck # tsc --noEmit
+npm start         # :3000
+# реальный прогон: register → POST/PATCH с тегами → лимиты → q/tag/q+tag → /api/tags →
+# изоляция второго пользователя → DELETE (чистка orphan-тегов) — curl, cookie-jar + X-CSRF-Token
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm test`: **Test Files 5 passed (5) · Tests 110 passed (110)** = 81 существующих (T-01..T-04) + 29 новых T-05.
+- `npm run typecheck`: без ошибок (exit 0).
+- **Реальный прогон** (`npm start`, `NODE_ENV=production`, порт 3211, tmp-БД, `curl.exe`, два пользователя):
+  1. `POST /api/auth/register` alice/bob → `201`;
+  2. `POST /api/notes {tags:[" Work ","work","Home","Работа","работа","","   "]}`
+     → `201 tags:["Home","Work","Работа"]` — тримминг, отбрасывание пустых, регистронезависимый дедуп
+     с сохранением первого написания (кириллица в т.ч., Q-T2);
+  3. 21 тег → `422 {"field":"tags","message":"К заметке можно добавить не более 20 тегов"}`;
+      тег из 51 символа → `422 "Тег не должен превышать 50 символов"`;
+  4. `GET /api/tags` alice → `{"items":[{"name":"Home","count":2},{"name":"Work","count":1},{"name":"Работа","count":1}]}`;
+  5. `GET /api/notes?q=javascript` → `total:1` (по заголовку/телу, регистронезависимо);
+  6. `GET /api/notes?q=ПРИВЕТ` у alice → `total:0` (эта заметка у bob — изоляция AC-44/S7),
+     у bob `?q=common` → его заметка;
+  7. `?q=%` → только заметки с литералом `%` (`total:2`, wildcard не срабатывает — S1);
+  8. `?tag=home` → `total:2`; `?q=100%&tag=work` → `total:1` (пересечение «И» — AC-41); `?q=` → все (S4);
+  9. `GET /api/tags` bob → только `shared` (приватность Q-T4);
+  10. `DELETE /api/notes/1` → `204`; после — `GET /api/tags` alice → `{"items":[{"name":"Home","count":1}]}`
+      (осиротевшие `Work`/`Работа` удалены — T6); `GET /api/tags` без сессии → `401`;
+  11. логи: только `method/url/statusCode`, без паролей/cookie/токенов и тел (NFR-9/A9).
+- Дефектов в процессе не найдено.
+
+### Артефакты
+
+`server/src/lib/search.ts` (новый), `server/src/routes/tags.ts` (новый),
+`server/src/lib/notes.ts`, `server/src/db/client.ts`, `server/src/routes/notes.ts`,
+`server/src/app.ts`, `server/tests/tags.test.ts`
+
+**Коммит:** `feat(T-05): теги (лимиты, /api/tags, чистка orphan) + серверный поиск/фильтр q/tag`
+(хеш — `git log --oneline -1`)
+
+### Заметки для следующих задач
+
+- **T-08/T-09 (фронт):** `GET /api/tags` отдаёт `{items:[{name,count}]}` — готово для чипов-фильтров и
+  `datalist`; серверный поиск — `GET /api/notes?q=&tag=` (debounce на клиенте, Q-S4); `q`/`tag`
+  комбинируются по «И»; пустые значения (в т.ч. `q=`) → без фильтра.
+- **T-12 (deploy/smoke):** сценарий `e2e-smoke.mjs` может опираться на `/api/notes?q=&tag=` и `/api/tags`.
+- Кириллица в поиске работает через JS-функцию `search_norm` (регистрируется в `prepareStatements`);
+  если БД открывается внешним соединением — использовать `prepareStatements(db)`/`buildApp`
+  (они регистрируют функцию), либо вызвать `registerSearchFunctions(db)` из `lib/search.ts`.
+- **PowerShell 5.1 грабли (для QA e2e):** `.ps1` с юникодом читается как ANSI — сохранять с UTF-8 BOM;
+  JSON-тела с кириллицей передавать в `curl.exe` через `--data-binary @file` (UTF-8 без BOM), иначе
+  native-аргументы кодируются в ANSI; `Del`/`del` — алиас `Remove-Item`, не использовать как имя функции.

@@ -14,6 +14,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { registerSearchFunctions } from '../lib/search.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -80,6 +81,8 @@ export function transaction<T>(db: DatabaseSync, fn: () => T): T {
  * Имена — контракт для роутов/сервисов (T-02..T-05); SQL остаётся ANSI-совместимым.
  */
 export function prepareStatements(db: DatabaseSync) {
+  // `search_norm` — Unicode-aware замена ASCII-only `LOWER()` для поиска (T-05, lib/search.ts).
+  registerSearchFunctions(db);
   return {
     // ---- users ----
     insertUser: db.prepare(
@@ -120,6 +123,30 @@ export function prepareStatements(db: DatabaseSync) {
       `SELECT id, user_id, title, body_markdown, created_at, updated_at
        FROM notes WHERE user_id = ? ORDER BY updated_at DESC, id DESC`,
     ),
+    /**
+     * Список своих заметок с поиском (`q`) и фильтром по тегу (`tag`) — T-05 (PLAN §3.2).
+     * Параметры: `[userId, qPattern|null, qPattern, qPattern, tagNorm|null, tagNorm]`.
+     * * поиск — подстрочный по `title` + `body_markdown` (исходный markdown, Q-S2), спецсимволы
+     *   LIKE экранированы (ESCAPE '\'), регистр — Unicode через `search_norm` (кириллица, S2);
+     * * пустой `q`/`tag` (`NULL`) отключает соответствующее условие (S4);
+     * * `q` + `tag` комбинируются по «И» (AC-41);
+     * * `t.user_id = notes.user_id` — фильтр по тегу ограничен владельцем (AC-44/S7).
+     * Условия `? IS NULL` позволяют держать один подготовленный statement под все комбинации.
+     */
+    listNotesFiltered: db.prepare(
+      `SELECT id, user_id, title, body_markdown, created_at, updated_at
+       FROM notes
+       WHERE user_id = ?
+         AND (? IS NULL
+              OR search_norm(COALESCE(title, '')) LIKE ? ESCAPE '\\'
+              OR search_norm(body_markdown) LIKE ? ESCAPE '\\')
+         AND (? IS NULL
+              OR EXISTS (
+                   SELECT 1 FROM note_tags nt
+                   JOIN tags t ON t.id = nt.tag_id
+                   WHERE nt.note_id = notes.id AND t.user_id = notes.user_id AND t.name_norm = ?))
+       ORDER BY updated_at DESC, id DESC`,
+    ),
     updateNote: db.prepare(
       `UPDATE notes SET title = ?, body_markdown = ?, updated_at = ?
        WHERE id = ? AND user_id = ?`,
@@ -133,12 +160,20 @@ export function prepareStatements(db: DatabaseSync) {
     getTagByUserAndNorm: db.prepare(
       `SELECT id, user_id, name, name_norm FROM tags WHERE user_id = ? AND name_norm = ?`,
     ),
+    /** Теги пользователя со счётчиком заметок (T-05, PLAN §3.2); без заметок — не возвращаются. */
     listTagsByUser: db.prepare(
       `SELECT t.id AS id, t.name AS name, COUNT(nt.note_id) AS count
        FROM tags t LEFT JOIN note_tags nt ON nt.tag_id = t.id
        WHERE t.user_id = ?
        GROUP BY t.id, t.name
+       HAVING COUNT(nt.note_id) > 0
        ORDER BY t.name COLLATE NOCASE ASC`,
+    ),
+    /** Удаляет осиротевшие теги пользователя (нет ни одной связи note_tags) — T-05/T6. */
+    deleteOrphanTagsForUser: db.prepare(
+      `DELETE FROM tags
+       WHERE user_id = ?
+         AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.tag_id = tags.id)`,
     ),
     deleteTag: db.prepare(`DELETE FROM tags WHERE id = ? AND user_id = ?`),
 

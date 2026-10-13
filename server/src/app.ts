@@ -21,6 +21,7 @@ import { csrfGuard } from './middleware/csrf.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { notesRoutes } from './routes/notes.js';
+import { tagsRoutes } from './routes/tags.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -134,8 +135,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   await app.register(healthRoutes);
   await app.register(authRoutes);
-  // Заметки: CRUD + ownership (T-04); требуют сессию (`requireAuth` внутри роутера).
+  // Заметки: CRUD + ownership (T-04), поиск/фильтр (T-05); требуют сессию (`requireAuth`).
   await app.register(notesRoutes);
+  // Теги пользователя (T-05): GET /api/tags — свои теги со счётчиком.
+  await app.register(tagsRoutes);
 
   return app;
 }
