@@ -18,7 +18,7 @@
         "Есть индекс notes(user_id, updated_at DESC) и note_tags(tag_id)",
         "db/client.ts экспортирует подготовленные statements с транзакциями; тест (vitest) проверяет вставку/чтение/каскад"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": [],
       "assignee": "tasker-dba",
       "stack": "postgres",
@@ -33,7 +33,7 @@
         "CORS пропускает http://localhost:5173; неизвестный роут → 404 JSON; ошибка → JSON без stack в проде",
         "Логи не содержат паролей/токенов (A9/NFR-9)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-01"],
       "assignee": "tasker-backend",
       "stack": "typescript-node"
@@ -49,7 +49,7 @@
         "state-changing запрос без X-CSRF-Token → 403; с корректным токеном — проходит (AC-15/NFR-11)",
         "истёкшая/удалённая сессия → 401 без данных (AC-9/AC-10)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-02"],
       "assignee": "tasker-backend",
       "stack": "typescript-node"
@@ -65,7 +65,7 @@
         "пустая заметка → 422 с сообщением (AC-17/E1); только заголовок и только текст сохраняются (E2/E3)",
         "изменения персистентны после перезапуска сервера (NFR-25); порядок списка — свежие сверху (Q-S3)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-03"],
       "assignee": "tasker-backend",
       "stack": "typescript-node"
@@ -82,7 +82,7 @@
         "tag фильтрует только по тегу; q+tag вместе → пересечение (AC-40/AC-41); поиск ограничен владельцем (AC-44/S7)",
         "удаление заметки не оставляет битых ссылок note_tags (T6); GET /api/tags возвращает корректные счётчики"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-04"],
       "assignee": "tasker-backend",
       "stack": "typescript-node"
@@ -98,7 +98,7 @@
         "неавторизованный доступ к /notes → редирект /login, данные не показываются (AC-10); после входа возврат на запрошенный URL",
         "кнопка «Выйти» инвалидирует сессию и редиректит на /login (AC-7/F)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-03"],
       "assignee": "tasker-frontend",
       "stack": "react"
@@ -113,7 +113,7 @@
         "битый/незакрытый markdown не ломает страницу (E8/E9)",
         "один и тот же рендерер даёт идентичный HTML для превью и просмотра (AC-31); тест на совпадение"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-06"],
       "assignee": "tasker-frontend",
       "stack": "react"
@@ -130,7 +130,7 @@
         "удаление через dialog с подтверждением; отмена не меняет; подтверждение удаляет без перезагрузки (AC-21/22); удаление последней → empty-state (E14)",
         "загрузка — скелетоны (не спиннер); ошибка загрузки — алерт с «Повторить» (DESIGN §4.2)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-05", "T-06"],
       "assignee": "tasker-frontend",
       "stack": "react"
@@ -148,7 +148,7 @@
         "несохранённые правки → предупреждение при уходе (закрытие/переход/beforeunload) (AC-20/E10)",
         "ошибка сохранения → текст не теряется, статус не «сохранено» (E17)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-05", "T-07"],
       "assignee": "tasker-frontend",
       "stack": "react"
@@ -164,7 +164,7 @@
         "удаление из просмотра → подтверждение → возврат к списку (AC-21/E13)",
         "один h1 на страницу; заголовки markdown начинаются с h2 (DESIGN §5.4)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-07", "T-08"],
       "assignee": "tasker-frontend",
       "stack": "react"
@@ -181,7 +181,7 @@
         "prefers-reduced-motion отключает mesh/shimmer/hover; prefers-contrast/fallback увеличивают плотность стекла (DESIGN §5.5)",
         "адаптив 1280/1024/860/640: плитки перестраиваются, список читаем, сплит→табы, формы/поиск адаптивны (NFR-21..24)"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-08", "T-09", "T-10"],
       "assignee": "tasker-frontend",
       "stack": "react"
@@ -196,7 +196,7 @@
         "node server/scripts/e2e-smoke.mjs проходит полный сценарий NFR-28 включая изоляцию пользователей",
         "Dockerfile (если Docker доступен) собирается и запускается; docker-compose поднимает сервис"
       ],
-      "status": "not_started",
+      "status": "complete",
       "dependsOn": ["T-05", "T-11"],
       "assignee": "tasker-devops",
       "stack": "docker",
