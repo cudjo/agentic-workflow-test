@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Зона 1: Деревня-бастион — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .banner { left: 0; right: 0; top: 58px; text-align: center; }
+  .banner h1 { color: var(--bone); text-shadow: 2px 2px 0 var(--void); letter-spacing: 2px; }
+  .banner .rule { width: 160px; height: 3px; margin: 6px auto; border-top: 1px solid var(--gold-9); border-bottom: 1px solid var(--gold-9); }
+  .banner p { text-shadow: 1px 1px 0 var(--void); }
+  .grid16 { inset: 0; display: none; background-image: linear-gradient(90deg, rgba(127,154,168,.22) 1px, transparent 1px), linear-gradient(0deg, rgba(127,154,168,.22) 1px, transparent 1px); background-size: 16px 16px; background-position: 0 14px; pointer-events: none; }
+  .hbox { left: 123px; top: 202px; width: 10px; height: 20px; border: 1px solid #8fa77c; display: none; }
+  .hbox::after { content: 'hitbox'; position: absolute; left: -4px; top: -11px; font-size: 8px; color: #8fa77c; text-shadow: 1px 1px 0 #000; }
+  .mk { display: none; width: 12px; height: 12px; background: var(--steel-3); color: var(--void); text-align: center; font-size: 8px; line-height: 12px; border: 1px solid var(--void); box-shadow: 0 0 0 1px var(--steel-3); }
+  [data-ann="1"] .mk, [data-ann="1"] .hbox { display: block; }
+  [data-grid="1"] .grid16 { display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+  .chip { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: #b9b9bb; }
+  .sw { display: flex; }
+  .sw i { width: 22px; height: 16px; display: block; border: 1px solid #000; margin-right: -1px; }
+  ol.leg { columns: 2; column-gap: 28px; padding-left: 22px; font-size: 12px; max-width: 980px; }
+</style>
+</head>
+<body>
+<header class="chrome">
+  <h1>Зона 1 · Деревня-бастион</h1>
+  <a href="index.html">← все макеты</a>
+  <span class="grow"></span>
+  <span role="group" aria-label="Оверлеи">
+    <button id="tAnn" aria-pressed="false">Разметка слоёв</button>
+    <button id="tGrid" aria-pressed="false">Сетка 16 px</button>
+  </span>
+  <span id="scale-tag"></span>
+</header>
+
+<main class="frame">
+<div class="stage" id="stage" data-ann="0" data-grid="0">
+  <canvas class="scene" data-scene="village" role="img" aria-label="Деревня-бастион: серая каменная стена с воротами, факелы, хижина, уступ с сундуком, завал справа, герой и враг у ворот"></canvas>
+  <div class="grid16 abs" aria-hidden="true"></div>
+  <header class="banner abs">
+    <h1 class="t-h2">ДЕРЕВНЯ-БАСТИОН</h1>
+    <div class="rule"></div>
+    <p class="c-muted">Зона 1 · Хаб</p>
+  </header>
+  <div class="hbox abs" aria-hidden="true"></div>
+  <span class="mk abs" style="left:228px;top:6px" aria-hidden="true">1</span>
+  <span class="mk abs" style="left:380px;top:96px" aria-hidden="true">2</span>
+  <span class="mk abs" style="left:140px;top:120px" aria-hidden="true">3</span>
+  <span class="mk abs" style="left:100px;top:146px" aria-hidden="true">4</span>
+  <span class="mk abs" style="left:206px;top:176px" aria-hidden="true">5</span>
+  <span class="mk abs" style="left:152px;top:158px" aria-hidden="true">6</span>
+  <span class="mk abs" style="left:350px;top:140px" aria-hidden="true">7</span>
+  <span class="mk abs" style="left:440px;top:150px" aria-hidden="true">8</span>
+  <span class="mk abs" style="left:150px;top:236px" aria-hidden="true">9</span>
+</div>
+</main>
+
+<section class="chrome notes" aria-label="Палитры зон">
+  <p><b>Палитры зон</b> (SPEC §5, §6.1) — по 5–6 основных оттенков на зону из общей палитры игры:</p>
+  <div class="chips">
+    <div class="chip"><b>1 Деревня</b><span class="sw"><i style="background:#1a1f2e"></i><i style="background:#4a4a4f"></i><i style="background:#6b6b70"></i><i style="background:#3b2e22"></i><i style="background:#2e3d2a"></i><i style="background:#c08a3e"></i></span></div>
+    <div class="chip"><b>2 Болото</b><span class="sw"><i style="background:#161e14"></i><i style="background:#1f2a1c"></i><i style="background:#2e3d2a"></i><i style="background:#3b2e22"></i><i style="background:#2f4350"></i><i style="background:#7d5a28"></i></span></div>
+    <div class="chip"><b>3 Перевал</b><span class="sw"><i style="background:#10131c"></i><i style="background:#262c3e"></i><i style="background:#4f6b7a"></i><i style="background:#7f9aa8"></i><i style="background:#9a9a9c"></i><i style="background:#d6c9a8"></i></span></div>
+    <div class="chip"><b>4 Руины</b><span class="sw"><i style="background:#10131c"></i><i style="background:#3b2e22"></i><i style="background:#54402f"></i><i style="background:#7d5a28"></i><i style="background:#c08a3e"></i><i style="background:#7a2a24"></i></span></div>
+    <div class="chip"><b>5 Финал</b><span class="sw"><i style="background:#0b0c10"></i><i style="background:#303035"></i><i style="background:#4a4a4f"></i><i style="background:#9a9a9c"></i><i style="background:#d6c9a8"></i><i style="background:#b5483c"></i></span></div>
+  </div>
+  <p style="margin-top:6px"><b>Разметка слоёв</b> (кнопка сверху):</p>
+  <ol class="leg">
+    <li>Небо, луна, звёзды — параллакс 0.1×, не затемняется освещением.</li>
+    <li>Хребты и силуэт замка — параллакс 0.3× / 0.5×.</li>
+    <li>Каменная стена-бастион (задний план, мох у основания).</li>
+    <li>Хижина: окно — мягкий тёплый источник света.</li>
+    <li>Ворота с поднятой решёткой (проход в зону 2).</li>
+    <li>Факел: Light2D, радиус ≈ 90 px, мерцание ±5%.</li>
+    <li>Уступ с сундуком — секрет, нужен двойной прыжок.</li>
+    <li>Завал — физическая преграда, подсказка «Нужно: Двойной прыжок» (AC-02.4).</li>
+    <li>Земля: влажная, лужи отражают свет факелов.</li>
+  </ol>
+</section>
+<script src="assets/px.js"></script>
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  function tog(id, attr) {
+    var b = document.getElementById(id);
+    b.addEventListener('click', function () {
+      var on = stage.getAttribute(attr) !== '1'; stage.setAttribute(attr, on ? '1' : '0'); b.setAttribute('aria-pressed', String(on));
+    });
+  }
+  tog('tAnn', 'data-ann'); tog('tGrid', 'data-grid');
+})();
+</script>
+</body>
+</html>

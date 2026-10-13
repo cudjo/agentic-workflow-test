@@ -1,0 +1,22 @@
+# Нормализация переводов строк и бинарных типов.
+* text=auto eol=lf
+
+# Скрипты
+*.sh   text eol=lf
+*.ps1  text eol=crlf
+
+# Godot: текстовые форматы — LF, бинарные — как есть
+*.gd    text eol=lf
+*.tscn  text eol=lf
+*.tres  text eol=lf
+*.godot text eol=lf
+*.csv   text eol=lf
+
+# Бинарные ассеты
+*.png  binary
+*.jpg  binary
+*.ogg  binary
+*.wav  binary
+*.ttf  binary
+*.otf  binary
+*.zip  binary

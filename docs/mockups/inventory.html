@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Инвентарь и характеристики — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .bg { inset: 0; background: var(--night-9); }
+  .tabs { left: 8px; top: 6px; right: 8px; display: flex; gap: 4px; border-bottom: 2px solid var(--stone-9); height: 18px; }
+  .tab { padding: 3px 8px 5px; color: var(--stone-5); border: 2px solid transparent; border-bottom: 0; margin-bottom: -2px; }
+  .tab:hover { color: var(--bone); background: var(--night-3); }
+  .tab[aria-selected="true"] { color: var(--gold-3); background: var(--night-9); border-color: var(--stone-9); border-bottom: 2px solid var(--night-9); }
+  .tab:focus-visible { outline: 2px solid var(--gold-3); outline-offset: -2px; }
+  .tabs .sp { flex: 1; }
+  .tabs .hint { color: var(--stone-5); padding-top: 4px; }
+
+  .colA { left: 8px; top: 30px; width: 112px; height: 220px; }
+  .colB { left: 128px; top: 30px; width: 189px; height: 148px; }
+  .colD { left: 128px; top: 184px; width: 189px; height: 66px; }
+  .colC { left: 325px; top: 30px; width: 147px; height: 220px; }
+  .foot { left: 8px; right: 8px; top: 255px; display: flex; gap: 12px; color: var(--stone-5); }
+  .h { display: flex; justify-content: space-between; margin-bottom: 2px; }
+
+  .eq { display: grid; grid-template-columns: 28px 36px 28px; gap: 2px; justify-content: center; margin-top: 4px; }
+  .eq .hero { grid-column: 2; grid-row: 2 / span 2; display: flex; align-items: center; justify-content: center; }
+  .eq .slot { width: 28px; height: 28px; }
+  .eq .lbl { text-align: center; color: var(--stone-5); font-size: 8px; line-height: 8px; margin-top: 1px; }
+  .grid { display: grid; grid-template-columns: repeat(6, 28px); gap: 1px; margin-top: 2px; }
+  .grid .slot { width: 28px; height: 28px; border-width: 2px; }
+  .slot:hover:not(.slot--empty) { border-color: var(--stone-5); }
+  .slot--sel, .slot--sel:hover { border-color: var(--gold) !important; box-shadow: 0 0 0 1px var(--void), inset 0 0 0 1px var(--gold-9); }
+  .slot .eqd { position: absolute; left: 1px; top: 1px; width: 6px; height: 6px; background: var(--gold); }
+  .slot .bad { position: absolute; right: 1px; top: 1px; width: 8px; height: 8px; background: var(--blood); color: var(--bone); font-size: 8px; line-height: 8px; text-align: center; }
+  .slot--unmet canvas { opacity: .55; }
+
+  .req { display: flex; justify-content: space-between; }
+  .tag { padding: 0 3px; border: 1px solid; }
+  .tag--ok { color: #9db58a; border-color: #5f7351; }
+  .tag--no { color: var(--bone); background: var(--blood); border-color: var(--blood-3); }
+
+  .stat { display: flex; align-items: center; height: 15px; gap: 4px; white-space: nowrap; }
+  .colC .hr { margin: 4px 0; }
+  .stat .n { flex: 1; color: var(--stone-5); }
+  .stat .v { width: 24px; text-align: right; }
+  .plus { width: 12px; height: 12px; border: 1px solid var(--stone-3); color: var(--stone-3); text-align: center; line-height: 10px; background: var(--void); }
+  .plus[aria-disabled="true"] { border-style: dashed; cursor: not-allowed; }
+  .rep { display: flex; align-items: center; gap: 4px; height: 14px; }
+  .rep .n { width: 48px; color: var(--stone-5); overflow: hidden; white-space: nowrap; }
+  .rep .b { position: relative; flex: 1; height: 6px; background: var(--void); border: 1px solid var(--stone-3); }
+  .rep .b::before { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--stone-3); }
+  .rep .b i { position: absolute; top: 0; bottom: 0; }
+  .rep .s { width: 20px; text-align: right; }
+</style>
+</head>
+<body>
+<header class="chrome">
+  <h1>Инвентарь · характеристики</h1>
+  <a href="index.html">← все макеты</a>
+  <span class="grow"></span>
+  <span role="group" aria-label="Выбранный предмет">
+    <button data-set-state="unmet" aria-pressed="true">Требования не выполнены</button>
+    <button data-set-state="ok" aria-pressed="false">Требования выполнены</button>
+    <button data-set-state="empty" aria-pressed="false">Пустая ячейка</button>
+  </span>
+  <span id="scale-tag"></span>
+</header>
+
+<main class="frame">
+<div class="stage" id="stage" data-state="unmet">
+  <div class="bg abs"></div>
+
+  <div class="tabs abs" role="tablist" aria-label="Разделы">
+    <span class="hint"><span class="kbd kbd--pad">LB</span></span>
+    <button class="tab" role="tab" aria-selected="true">ГЕРОЙ</button>
+    <button class="tab" role="tab" aria-selected="false">КАРТА</button>
+    <button class="tab" role="tab" aria-selected="false">ЖУРНАЛ</button>
+    <button class="tab" role="tab" aria-selected="false">ФРАКЦИИ</button>
+    <span class="sp"></span>
+    <span class="hint"><span class="kbd kbd--pad">RB</span></span>
+  </div>
+
+  <!-- A: экипировка -->
+  <section class="colA panel abs" aria-label="Экипировка">
+    <h2 class="t-xs c-gold up">Экипировка</h2>
+    <div class="eq">
+      <span></span><div class="slot" aria-label="Шлем: Железный шлем"><canvas data-spr="helm" data-zoom="2"></canvas></div><span></span>
+      <div class="slot slot--sel" aria-label="Оружие: Меч стража"><canvas data-spr="sword" data-zoom="2"></canvas></div>
+      <div class="hero"><canvas data-spr="hero" data-zoom="2"></canvas></div>
+      <div class="slot" aria-label="Щит: Деревянный щит"><canvas data-spr="shield" data-zoom="2"></canvas></div>
+      <div class="slot" aria-label="Кольцо 1: Кольцо золы"><canvas data-spr="ring" data-zoom="2"></canvas></div>
+      <div class="slot slot--empty" aria-label="Кольцо 2: пусто"></div>
+      <span></span><div class="slot" aria-label="Броня: Кольчуга"><canvas data-spr="armor" data-zoom="2"></canvas></div><span></span>
+    </div>
+    <hr class="hr" style="margin-top:8px">
+    <div class="stat"><span class="n">Урон</span><span class="v">14</span></div>
+    <div class="stat"><span class="n">Броня</span><span class="v">9</span></div>
+    <div class="stat"><span class="n">Монеты</span><span class="v c-gold" style="width:auto">1 240</span></div>
+  </section>
+
+  <!-- B: сетка предметов -->
+  <section class="colB panel abs" aria-label="Предметы">
+    <div class="h t-xs"><h2 class="c-gold up">Предметы</h2><span class="c-muted">13/24</span></div>
+    <ul class="grid" id="grid" role="listbox" aria-label="Сетка предметов"></ul>
+  </section>
+
+  <!-- D: описание -->
+  <section class="colD panel abs" aria-live="polite" aria-label="Описание предмета" id="detail"></section>
+
+  <!-- C: характеристики -->
+  <section class="colC panel abs" aria-label="Характеристики">
+    <h2 class="t-xs c-gold up">Характеристики</h2>
+    <hr class="hr">
+    <div class="stat"><span class="n">Сила</span><span class="v">12</span><span class="plus" aria-disabled="true" role="button" aria-label="Повысить силу: только у учителя" title="Только у учителя">+</span></div>
+    <div class="stat"><span class="n">Ловкость</span><span class="v">9</span><span class="plus" aria-disabled="true" role="button" aria-label="Повысить ловкость: только у учителя">+</span></div>
+    <div class="stat"><span class="n">Выносл.</span><span class="v">11</span><span class="plus" aria-disabled="true" role="button" aria-label="Повысить выносливость: только у учителя">+</span></div>
+    <div class="stat"><span class="n">Здоровье</span><span class="v">100</span><span class="plus" aria-disabled="true" role="button" aria-label="Повысить здоровье: только у учителя">+</span></div>
+    <hr class="hr">
+    <div class="stat"><span class="n c-gold">Очки обуч.</span><span class="v c-gold" style="width:auto">3</span></div>
+    <p class="c-muted" style="margin-top:2px">Тратятся только<br>у учителей.</p>
+    <hr class="hr">
+    <h2 class="t-xs c-gold up" style="margin-bottom:2px">Репутация</h2>
+    <div class="rep"><span class="n">Стража</span><span class="b"><i style="left:50%;width:20%;background:var(--steel-3)"></i></span><span class="s c-steel">+2</span></div>
+    <div class="rep"><span class="n">Болотн.</span><span class="b"><i style="left:36%;width:14%;background:var(--blood-3)"></i></span><span class="s c-blood">-1</span></div>
+    <div class="rep"><span class="n">Орден</span><span class="b"></span><span class="s c-muted">0</span></div>
+  </section>
+
+  <footer class="foot abs">
+    <span><span class="kbd">E</span> Надеть</span><span><span class="kbd">Q</span> Выбросить</span><span><span class="kbd">Tab</span> Раздел</span><span><span class="kbd">Esc</span> Закрыть</span>
+  </footer>
+</div>
+</main>
+
+<footer class="chrome notes">
+  <p>Состояния слота: обычный · hover (светлая рамка) · выбран (золотая рамка) · надет (золотой маркер) · не выполнены требования (приглушён + красный «!») · пусто (пунктир). Кнопки «+» у характеристик отключены: очки тратятся только у учителей (US-08, AC-08.2). Требования показаны текстом ЕСТЬ/НЕТ и числом, не только цветом.</p>
+</footer>
+<script src="assets/px.js"></script>
+<script>
+(function () {
+  var items = [
+    ['sword', 0, 'eq'], ['axe', 0, 'unmet'], ['shield', 0], ['helm', 0], ['armor', 0], ['potion', 3],
+    ['herb', 5], ['key', 0], ['key', 0], ['scroll', 0], ['scroll', 0], ['ring', 0], ['ring', 0]
+  ];
+  var grid = document.getElementById('grid'), stage = document.getElementById('stage'), sel = 1;
+  function render() {
+    grid.innerHTML = '';
+    for (var i = 0; i < 24; i++) {
+      var it = items[i], li = document.createElement('li');
+      li.className = 'slot' + (it ? '' : ' slot--empty') + (i === sel ? ' slot--sel' : '') + (it && it[2] === 'unmet' ? ' slot--unmet' : '');
+      li.setAttribute('role', 'option'); li.setAttribute('aria-selected', i === sel); li.tabIndex = i === sel ? 0 : -1;
+      if (it) {
+        li.innerHTML = '<canvas data-spr="' + it[0] + '" data-zoom="2"></canvas>' + (it[1] ? '<span class="cnt">' + it[1] + '</span>' : '') +
+          (it[2] === 'eq' ? '<span class="eqd" title="Надето"></span>' : '') + (it[2] === 'unmet' ? '<span class="bad" aria-label="Требования не выполнены">!</span>' : '');
+      }
+      li.dataset.i = i; li.addEventListener('click', function () { sel = +this.dataset.i; stage.dataset.state = !items[sel] ? 'empty' : (items[sel][2] === 'unmet' ? 'unmet' : 'ok'); sync(); });
+      grid.appendChild(li);
+    }
+    PX.mountSprites(grid);
+  }
+  function detail() {
+    var d = document.getElementById('detail'), s = stage.dataset.state;
+    if (s === 'empty') { sel = 20; d.innerHTML = '<p class="c-muted">Пустая ячейка</p>'; return; }
+    if (s === 'ok') { sel = 0; d.innerHTML =
+      '<h3 class="c-gold">Меч стража</h3><p class="c-muted">Одноручное · урон 14</p>' +
+      '<div class="req"><span>Сила 10</span><span class="tag tag--ok">ЕСТЬ 12</span></div><div class="req"><span>Ловкость 8</span><span class="tag tag--ok">ЕСТЬ 9</span></div>'; return; }
+    sel = 1; d.innerHTML =
+      '<h3 class="c-gold">Секира палача</h3><p class="c-muted">Двуручное · урон 22</p>' +
+      '<div class="req"><span>Сила 16</span><span class="tag tag--no">НЕТ · ещё 4</span></div><div class="req"><span>Ловкость 8</span><span class="tag tag--ok">ЕСТЬ 9</span></div>';
+  }
+  function sync() { detail(); render(); }
+  stage.addEventListener('statechange', sync);
+  grid.addEventListener('keydown', function (e) {
+    var d = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 6, ArrowUp: -6 }[e.key]; if (!d) return;
+    e.preventDefault(); sel = Math.max(0, Math.min(23, sel + d));
+    stage.dataset.state = !items[sel] ? 'empty' : (items[sel][2] === 'unmet' ? 'unmet' : 'ok'); detail(); render();
+    grid.children[sel].focus();
+  });
+})();
+</script>
+</body>
+</html>

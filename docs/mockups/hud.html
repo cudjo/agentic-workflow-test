@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HUD — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .hud-tl { left: 8px; top: 8px; }
+  .portrait { left: 8px; top: 8px; width: 28px; height: 28px; padding: 3px; }
+  .lvl { left: 8px; top: 38px; width: 28px; padding: 1px 0; text-align: center; font-size: 8px; line-height: 10px; }
+  .hp { left: 44px; top: 9px; width: 112px; }
+  .st { left: 44px; top: 23px; width: 96px; }
+  .abil { left: 44px; top: 36px; display: flex; gap: 3px; }
+  .abil .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(11,12,16,.72); height: 9px; }
+  .minimap { right: 8px; top: 8px; }
+  .zone { right: 8px; top: 74px; text-align: right; }
+  .quick { left: 8px; bottom: 8px; display: flex; gap: 5px; }
+  .wallet { right: 8px; bottom: 8px; width: 92px; }
+  .wallet div { display: flex; align-items: center; gap: 4px; height: 14px; }
+  .wallet span.v { margin-left: auto; }
+  .prompt { left: 50%; bottom: 40px; transform: translateX(-50%); }
+  .hint { right: 8px; top: 132px; width: 128px; }
+  .hint::after { content: ''; position: absolute; right: 52px; bottom: -8px; width: 8px; height: 6px; background: var(--stone-3); clip-path: polygon(0 0,100% 0,50% 100%); }
+  .boss { left: 120px; width: 248px; bottom: 12px; display: none; }
+  .boss .ticks { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--void); z-index: 3; }
+  .notice { left: 50%; top: 56px; transform: translateX(-50%); text-align: center; display: none; }
+  .nost { left: 146px; top: 21px; display: none; white-space: nowrap; }
+  .loading { inset: 0; background: var(--void); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 20; }
+  .edge { inset: 0; pointer-events: none; display: none; box-shadow: inset 0 0 0 3px rgba(122,42,36,.55), inset 0 0 0 6px rgba(122,42,36,.32), inset 0 0 0 9px rgba(122,42,36,.16); z-index: 5; }
+
+  /* состояния */
+  [data-state="hint"] .hint-wrap { display: block; }
+  .hint-wrap { display: none; }
+  [data-state="boss"] .boss, [data-state="boss"] .notice { display: block; }
+  [data-state="boss"] .prompt, [data-state="boss"] .quick-hint { display: none; }
+  [data-state="nostamina"] .st .fill { width: 0 !important; }
+  [data-state="nostamina"] .st { box-shadow: 0 0 0 1px var(--blood-3); }
+  [data-state="nostamina"] .nost { display: flex; }
+  [data-state="lowhp"] .hp .fill, [data-state="lowhp"] .hp .trail { width: 14% !important; }
+  [data-state="lowhp"] .edge { display: block; }
+  [data-state="lowhp"] .hp { animation: blink 1s steps(2) infinite; }
+  [data-state="loading"] .loading { display: flex; }
+  [data-state="default"] .prompt, [data-state="hint"] .prompt { display: flex; }
+  .prompt { display: none; gap: 6px; align-items: center; }
+</style>
+</head>
+<body>
+<header class="chrome">
+  <h1>HUD · игровой экран</h1>
+  <a href="index.html">← все макеты</a>
+  <span class="grow"></span>
+  <span role="group" aria-label="Состояние HUD">
+    <button data-set-state="default" aria-pressed="true">Обычное</button>
+    <button data-set-state="hint">Подсказка способности</button>
+    <button data-set-state="nostamina">Нет выносливости</button>
+    <button data-set-state="lowhp">Мало здоровья</button>
+    <button data-set-state="boss">Босс · фаза II</button>
+    <button data-set-state="loading">Переход зоны</button>
+  </span>
+  <span id="scale-tag" aria-label="Масштаб"></span>
+</header>
+
+<main class="frame">
+<div class="stage" id="stage" data-state="default">
+  <canvas class="scene" data-scene="village" aria-label="Деревня-бастион: герой у ворот, перед ним враг" role="img"></canvas>
+
+  <div class="edge abs" aria-hidden="true"></div>
+
+  <!-- Верхний левый угол: портрет, HP, выносливость, способности -->
+  <section class="abs" style="left:0;top:0" aria-label="Состояние героя">
+    <div class="portrait panel abs"><canvas data-spr="face" data-zoom="2" style="margin:-1px 0 0 -1px"></canvas></div>
+    <div class="lvl panel panel--solid abs"><span class="sr">Уровень 7</span><span aria-hidden="true">УР7</span></div>
+    <div class="hp abs">
+      <div class="bar bar--hp" role="progressbar" aria-label="Здоровье" aria-valuemin="0" aria-valuemax="100" aria-valuenow="74" aria-valuetext="74 из 100">
+        <i class="trail" style="width:84%"></i><i class="fill" style="width:74%"></i><span class="num">74/100</span>
+      </div>
+    </div>
+    <div class="st abs">
+      <div class="bar bar--st" role="progressbar" aria-label="Выносливость" aria-valuemin="0" aria-valuemax="80" aria-valuenow="58" aria-valuetext="58 из 80">
+        <i class="fill" style="width:72%"></i>
+      </div>
+    </div>
+    <div class="nost toast c-blood shadow" role="status" aria-live="polite"><span class="kbd kbd--warn">!</span> НЕТ СИЛ</div>
+
+    <ul class="abil abs" aria-label="Способности">
+      <li class="slot slot--sel" aria-label="Двойной прыжок: открыто, клавиша Пробел дважды"><canvas data-spr="djump" data-zoom="1"></canvas></li>
+      <li class="slot" aria-label="Рывок: перезарядка"><canvas data-spr="dash" data-zoom="1"></canvas><span class="cd" aria-hidden="true"></span></li>
+      <li class="slot slot--locked" aria-label="Карабканье по стенам: не открыто"><canvas data-spr="climb" data-zoom="1"></canvas><canvas data-spr="lock" data-zoom="1" style="position:absolute;right:-2px;bottom:-2px"></canvas></li>
+    </ul>
+  </section>
+
+  <!-- Мини-карта -->
+  <section class="minimap panel panel--glass abs" style="padding:3px" aria-label="Мини-карта">
+    <canvas data-minimap role="img" aria-label="Мини-карта: герой в центре, два костра, два прохода с замком"></canvas>
+  </section>
+  <div class="zone abs c-muted shadow t-xs up">Деревня-бастион</div>
+
+  <!-- Быстрые слоты -->
+  <ul class="quick abs" aria-label="Быстрые слоты">
+    <li class="slot slot--sel"><span class="key kbd">1</span><canvas data-spr="potion" data-zoom="1"></canvas><span class="cnt">3</span></li>
+    <li class="slot"><span class="key kbd">2</span><canvas data-spr="herb" data-zoom="1"></canvas><span class="cnt">5</span></li>
+    <li class="slot slot--empty"><span class="key kbd">3</span></li>
+    <li class="slot slot--empty"><span class="key kbd">4</span></li>
+  </ul>
+
+  <!-- Кошелёк и очки обучения -->
+  <section class="wallet panel panel--glass abs" aria-label="Валюта и очки обучения">
+    <div><canvas data-spr="coin" data-zoom="1"></canvas><span class="sr">Монеты</span><span class="v c-gold">1 240</span></div>
+    <div><canvas data-spr="scroll" data-zoom="1"></canvas><span class="sr">Очки обучения</span><span class="v">ОП 3</span></div>
+  </section>
+
+  <!-- Контекстный ввод -->
+  <div class="prompt toast abs shadow quick-hint" aria-hidden="true"><span class="kbd">E</span> <span>Осмотреть</span></div>
+
+  <!-- AC-02.4: подсказка требуемой способности над препятствием -->
+  <div class="hint-wrap">
+    <div class="hint panel panel--solid abs" role="note">
+      <div class="c-muted" style="display:flex;gap:4px;align-items:center"><canvas data-spr="lock" data-zoom="1"></canvas>Нужно:</div>
+      <div class="c-gold" style="margin-top:2px">ДВОЙНОЙ ПРЫЖОК</div>
+    </div>
+  </div>
+
+  <!-- AC-03.4: босс, фазы -->
+  <div class="notice panel panel--solid abs" role="status" aria-live="polite">ФАЗА II<br><span class="c-blood">Палач разъярён</span></div>
+  <section class="boss abs" aria-label="Босс">
+    <div class="shadow" style="display:flex;justify-content:space-between;margin-bottom:3px"><span>ПЕПЕЛЬНЫЙ ПАЛАЧ</span><span class="c-muted">ФАЗА II / III</span></div>
+    <div class="bar bar--boss" role="progressbar" aria-label="Здоровье босса" aria-valuemin="0" aria-valuemax="100" aria-valuenow="52">
+      <i class="fill" style="width:52%"></i><span class="ticks" style="left:33%"></span><span class="ticks" style="left:66%"></span>
+    </div>
+  </section>
+
+  <!-- Загрузка зоны (T_load ≤ 3 с) -->
+  <div class="loading abs" role="status" aria-live="polite">
+    <div class="t-h2 c-gold">БОЛОТО</div>
+    <div class="c-muted">«Здесь тонут даже тени»</div>
+    <div style="display:flex;gap:6px;align-items:center"><span class="spin"></span> Загрузка…</div>
+  </div>
+</div>
+</main>
+
+<footer class="chrome notes">
+  <p>Кадр <b>480×270</b>, safe-зона 8 px. Слева сверху — состояние героя (HP, выносливость, способности); справа сверху — мини-карта и зона; снизу — быстрые слоты и кошелёк.
+  Шкалы дополнены числами и значками (не только цвет). Фон — canvas-сцена с дизерингом, факелы мерцают (отключается при <code>prefers-reduced-motion</code>).</p>
+</footer>
+<style>.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
+<script src="assets/px.js"></script>
+</body>
+</html>

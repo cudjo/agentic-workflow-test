@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Костёр: диалог и сохранение — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .dlg { left: 8px; top: 182px; width: 464px; height: 80px; padding: 6px 8px 6px 64px; }
+  .portrait { left: 8px; top: 182px; width: 52px; height: 52px; padding: 2px; display: flex; align-items: flex-start; justify-content: center; background: var(--night-3); border-color: var(--stone-3); overflow: hidden; z-index: 2; }
+  .portrait canvas { margin-top: 2px; }
+  .name { color: var(--gold-3); height: 12px; }
+  .name small { color: var(--stone-5); font-size: 8px; margin-left: 8px; }
+  .say { height: 24px; margin-top: 2px; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; margin-top: 4px; }
+  .opts.col1 { grid-template-columns: 1fr; }
+  .opts .item { min-height: 14px; padding: 1px 4px; white-space: nowrap; }
+  .tagf { color: var(--steel-3); }
+  .why { color: var(--stone-5); }
+  .slotsp { left: 96px; top: 22px; width: 288px; z-index: 3; }
+  .sl { display: flex; gap: 8px; align-items: center; width: 100%; padding: 4px 8px; border: 2px solid var(--stone-9); background: var(--void); color: var(--bone); margin-bottom: 4px; }
+  .sl:hover, .sl.is-focus, .sl:focus-visible { border-color: var(--gold); outline: 0; }
+  .sl .n { font-size: 16px; line-height: 16px; width: 16px; color: var(--gold-3); }
+  .sl .m { flex: 1; } .sl .m span { display: block; }
+  .sl.is-empty { color: var(--stone-5); border-style: dashed; }
+  .sl .over { color: var(--gold-3); }
+  .toast-top { left: 50%; top: 20px; transform: translateX(-50%); padding: 6px 12px; z-index: 4; white-space: nowrap; }
+  .ok-mark { width: 12px; height: 12px; background: var(--steel-9); border: 1px solid var(--steel-3); position: relative; flex: none; }
+  .ok-mark::after { content: ''; position: absolute; left: 3px; top: 1px; width: 3px; height: 6px; border: solid var(--steel-3); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+  .keys { left: 8px; top: 264px; display: none; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="chrome">
+  <h1>Костёр · диалог и сохранение</h1>
+  <a href="index.html">← все макеты</a>
+  <span class="grow"></span>
+  <span role="group" aria-label="Состояние">
+    <button data-set-state="talk" aria-pressed="true">Диалог</button>
+    <button data-set-state="slots" aria-pressed="false">Выбор слота</button>
+    <button data-set-state="saved" aria-pressed="false">Сохранено</button>
+    <button data-set-state="combat" aria-pressed="false">В бою (запрещено)</button>
+    <button data-set-state="error" aria-pressed="false">Ошибка диска</button>
+  </span>
+  <span id="scale-tag"></span>
+</header>
+
+<main class="frame">
+<div class="stage" id="stage" data-state="talk">
+  <canvas class="scene" data-scene="camp" role="img" aria-label="Руины часовни ночью: у костра стоят герой и старый Хранитель Огня"></canvas>
+
+  <!-- Тосты -->
+  <div class="toast-top panel panel--solid toast abs" data-for="saved" role="status" aria-live="polite"><span class="ok-mark"></span><span>СОХРАНЕНО · СЛОТ 1</span></div>
+  <div class="toast-top panel panel--solid panel--danger toast abs" data-for="combat" role="alert"><canvas data-spr="sword" data-zoom="1"></canvas><span>Сохранение в бою запрещено</span></div>
+  <div class="toast-top panel panel--solid panel--danger toast abs" data-for="error" role="alert"><span class="kbd kbd--warn">!</span><span>Нет места на диске. Прежняя запись цела.</span></div>
+
+  <!-- Выбор слота (3 слота) -->
+  <section class="slotsp panel panel--solid abs" data-for="slots" aria-label="Куда сохранить">
+    <h2 class="t-xs c-gold up" style="margin-bottom:6px">Сохранить в слот</h2>
+    <ul>
+      <li><button class="sl is-focus"><span class="n">1</span><span class="m"><span>Болото — Топь, «Корни»</span><span class="c-muted">УР7 · 6ч 12м</span></span><span class="over">Перезапись</span></button></li>
+      <li><button class="sl is-empty"><span class="n" style="color:var(--stone-5)">2</span><span class="m">— Пусто —</span></button></li>
+      <li><button class="sl"><span class="n">3</span><span class="m"><span>Горный перевал, «Седло»</span><span class="c-muted">УР5 · 3ч 40м</span></span><span class="over">Перезапись</span></button></li>
+    </ul>
+  </section>
+
+  <!-- Диалог -->
+  <div class="portrait panel abs"><canvas data-spr="keeper" data-zoom="3"></canvas></div>
+  <section class="dlg panel panel--glass abs" aria-label="Диалог" aria-live="polite">
+    <h2 class="name">Хранитель Огня<small data-for="talk combat">Орден Пепла</small></h2>
+    <p class="say" id="say"></p>
+
+    <ul class="opts" data-for="talk" role="menu" aria-label="Ответы">
+      <li role="none"><button class="item is-focus" role="menuitem">Сохранить игру</button></li>
+      <li role="none"><button class="item" role="menuitem">О Болоте</button></li>
+      <li role="none"><button class="item" role="menuitem"><span class="tagf">[Орден+1]</span>&nbsp;Клятва</button></li>
+      <li role="none"><button class="item" role="menuitem">Уйти <span class="kbd" style="margin-left:4px">Esc</span></button></li>
+    </ul>
+    <ul class="opts" data-for="combat" role="menu" aria-label="Ответы">
+      <li role="none"><button class="item" role="menuitem" aria-disabled="true" aria-describedby="why1">Сохранить игру</button></li>
+      <li role="none"><button class="item" role="menuitem">О Болоте</button></li>
+      <li id="why1" class="why" style="padding:1px 4px 1px 22px">Рядом враги</li>
+      <li role="none"><button class="item is-focus" role="menuitem">Уйти <span class="kbd" style="margin-left:4px">Esc</span></button></li>
+    </ul>
+    <ul class="opts col1" data-for="saved" role="menu">
+      <li role="none"><button class="item is-focus" role="menuitem">Продолжить путь</button></li>
+    </ul>
+    <ul class="opts" data-for="error" role="menu">
+      <li role="none"><button class="item is-focus" role="menuitem">Повторить</button></li>
+      <li role="none"><button class="item" role="menuitem">Другой слот</button></li>
+      <li role="none"><button class="item" role="menuitem">Отмена <span class="kbd" style="margin-left:4px">Esc</span></button></li>
+    </ul>
+    <p class="c-muted" data-for="slots" style="margin-top:4px"><span class="kbd">↑</span><span class="kbd">↓</span> Слот &nbsp;<span class="kbd">Enter</span> Сохранить &nbsp;<span class="kbd">Esc</span> Назад</p>
+  </section>
+</div>
+</main>
+
+<footer class="chrome notes">
+  <p>Сохранение только у костров (Q3), в бою запрещено — пункт отключён с причиной (не просто серый). Подтверждение сохранения ≤ 1 с (AC-05.1). Ошибка диска не перезаписывает старый файл (EC-14). Текст реплики печатается по символам; <code>Enter</code>/<code>Пробел</code> — показать целиком; при <code>prefers-reduced-motion</code> текст появляется сразу. Фракционный вариант ответа помечен тегом с последствием (US-06).</p>
+</footer>
+<script src="assets/px.js"></script>
+<script>
+(function () {
+  var stage = document.getElementById('stage'), say = document.getElementById('say');
+  var TEXT = {
+    talk: 'Пламя помнит тех, кто возвращается. Дать ему запомнить и тебя?',
+    slots: 'Выбери, где огонь оставит твой след. Старая запись угаснет.',
+    saved: 'Огонь запомнил тебя. Иди, пока он не погас.',
+    combat: 'Не здесь, путник. Пока рядом враги, пламя не примет клятву.',
+    error: 'Огонь гаснет... запись не легла. Но прежняя цела.'
+  };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches, timer;
+  function type(s) {
+    clearInterval(timer); var full = TEXT[s], i = 0;
+    if (reduce) { say.textContent = full; return; }
+    say.textContent = '';
+    timer = setInterval(function () { say.textContent = full.slice(0, ++i); if (i >= full.length) clearInterval(timer); }, 22);
+  }
+  function apply(s) {
+    document.querySelectorAll('[data-for]').forEach(function (e) { e.hidden = e.dataset.for.split(' ').indexOf(s) < 0; });
+    type(s);
+  }
+  stage.addEventListener('statechange', function (e) { apply(e.detail); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { clearInterval(timer); say.textContent = TEXT[stage.dataset.state]; } });
+})();
+</script>
+</body>
+</html>

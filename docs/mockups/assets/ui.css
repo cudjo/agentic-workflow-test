@@ -1,0 +1,144 @@
+/* ui.css — общие стили макетов. Сетка 8 px, внутреннее разрешение 480×270, без сглаживания, без неона. */
+:root {
+  --s: 2; /* целочисленный масштаб, выставляется px.js */
+
+  /* палитра: SPEC §6.1 + производные оттенки (≤ 32–48 цветов на игру) */
+  --void: #0b0c10;
+  --night-9: #10131c; --night: #1a1f2e; --night-3: #262c3e; --night-5: #323a4c;
+  --green-9: #161e14; --green: #1f2a1c; --green-3: #2e3d2a;
+  --brown-9: #2a2018; --brown: #3b2e22; --brown-3: #54402f;
+  --stone-9: #303035; --stone: #4a4a4f; --stone-3: #6b6b70; --stone-5: #9a9a9c;
+  --bone: #d6c9a8;
+  --gold-9: #7d5a28; --gold: #c08a3e; --gold-3: #e0b56a;
+  --blood-9: #4a1a17; --blood: #7a2a24; --blood-3: #b5483c; --blood-5: #cf6a5c; /* blood-5 — только для текста 8 px (5.2:1) */
+  --steel-9: #2f4350; --steel: #4f6b7a; --steel-3: #7f9aa8;
+
+  /* отступы (кратны 2, базовая сетка 8) */
+  --sp-1: 2px; --sp-2: 4px; --sp-3: 8px; --sp-4: 12px; --sp-5: 16px; --sp-6: 24px;
+  --font: 'Press Start 2P', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #050608; }
+body { font: 13px/1.45 system-ui, 'Segoe UI', sans-serif; color: #b9b9bb; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Хром страницы (вне игрового кадра) ---------- */
+.chrome { width: 100%; padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; color: #9a9a9c; }
+.chrome a { color: var(--gold-3); }
+.chrome h1 { font-size: 14px; font-weight: 600; color: #e6e1d0; }
+.chrome .grow { flex: 1; }
+.chrome button, .chrome .btn { font: inherit; font-size: 12px; background: #15171d; color: #d0d0d0; border: 1px solid #3a3d48; padding: 3px 9px; cursor: pointer; border-radius: 0; }
+.chrome button[aria-pressed="true"] { background: var(--gold-9); border-color: var(--gold); color: #fff; }
+.chrome button:hover { border-color: var(--gold-3); }
+.chrome :focus-visible, .stage :focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
+.notes { font-size: 12px; max-width: 980px; }
+.notes code { color: var(--gold-3); }
+
+.embed .chrome { display: none; }
+.still .fade { animation: none !important; opacity: 1 !important; }
+.notes { flex-direction: column; align-items: flex-start; }
+.embed body { min-height: 0; }
+
+/* ---------- Игровой кадр ---------- */
+.frame { width: calc(480px * var(--s)); height: calc(270px * var(--s)); position: relative; overflow: hidden; background: #000; box-shadow: 0 0 0 1px #20232c; flex: none; }
+.stage {
+  position: absolute; left: 0; top: 0; width: 480px; height: 270px;
+  transform: scale(var(--s)); transform-origin: 0 0;
+  font: 8px/12px var(--font); color: var(--bone);
+  -webkit-font-smoothing: none; font-smooth: never; image-rendering: pixelated; overflow: hidden;
+  text-rendering: optimizeSpeed; letter-spacing: 0;
+}
+.stage canvas { image-rendering: pixelated; display: block; }
+.stage canvas.scene { position: absolute; left: 0; top: 0; width: 480px; height: 270px; }
+.stage .abs { position: absolute; }
+.stage h1, .stage h2, .stage h3 { font: inherit; font-weight: normal; }
+.stage button { font: inherit; color: inherit; background: none; border: 0; text-align: left; cursor: pointer; border-radius: 0; }
+.stage ul { list-style: none; }
+
+/* типографика: кратна 8 px */
+.stage .t-xs { font-size: 8px; line-height: 12px; }
+.stage .t-h2 { font-size: 16px; line-height: 16px; }
+.stage .t-h1 { font-size: 24px; line-height: 24px; }
+.stage .t-title { font-size: 32px; line-height: 32px; }
+.c-gold { color: var(--gold-3); } .c-muted { color: var(--stone-5); } .c-steel { color: var(--steel-3); } .c-blood { color: var(--blood-5); }
+.kbd--warn { color: var(--bone); background: var(--blood); border-color: var(--blood-3); } .c-ok { color: #8fa77c; }
+.up { text-transform: uppercase; }
+.shadow { text-shadow: 1px 1px 0 var(--void); }
+
+/* ---------- Панель (рамка 2 px + угловые «заклёпки») ---------- */
+.panel {
+  --pb: var(--night-9);
+  background:
+    linear-gradient(var(--gold-9), var(--gold-9)) 0 0 / 3px 3px no-repeat,
+    linear-gradient(var(--gold-9), var(--gold-9)) 100% 0 / 3px 3px no-repeat,
+    linear-gradient(var(--gold-9), var(--gold-9)) 0 100% / 3px 3px no-repeat,
+    linear-gradient(var(--gold-9), var(--gold-9)) 100% 100% / 3px 3px no-repeat,
+    var(--pb);
+  border: 2px solid var(--stone-3);
+  box-shadow: 0 0 0 1px var(--void), inset 0 0 0 1px var(--void), inset 0 0 0 2px var(--stone-9);
+  padding: 6px;
+}
+.panel--solid { --pb: var(--night-9); }
+.panel--glass { --pb: rgba(11, 12, 16, .82); }
+.panel--inset { border-color: var(--stone-9); box-shadow: 0 0 0 1px var(--void); background: var(--void); }
+.panel--danger { border-color: var(--blood-3); }
+.panel--danger { background: linear-gradient(var(--blood-3), var(--blood-3)) 0 0 / 3px 3px no-repeat, linear-gradient(var(--blood-3), var(--blood-3)) 100% 0 / 3px 3px no-repeat, linear-gradient(var(--blood-3), var(--blood-3)) 0 100% / 3px 3px no-repeat, linear-gradient(var(--blood-3), var(--blood-3)) 100% 100% / 3px 3px no-repeat, var(--pb); }
+.hr { height: 1px; background: var(--stone-9); margin: 6px 0; border: 0; box-shadow: 0 1px 0 var(--void); }
+
+/* ---------- Кнопка клавиши ---------- */
+.kbd { display: inline-block; min-width: 12px; height: 12px; padding: 0 2px; text-align: center; font-size: 8px; line-height: 10px; color: var(--bone); background: var(--stone-9); border: 1px solid var(--stone-3); border-bottom-width: 2px; vertical-align: top; }
+.kbd--pad { border-radius: 0; background: var(--steel-9); border-color: var(--steel-3); min-width: 12px; }
+
+/* ---------- Полоса (HP / выносливость / босс) ---------- */
+.bar { position: relative; height: 10px; background: var(--void); border: 1px solid var(--void); box-shadow: 0 0 0 1px var(--stone-3); overflow: hidden; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
+.bar .trail { background: var(--gold-9); }
+.bar .fill { background: repeating-linear-gradient(90deg, var(--fillc) 0 3px, var(--fillc-d) 3px 4px); }
+.bar .fill::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: rgba(255, 255, 255, .16); }
+.bar--hp { --fillc: var(--blood-3); --fillc-d: var(--blood); }
+.bar--st { --fillc: var(--steel-3); --fillc-d: var(--steel); height: 8px; }
+.bar--boss { --fillc: var(--blood-3); --fillc-d: var(--blood); height: 8px; }
+.bar .num { position: absolute; right: 2px; top: 0; font-size: 8px; line-height: 8px; color: var(--bone); text-shadow: 1px 1px 0 var(--void); z-index: 2; }
+.bar--hp .num { line-height: 10px; }
+
+/* ---------- Слот (иконка) ---------- */
+.slot { position: relative; width: 22px; height: 22px; background: var(--void); border: 2px solid var(--stone-9); box-shadow: 0 0 0 1px var(--void); display: inline-flex; align-items: center; justify-content: center; vertical-align: top; }
+.slot canvas { margin: 0; }
+.slot--sel { border-color: var(--gold); }
+.slot--locked canvas { opacity: .45; }
+.slot--empty { border-style: dashed; border-color: var(--stone-9); }
+.slot .cnt { position: absolute; right: 0; bottom: -2px; font-size: 8px; line-height: 8px; text-shadow: 1px 1px 0 var(--void), -1px 0 0 var(--void); }
+.slot .key { position: absolute; left: -2px; top: -4px; }
+
+/* ---------- Пункты меню / списки (состояния) ---------- */
+.item { display: flex; align-items: center; gap: 4px; padding: 2px 6px 2px 6px; color: var(--stone-5); min-height: 16px; position: relative; }
+.item::before { content: ''; width: 8px; flex: none; }
+.item:hover, .item.is-hover { color: var(--bone); background: var(--night-3); }
+.item:focus-visible, .item.is-focus { color: var(--bone); background: var(--night-3); outline: 0; box-shadow: inset 0 0 0 1px var(--gold-9); }
+.item:focus-visible::before, .item.is-focus::before { content: '>'; color: var(--gold-3); width: 8px; }
+.item:active, .item.is-active { background: var(--gold); color: var(--void); }
+.item:active::before, .item.is-active::before { content: '>'; color: var(--void); }
+.item[aria-disabled="true"], .item.is-disabled { color: var(--stone-3); cursor: not-allowed; }
+.item[aria-disabled="true"]:hover { background: none; }
+
+/* ---------- Тост / подсказка ---------- */
+.toast { position: absolute; display: flex; gap: 6px; align-items: center; }
+
+/* ---------- Ступенчатый скрим (без плавных градиентов) ---------- */
+.scrim-l { background: linear-gradient(90deg, rgba(5,6,8,.9) 0 48px, rgba(5,6,8,.75) 48px 96px, rgba(5,6,8,.55) 96px 144px, rgba(5,6,8,.3) 144px 192px, rgba(5,6,8,.12) 192px 232px, transparent 232px); }
+.scrim-b { background: linear-gradient(0deg, rgba(5,6,8,.9) 0 24px, rgba(5,6,8,.65) 24px 48px, rgba(5,6,8,.4) 48px 72px, rgba(5,6,8,.18) 72px 96px, transparent 96px); }
+
+/* ---------- Пиксельный спиннер (steps) ---------- */
+.spin { width: 12px; height: 12px; display: inline-block; background: conic-gradient(var(--gold) 0 25%, var(--stone-9) 0 100%); animation: spin 1s steps(4) infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.blink { animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin, .blink, .pulse { animation: none !important; }
+}
+@media (forced-colors: active) {
+  .panel, .slot, .bar { border-color: CanvasText; }
+}

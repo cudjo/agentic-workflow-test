@@ -1,0 +1,619 @@
+{
+  "project": "ashen-bastion",
+  "title": "Пепельный Бастион",
+  "route": "full",
+  "stack": {
+    "engine": "Godot 4.4+",
+    "language": "GDScript (typed)",
+    "devops": "godot",
+    "projectRoot": "game/",
+    "tests": "GUT (headless)"
+  },
+  "conventions": {
+    "paths": "Все игровые файлы — под game/. Пути ниже заданы от корня репозитория.",
+    "statusValues": "pending | in_progress | complete | blocked",
+    "note": "dependsOn указаны только реальные зависимости (данные/контракты/конфликт файлов). Независимые задачи оставлены без связей для параллельного запуска."
+  },
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "Каркас Godot-проекта и настройки рендера",
+      "description": "Создать game/project.godot и структуру папок из PLAN §2.1. Настроить: внутреннее разрешение 480×270 (display/window/size/viewport_width/height), stretch mode=viewport, scale_mode=integer, aspect=keep; rendering/textures/canvas_textures/default_texture_filter=Nearest; physics_ticks_per_second=60. Зарегистрировать пустые autoload-заглушки (EventBus, Config, Locale, InputManager, AudioManager, GameState, FactionManager, Journal, SaveManager, SceneRouter) в правильном порядке. Базовая InputMap (move_left/right, jump, attack, block, roll, dash, interact, ui_*). Глобальный .gitignore (.godot/, *.tmp). game/icon.svg, минимальная game/Main.tscn (пустой мир + CanvasLayer'ы HUD/UI/Toasts/Overlay по слоям DESIGN §4.4). Вендорить addons/gut/ в репозиторий.",
+      "acceptance": [
+        "godot --headless --import завершается без ошибок, game/.godot/ создаётся",
+        "godot --headless --quit загружает Main.tscn без ошибок; окно 480×270 в редакторе/рантайме",
+        "Autoload'ы зарегистрированы в объявленном порядке (PLAN §2.2)",
+        "project.godot содержит только используемые ключи (Zero Dead Config); экспортируемые настройки имеют потребителей",
+        "Godot не импортирует docs/ (HTML/zip игнорируются без ошибок)"
+      ],
+      "status": "pending",
+      "dependsOn": [],
+      "assignee": "tasker-devops",
+      "stack": "godot",
+      "files": ["game/project.godot", "game/Main.tscn", "game/icon.svg", ".gitignore", "game/autoload/", "game/.gitignore"]
+    },
+    {
+      "id": "T-02",
+      "title": "CI и экспорт-пресеты (Windows/Linux)",
+      "description": "GitHub Actions: джоба на push/PR — установка Godot 4.4+ (GODOT_PATH), `--headless --import`, запуск GUT-тестов (`--headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit`), сборка шаблонов экспорта. game/export_presets.cfg с пресетами Windows Desktop (*.exe) и Linux (*.x86_64), включить только нужные фичи. Прод-сборка без отладочного вывода (OS.is_debug_build() gates).",
+      "acceptance": [
+        "CI зелёный на пустом проекте (импорт + прогон GUT с 0+ тестами)",
+        "godot --headless --export-release 'Windows Desktop' и 'Linux' создают артефакты без ошибок",
+        "В release-пресетах отсутствуют dev-читы и отладочные оверлеи"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-01"],
+      "assignee": "tasker-devops",
+      "stack": "godot",
+      "files": [".github/workflows/ci.yml", "game/export_presets.cfg"]
+    },
+    {
+      "id": "T-03",
+      "title": "InputSystem: InputMap, ремап, определение устройства, буфер",
+      "description": "autoload/InputManager.gd: чтение действий из InputMap, единый API (is_pressed/just_pressed), буфер ввода 150 мс и coyote time-хелперы для игрока; сохранение/загрузка пользовательского ремапа в user://settings.cfg (ConfigFile) с восстановлением при старте; сброс к дефолтам. Определение активного устройства (keyboard/Xbox/PlayStation) по последнему InputEvent → сигнал InputManager.device_changed для смены глифов (EC-08).",
+      "acceptance": [
+        "Действия соответствуют InputMap; при ремапе новое событие работает после перезапуска игры (AC-01.3)",
+        "Буфер хранит команду 150 мс и отдаёт её при выходе из состояния (AC-01.4); покрыто GUT-тестом",
+        "Смена устройства (клавиатура↔геймпад) без перезапуска вызывает device_changed (EC-08)",
+        "Coyote time работает: прыжок доступен 0.1 с после схода с края"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-01"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/autoload/InputManager.gd", "game/core/input/input_buffer.gd", "game/tests/unit/test_input_buffer.gd"]
+    },
+    {
+      "id": "T-04",
+      "title": "Контроллер игрока (CharacterBody2D + FSM)",
+      "description": "entities/player/Player.tscn (CharacterBody2D, хитбокс 10×20 по DESIGN §7) + Player.gd. Ручная гравитация, движение с V_walk, прыжок с H_jump по формулам из data/balance/balancing.tres; wall-slide/climb задел. Машина состояний (PlayerStateMachine.gd + states/: idle, run, jump, fall, land, attack, block, roll, dash, hurt, death) с приоритетами прерывания (DESIGN §7). Приём ввода через InputManager (буфер, coyote).",
+      "acceptance": [
+        "Движение стартует ≤1 кадра (AC-01.1); прыжок достигает H_jump ±1 px (AC-01.2), значения из balancing.tres",
+        "FSM корректно переключает состояния и соблюдает приоритеты прерывания",
+        "Roll с i-frames на кадрах 2–5 тратит выносливость",
+        "GUT: тест физики прыжка и переходов FSM"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-03"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/entities/player/Player.tscn", "game/entities/player/Player.gd", "game/entities/player/PlayerStateMachine.gd", "game/entities/player/states/", "game/data/balance/balancing.tres"]
+    },
+    {
+      "id": "T-05",
+      "title": "Анимации и визуал игрока",
+      "description": "Анимации (AnimatedSprite2D/AnimationPlayer) для состояний из DESIGN §7: idle/run/jump(подъём/апекс)/fall/land/double_jump/dash/wall_slide/attack(комбо 1-3)/block/roll/hurt/death/out_of_stamina/sit. Спрайт 16×24, ≤16 цветов. Визуальные признаки: вспышка double jump (steel-3), шлейф dash (2 кадра steel-9), пыль/брызги при беге, метка «твои вещи» на death. На время отсутствия арта — программные заглушки с тем же контрактом. Подключение к FSM из T-04.",
+      "acceptance": [
+        "Каждое состояние FSM имеет соответствующий набор анимаций и корректные переходы",
+        "Double jump: холодная вспышка 2–3 кадра; dash: шлейф и i-frames-вид (AC-02.1/02.2)",
+        "Hurt-вспышка отключается режимом «без мигания» (Config.no_flash)",
+        "Out of stamina показывает idle-вариант (AC-03.3)"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-04"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/entities/player/sprites/", "game/entities/player/PlayerAnimation.gd", "game/assets/sprites/player/"]
+    },
+    {
+      "id": "T-06",
+      "title": "AbilitySystem + двойной прыжок",
+      "description": "core/abilities/ability_base.gd (интерфейс activate/deactivate, флаги игрока), реестр способностей и GameState.abilities. Способность «Двойной прыжок»: второй прыжок в воздухе высотой ≥0.8·H_jump, только после приземления сброс (AC-02.1). Точки получения способности (props/ability_pickup.tscn).",
+      "acceptance": [
+        "Получение способности включает её в GameState и разблокирует поведение (AC-02.1)",
+        "Второй прыжок доступен ровно один раз до приземления, высота ≥0.8·H_jump",
+        "GUT: тест счётчика прыжков и сброса",
+        "Игрок без способности не может выполнить двойной прыжок"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-04", "T-05"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/abilities/ability_base.gd", "game/core/abilities/ability_double_jump.gd", "game/world/props/ability_pickup.tscn"]
+    },
+    {
+      "id": "T-07",
+      "title": "Способность Dash",
+      "description": "ability_dash.gd: рывок длиной D_dash за T_dash, i-frames на время рывка, кулдаун C_dash ≤1 с. Доступен на земле и в воздухе. Участвует в преодолении узких проходов/ловушек/пропастей. Оверлей кулдауна в HUD (предоставляет сигнал для T-19).",
+      "acceptance": [
+        "Dash даёт D_dash за T_dash, i-frames активны (AC-02.2); кулдаун ≤1 с",
+        "Движение сквозь ловушку без урона во время i-frames",
+        "GUT: тест дистанции/тайминга/кулдауна",
+        "Состояние кулдауна отдаётся сигналом для HUD"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-06"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/abilities/ability_dash.gd", "game/entities/player/states/dash.gd"]
+    },
+    {
+      "id": "T-08",
+      "title": "Способность Карабканье по стенам",
+      "description": "ability_wall_climb.gd: скольжение по стене при удержании направления со скоростью ≤ V_wall_slide; прыжок от стены с горизонтальным импульсом в противоположную сторону (wall kick). Открывает вертикальные шахты. Состояние wall_slide в FSM.",
+      "acceptance": [
+        "Скольжение ограничено V_wall_slide; прыжок от стены отталкивает в противоположную сторону (AC-02.3)",
+        "Без способности удержание на стене невозможно",
+        "GUT: тест скорости скольжения и импульса wall kick"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-06"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/abilities/ability_wall_climb.gd", "game/entities/player/states/wall_slide.gd"]
+    },
+    {
+      "id": "T-09",
+      "title": "Ability gates и подсказки над препятствием",
+      "description": "world/props/ability_gate.tscn: физический блок, требующий способность X; при отсутствии способности блокирует движение, над препятствием показывается подсказка «Нужно: <СПОСОБНОСТЬ>» + замок (AC-02.4). После получения способности все gates с X в мире становятся проходимыми (AC-04.3, EC-10). Список gates — данные (data/).",
+      "acceptance": [
+        "Без способности gate физически блокирует и показывает подсказку (без скрытой блокировки) — AC-02.4",
+        "После получения способности все соответствующие gates открываются (AC-04.3)",
+        "EC-10: уже пройденный альтернативным путём проход не блокируется",
+        "GUT: тест открытия gates по набору способностей"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-06"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/world/props/ability_gate.tscn", "game/world/props/AbilityHint.gd", "game/data/ability_gates.tres"]
+    },
+    {
+      "id": "T-10",
+      "title": "Боевое ядро: hitbox/hurtbox, урон, выносливость, комбо",
+      "description": "core/combat/: hitbox.gd/hurtbox.gd (Area2D, слои/маски), damage.gd (формула урона из balancing.tres), stamina.gd (трата на атаку/блок/перекат/dash, восстановление в покое, AC-03.3). Комбо ближнего боя 2–3 удара с окном связки; 2–3 типа оружия (одноручное/двуручное/лёгкое) как данные. Отбрасывание и вспышка попадания ≤100 мс (AC-03.1).",
+      "acceptance": [
+        "Удар в хитбокс наносит урон по формуле и вызывает отбрасывание/вспышку ≤100 мс (AC-03.1)",
+        "При выносливости 0 атака не выполняется и поднимается флаг для HUD (AC-03.3)",
+        "Комбо 2–3 удара с окном связки; типы оружия заданы данными",
+        "GUT: тесты урона, траты/восстановления выносливости, комбо-окна"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-04"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/combat/hitbox.gd", "game/core/combat/hurtbox.gd", "game/core/combat/damage.gd", "game/core/combat/stamina.gd", "game/data/weapons/"]
+    },
+    {
+      "id": "T-11",
+      "title": "Блок и парирование",
+      "description": "core/combat/block.gd + состояние block в FSM: блок снижает урон на P_block % и тратит E_block выносливости (AC-03.2); парирование в окне T_parry (≈180 мс) даёт контратаку и искру-вспышку. Направленная дуга блока (передняя).",
+      "acceptance": [
+        "Блок снижает урон на P_block % и тратит E_block (AC-03.2)",
+        "Парирование в окне T_parry открывает контратаку; вне окна — обычный блок",
+        "При 0 выносливости блок недоступен (AC-03.3)",
+        "GUT: тест окна парирования (внутри/вне)"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-10"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/combat/block.gd", "game/entities/player/states/block.gd"]
+    },
+    {
+      "id": "T-12",
+      "title": "Враги: базовый AI и 3–4 типа",
+      "description": "entities/enemies/base/ (поведенческий FSM: patrol/chase/attack/hurt/death), затем 3–4 типа с паттернами: быстрый, тяжёлый, дальний, нежить. Параметры из data/enemies/*.tres. Реакция на урон (вспышка/отбрасывание), хитбоксы. Спавн через EnemySpawner. Пути — простые (прямые/платформенные), без навмеша (или NavigationAgent2D локально).",
+      "acceptance": [
+        "4 типа врагов имеют различимые паттерны и корректно наносят/получают урон",
+        "Реакция на попадание ≤100 мс, смерть проигрывает анимацию",
+        "AI не «залипает» и не выходит за пределы зоны",
+        "GUT: тест FSM врага (переходы) + e2e-проверка боя с 5 врагами"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-10"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/entities/enemies/base/", "game/entities/enemies/swift/", "game/entities/enemies/heavy/", "game/entities/enemies/ranged/", "game/entities/enemies/undead/", "game/data/enemies/"]
+    },
+    {
+      "id": "T-13",
+      "title": "Тайлсеты и пайплайн уровней + ZoneData",
+      "description": "world/tilesets/: тайлсеты 16×16 с Terrain Sets, физическими слоями (solid/one-way/ladder/hazard) и палитрой зон (DESIGN §8.6). ZoneData (Resource .tres): id, название, палитра, ambient-уровень, точки входа, список выходов/связей. Переиспользуемые props (костёр, сундук, дверь, завал). Шаблон сцены зоны (WorldRoot-совместимый).",
+      "acceptance": [
+        "Тайлсеты импортируются, коллизии solid/one-way/hazard работают; tile_set целочисленно масштабируется",
+        "ZoneData содержит все поля и используется сценой зоны (нет мёртвых полей)",
+        "Шаблон зоны загружается SceneRouter'ом без ошибок",
+        "Проверка: игрок стоит/проходит/падает корректно на каждом типе тайла"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-01"],
+      "assignee": "tasker-dba",
+      "stack": "godot",
+      "files": ["game/world/tilesets/", "game/world/zones/zone_data.gd", "game/world/props/", "game/data/zones/zone_template.tres"]
+    },
+    {
+      "id": "T-14",
+      "title": "Зона 1 «Деревня-бастион» (хаб)",
+      "description": "zone_01_village: layout хаба, серые стены с мхом, факелы (PointLight2D ≈90 px), влажная земля, хижина, ворота, уступ с секретом-сундуком, завал (ability gate). Костёр-чекпоинт, точки NPC и торговца, баннер зоны при входе (h2 + «Зона 1 · Хаб»). Минимум два выхода, один требует способности (SPEC §5).",
+      "acceptance": [
+        "Зона соответствует макету zone-village.html и палитре зоны 1 (DESIGN §8.6, AC-07.1)",
+        "Секрет-уступ достижим только со способностью; завал — ability gate",
+        "Баннер зоны показывается при первом входе",
+        "Игрок не может упасть за пределы зоны; костёр работает как точка чекпоинта"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-13"],
+      "assignee": "tasker-dba",
+      "stack": "godot",
+      "files": ["game/world/zones/zone_01_village/", "game/data/zones/zone_01_village.tres"]
+    },
+    {
+      "id": "T-15",
+      "title": "Зоны 2–3 «Болото» и «Горный перевал»",
+      "description": "zone_02_swamp (тёмно-зелёные/коричневые тона, туман, низкая видимость, hazard-вода) и zone_03_mountains (холодный серый/снег, параллакс ветра, вертикальные шахты под wall climb). Каждая: сцена, ZoneData, props, точки входа/выходов, костёр, ability gates (dash/wall climb — по SPEC §4.1).",
+      "acceptance": [
+        "Обе зоны соответствуют палитрам 2 и 3 (DESIGN §8.6)",
+        "Каждая способность (dash, wall climb) применяется минимум в одном препятствии вне «родной» зоны (SPEC §4.1)",
+        "Параллакс гор и туман болота работают без просадки ниже 60 FPS",
+        "Зоны загружаются SceneRouter'ом, входы/выходы согласованы"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-13"],
+      "assignee": "tasker-dba",
+      "stack": "godot",
+      "files": ["game/world/zones/zone_02_swamp/", "game/world/zones/zone_03_mountains/", "game/data/zones/zone_02_swamp.tres", "game/data/zones/zone_03_mountains.tres"]
+    },
+    {
+      "id": "T-16",
+      "title": "Зоны 4–5 «Руины-храм» и «Финал»",
+      "description": "zone_04_ruins (приглушённый жёлтый/красный отсвет, гнетущая тишина, костёр внутри, загадки-проходы) и zone_05_finale (почти монохромный, редкие акценты blood-3, арена финального босса). Сцены, ZoneData, props, точки выходов, финальная последовательность/концовка (зависит от фракции — передать сигнал FactionManager).",
+      "acceptance": [
+        "Обе зоны соответствуют палитрам 4 и 5 (DESIGN §8.6)",
+        "Финал имеет арену босса и точку выхода в концовку (учитывает фракцию)",
+        "Освещение руин (жёлто-красный отсвет) и монохром финала видны на скриншоте",
+        "Зоны загружаются без ошибок и связаны с остальным графом мира"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-13"],
+      "assignee": "tasker-dba",
+      "stack": "godot",
+      "files": ["game/world/zones/zone_04_ruins/", "game/world/zones/zone_05_finale/", "game/data/zones/zone_04_ruins.tres", "game/data/zones/zone_05_finale.tres"]
+    },
+    {
+      "id": "T-17",
+      "title": "Переходы зон и экран загрузки",
+      "description": "autoload/SceneRouter.gd: переход между зонами через загрузку сцены (фоновый load), сохранение позиции по точкам входа, экран загрузки (CanvasLayer 40: чёрный фон, название зоны h2 золотом, эпиграф, спиннер 4 шага). Время загрузки ≤ T_load = 3 с; ввод игнорируется до конца загрузки (EC-12). Кроссфейд музыки инициируется сигналом для AudioManager (T-34).",
+      "acceptance": [
+        "Переход между зонами не требует загрузки >3 с; позиция игрока корректна после загрузки (AC-04.1)",
+        "Экран загрузки показывается и ввод игнорируется до его конца (EC-12)",
+        "Повторные переходы туда/обратно не текут по памяти",
+        "GUT/e2e: тест перехода между двумя зонами"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-04", "T-14"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/autoload/SceneRouter.gd", "game/ui/loading/LoadingScreen.tscn", "game/ui/loading/LoadingScreen.gd"]
+    },
+    {
+      "id": "T-18",
+      "title": "Тема, токены, шрифт и базовые UI-компоненты",
+      "description": "ui/theme/: main_theme.tres + tokens.gd (27 цветов, 4 размера шрифта, отступы, границы — DESIGN §4). Шрифт Press Start 2P как FontFile. Компоненты (ui/components/): Panel (9-slice, варианты solid/glass/inset/danger), Bar (сегментная HP/выносливость/босс, след урона), Slot (обычный/выбран/надет/недоступен/пуст/требования), MenuItem (каретка, состояния §6.1), Tab, Toast (success/danger), Dialog (портрет+текст печатью+2×2 ответа+тег последствия), Kbd/Prompt (авто-глиф устройства). Фокус виден всегда (золотая каретка + рамка).",
+      "acceptance": [
+        "Все компоненты реализуют состояния DESIGN §6; фокус виден на каждом интерактивном элементе (a11y §9.2)",
+        "Текст 8 px имеет контраст ≥4.5:1 на фактическом фоне (DESIGN §4.1)",
+        "Состояние дублируется не только цветом (число/знак/значок)",
+        "Компоненты переиспользуются в HUD/меню/инвентаре (тест: минимум 2 применения каждого)",
+        "Шрифт RU+EN рендерится без пропусков глифов"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-01"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/theme/main_theme.tres", "game/ui/theme/tokens.gd", "game/ui/components/", "game/assets/fonts/PressStart2P-Regular.ttf"]
+    },
+    {
+      "id": "T-19",
+      "title": "HUD",
+      "description": "ui/hud/HUD.tscn (CanvasLayer 10): портрет, уровень, HP (сегменты, число, критическое мигание/кайма), выносливость (0 → «НЕТ СИЛ»), три слота способностей (закрытая — замок, кулдаун dash), 4 быстрых слота, валюта, очки обучения, название зоны + миникарта (заглушка до T-33), контекстная подсказка ввода, панель босса с метками фаз, ability hint. Слой не перекрывает безопасную зону 8 px.",
+      "acceptance": [
+        "HP/выносливость/способности/валюта/очки обучения отражают GameState в реальном времени",
+        "0 выносливости → «НЕТ СИЛ» + «!» (AC-03.3); HP<25% → мигание/кайма (отключаемо, DESIGN §6.3)",
+        "Закрытая способность показана с замком; кулдаун dash — полоса (AC-02.2)",
+        "Панель босса с метками фаз 33/66% и уведомлением «ФАЗА II» (AC-03.4)",
+        "HUD читается на 1280×720 (NFR §7.2)"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18", "T-06", "T-10"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/hud/HUD.tscn", "game/ui/hud/HUD.gd", "game/ui/hud/boss_bar.gd"]
+    },
+    {
+      "id": "T-20",
+      "title": "Главное меню и настройки",
+      "description": "ui/menus/MainMenu.tscn по макету main-menu.html: название «ПЕПЕЛЬНЫЙ БАСТИОН / ASHEN BASTION», пункты (Продолжить · Новая игра · Загрузить · Настройки · Выход), фон (луна, замок, силуэт, туман дизерингом), подсказки, переключатель RU/EN, версия. «Продолжить» отключено без сохранений (с причиной). Настройки: язык, масштаб UI 100/150/200%, режим окна, «читаемость силуэтов», «без мигания», «субтитры звуков», ссылка на ремап (T-24). Список слотов: занят/пуст/повреждён (EC-07). Настройки пишутся в user://settings.cfg через Config.",
+      "acceptance": [
+        "Меню проходится только клавиатурой и только геймпадом (a11y §9.2)",
+        "«Продолжить» отключено без сохранений, причина показана (DESIGN §6.1)",
+        "Настройки сохраняются и применяются после перезапуска (язык, масштаб, режим окна, a11y-тумблеры)",
+        "Повреждённый слот показывает ошибку и предлагает другой (EC-07), без вылета"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18", "T-25"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/menus/MainMenu.tscn", "game/ui/menus/MainMenu.gd", "game/ui/menus/Settings.tscn", "game/ui/menus/SaveSlots.tscn"]
+    },
+    {
+      "id": "T-21",
+      "title": "Экран инвентаря и характеристик",
+      "description": "ui/inventory/Inventory.tscn по inventory.html: 3 колонки — экипировка с героем (шлем/броня/оружие/щит/2 кольца), сетка предметов 6×4 с описанием и требованиями, характеристики (сила/ловкость/выносливость/здоровье), очки обучения, репутация фракций (шкала −/+, знак+число). Кнопки «+» всегда отключены (повышение только у учителей) — показано требуемое значение. Состояния ячеек: обычный/выбран/надет/требования не выполнены/пуст/недоступно.",
+      "acceptance": [
+        "Требования предметов отображаются «НЕТ · ещё N»/«ЕСТЬ», надетый маркер золотой (DESIGN §6.2)",
+        "Кнопки «+» отключены с причиной «повышайте у учителя» (AC-08.2)",
+        "Репутация фракций показана от −/+ с нулём посередине, состояние не только цветом (AC-06.x)",
+        "Экран открывается/закрывается только клавиатурой и геймпадом"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18", "T-29"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/inventory/Inventory.tscn", "game/ui/inventory/Inventory.gd", "game/ui/inventory/item_slot.gd"]
+    },
+    {
+      "id": "T-22",
+      "title": "Экран смерти",
+      "description": "ui/death/DeathScreen.tscn по death.html: появление через T_death (fade ступенями), заголовок «ТЫ ПОГИБ», панели остатка на месте гибели (валюта, число предметов, превью 5), карта с меткой «Твои вещи» и костром. Первая смерть — «ОСТАЛОСЬ НА МЕСТЕ ГИБЕЛИ»; повторная — «УТРАЧЕНО НАВСЕГДА» (череп, EC-05). Фокус по умолчанию — «Возродиться у костра».",
+      "acceptance": [
+        "Первая смерть показывает остаток и метку; повторная — необратимую потерю (AC-05.3, EC-05)",
+        "Панель появляется через T_death с ступенчатым fade (отключаемо в «без мигания»)",
+        "Фокус по умолчанию на «Возродиться»; экран проходится без мыши",
+        "Мини-карта на смерти ×2 показывает костёр и метку гибели"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18", "T-26"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/death/DeathScreen.tscn", "game/ui/death/DeathScreen.gd"]
+    },
+    {
+      "id": "T-23",
+      "title": "Костёр: диалог и сохранение",
+      "description": "ui/campfire/Campfire.tscn по campfire.html: диалог с репликой (печать), выбор «Сохранить игру», выбор слота из 3 карточек (занят: зона/уровень/время/«Перезапись»; пуст), тост «СОХРАНЕНО · СЛОТ N» ≤1 с, вариант «в бою» отключён с причиной «Сохранение в бою запрещено» (Q3/EC-06), тост ошибки диска «Нет места на диске. Прежняя запись цела.» с вариантами (EC-14). Варианты ответа с последствием помечены тегом [Фракция±N].",
+      "acceptance": [
+        "Сохранение в слот подтверждается тостом ≤1 с, повторная загрузка восстанавливает состояние (AC-05.1)",
+        "В бою пункт отключён с причиной и тостом (EC-06)",
+        "Ошибка диска показывает тост опасности и не портит прошлую запись (EC-14)",
+        "Управление только клавиатурой/геймпадом; фокус по умолчанию — «Сохранить»"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18", "T-25"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/campfire/Campfire.tscn", "game/ui/campfire/Campfire.gd"]
+    },
+    {
+      "id": "T-24",
+      "title": "Недостающие макеты в Godot: ремап, карта, журнал/фракции",
+      "description": "По решению гейта 2 реализовать напрямую в Godot: (1) экран ремапа управления (ui/remap/) — список действий из InputMap, захват нового события, сброс, сохранение через InputManager (AC-01.3); (2) вкладки «Журнал» (квесты/события из Journal.gd) и «Фракции» (репутация, доступ, описание из FactionManager.gd); (3) экран выбора фракции (следствие US-06).",
+      "acceptance": [
+        "Ремап: переназначение применимо и сохраняется; конфликт дублей подсвечивается",
+        "Журнал показывает активные/завершённые квесты и события",
+        "Фракции: список с репутацией, статусом доступа и объяснением ограничений (AC-06.2)",
+        "Экран выбора фракции доступен по сюжету и фиксирует выбор",
+        "Все вкладки навигируются LB/RB или Tab; состояние не только цветом"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18", "T-03", "T-27"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/remap/Remap.tscn", "game/ui/journal/Journal.tscn", "game/ui/factions/Factions.tscn", "game/ui/factions/FactionChoice.tscn"]
+    },
+    {
+      "id": "T-25",
+      "title": "SaveManager: 3 слота, целостность, атомарная запись",
+      "description": "autoload/SaveManager.gd: сериализация GameState в JSON (schema_version, checksum SHA-256 через HashingContext), 3 слота в user://saves/slot_{1..3}.json, атомарная запись (tmp + rename, EC-14), загрузка с проверкой целостности (повреждение → EC-07), миграции по schema_version, метаданные слота (зона, уровень, время) для UI. Обработка ошибок без вылета.",
+      "acceptance": [
+        "Сохранение/загрузка полностью восстанавливает состояние (позиция, инвентарь, способности, фракции, квесты) — AC-05.1",
+        "Повреждённый/обрезанный файл определяется checksum'ом и не грузится, вызывая EC-07",
+        "Запись атомарна: при сбое старый слот цел (EC-14)",
+        "GUT: тесты round-trip, неверной контрольной суммы и миграции схемы"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-01"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/autoload/SaveManager.gd", "game/core/save/save_serializer.gd", "game/core/save/save_migrations.gd", "game/tests/unit/test_save.gd"]
+    },
+    {
+      "id": "T-26",
+      "title": "Смерть, corpse run и чекпоинты-костры",
+      "description": "Смерть (HP=0): задержка T_death, экран смерти, возрождение у последнего костра с полным HP. Инвентарь+валюта складываются в Corpse-метку на месте гибели (иконка мешка, gold-9), подбор по контакту; повторная смерть до подбора → необратимо (EC-05). Прерывание рывка/прыжка при смерти (EC-01), смерть в бюджете при выходе из игры = обычная (EC-04), падение в пропасть = полный урон (EC-03). Костёр как чекпоинт и единственная точка сохранения; флаг in_combat.",
+      "acceptance": [
+        "После смерти инвентарь/валюта лежат на месте гибели и подбираются при контакте (AC-05.2/05.3)",
+        "Повторная смерть до подбора делает потерю необратимой (EC-05)",
+        "Смерть во время рывка/в воздухе прерывает действие и возрождает у костра (EC-01)",
+        "Выход из игры в бюджете смерти = обычная смерть при загрузке (EC-04)",
+        "fallen в пропасть = полный урон (EC-03); флаг in_combat блокирует сохранение (EC-06)"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-04", "T-10", "T-25"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/death/death_handler.gd", "game/world/props/corpse.gd", "game/world/props/bonfire.gd", "game/tests/unit/test_corpse_run.gd"]
+    },
+    {
+      "id": "T-27",
+      "title": "Фракции: репутация, доступ, квесты, концовка",
+      "description": "autoload/FactionManager.gd + data/factions/*.tres (3 фракции, лор, пороги). Репутация меняется по таблице Δ при завершении квестов (AC-06.1); порог ниже — доступ к территории/торговцу ограничен с понятной причиной (AC-06.2, EC-11). Влияние на доступ к торговцам, квесты и концовку. Персистентность через SaveManager.",
+      "acceptance": [
+        "Завершение квеста меняет репутацию по Δ и триггерит реакцию NPC/доступ (AC-06.1)",
+        "Ниже порога — доступ ограничен с объяснением; альтернатива через другую фракцию (EC-11)",
+        "Репутация сохраняется/восстанавливается сейвом (совместно с T-25)",
+        "Выбор фракции влияет на финальную концовку",
+        "GUT: тест изменения репутации и порогов доступа"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-25"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/autoload/FactionManager.gd", "game/data/factions/", "game/tests/unit/test_factions.gd"]
+    },
+    {
+      "id": "T-28",
+      "title": "NPC, диалоги и торговцы",
+      "description": "Система диалогов: data/dialogue/*.tres (узлы, условия по репутации/квестам, варианты ответа), UI Dialog (переиспользует компонент из T-18), теги последствий [Фракция±N], печать текста 22 мс/символ. NPC с портретом 52×52 и именем. Торговцы с ограничением по репутации (AC-06.2). Квесты интегрируются с Journal.gd.",
+      "acceptance": [
+        "Диалоги проигрываются с печатью и 2×2 вариантами; условия по репутации/квестам применяются",
+        "Тег последствия [Фракция±N] отображается и меняет репутацию (AC-06.1)",
+        "Торговец недоступен при низкой репутации — с причиной (AC-06.2)",
+        "Завершение квеста фиксируется в журнале (интеграция с T-24)",
+        "Диалог навигируется клавиатурой/геймпадом; RU/EN не переполняет бокс"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18", "T-27"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/dialogue/", "game/data/dialogue/", "game/entities/npc/", "game/core/quests/"]
+    },
+    {
+      "id": "T-29",
+      "title": "Прогрессия: характеристики, очки обучения, учителя",
+      "description": "core/progression/: характеристики (сила/ловкость/выносливость/здоровье), очки обучения за уровень (опыт за врагов/квесты), учителя у которых тратятся очки (повышение +1, растущая стоимость по таблице, AC-08.1), предусловия навыка (AC-08.2), требования экипировки. Данные — data/balance. GameState хранит и персистит прогресс.",
+      "acceptance": [
+        "У учителя трата очков повышает характеристику на 1, стоимость следующего шага растёт (AC-08.1)",
+        "Не выполнено предусловие → навык недоступен, показано требуемое значение (AC-08.2)",
+        "Экипировка с невыполненными требованиями отмечена в инвентаре (интеграция с T-21)",
+        "Прогресс сохраняется/восстанавливается (совместно с T-25)",
+        "GUT: тест стоимости шагов и предусловий"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-10", "T-25"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/core/progression/", "game/data/balance/", "game/entities/npc/teacher.gd", "game/tests/unit/test_progression.gd"]
+    },
+    {
+      "id": "T-30",
+      "title": "Boss framework + боссы 1–2",
+      "description": "entities/bosses/boss_base/: 2–3 фазы, пороги HP 33/66%, смена паттерна, HUD-уведомление «ФАЗА II» (AC-03.4), арена-барьеры, награда (босс остаётся мёртвым, EC-09). Реализовать боссов зон 1 и 2 с уникальными паттернами (ближний/дальний, вызовы). Параметры — data.",
+      "acceptance": [
+        "Смена фазы по порогу HP с уведомлением и сменой паттерна (AC-03.4)",
+        "EC-09: босс остаётся мёртвым; награда выдаётся при следующем входе в зону",
+        "Два босса имеют различимые паттерны и 2–3 фазы",
+        "Арена ограничивает выход во время боя",
+        "e2e: бой с боссом не роняет FPS ниже 60"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-10", "T-12", "T-14"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/entities/bosses/boss_base/", "game/entities/bosses/zone_01/", "game/entities/bosses/zone_02/", "game/data/bosses/"]
+    },
+    {
+      "id": "T-31",
+      "title": "Боссы 3–4",
+      "description": "Боссы зон 3 (горный перевал) и 4 (руины) на базе framework из T-30, с паттернами, использующими окружение и способности игрока (вертикальность/ловушки). 2–3 фазы, уникальные telegraph-анимации.",
+      "acceptance": [
+        "Оба босса имеют 2–3 фазы с различимыми паттернами (AC-03.4)",
+        "Паттерны используют механику зон (шахты/ловушки) и читаемы (telegraph перед ударом)",
+        "Награды и EC-09 соблюдены",
+        "e2e: бои проходят без вылетов и просадок ниже 55 FPS (95-й перцентиль)"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-30", "T-15", "T-16"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/entities/bosses/zone_03/", "game/entities/bosses/zone_04/", "game/data/bosses/"]
+    },
+    {
+      "id": "T-32",
+      "title": "Босс 5 (финал)",
+      "description": "Финальный босс в zone_05_finale: многофазный (3 фазы), кульминация, после победы — финальная последовательность и концовка с учётом выбранной фракции (интеграция с T-16 и FactionManager).",
+      "acceptance": [
+        "Финальный босс имеет 3 фазы с нарастающей сложностью (AC-03.4)",
+        "После победы доступна концовка, зависящая от фракции",
+        "Нет вылетов и блокировки прогресса после боя",
+        "e2e: полный проход до титров"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-30", "T-16"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/entities/bosses/zone_05/", "game/ui/ending/", "game/data/bosses/"]
+    },
+    {
+      "id": "T-33",
+      "title": "Полная карта мира и миникарта",
+      "description": "ui/map/WorldMap.tscn (недостающий макет, PLAN §5): все посещённые зоны, маркеры непройденных проходов с иконкой требуемой способности (не более одного уровня скрытой информации, AC-04.2), текущая позиция, костры. Миникарта HUD (96×54, комнаты 8×6) синхронизирована с картой. Данные комнат — из ZoneData.",
+      "acceptance": [
+        "Карта показывает все посещённые зоны и маркеры проходов с требуемой способностью (AC-04.2)",
+        "Текущая позиция, костры и непокрытые проходы читаемы; состояние не только цветом",
+        "Миникарта в HUD совпадает с полной картой",
+        "Карта открывается/закрывается и навигируется без мыши"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-13", "T-17"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/ui/map/WorldMap.tscn", "game/ui/map/WorldMap.gd", "game/ui/hud/minimap.gd"]
+    },
+    {
+      "id": "T-34",
+      "title": "AudioManager: музыка, кроссфейд, SFX, субтитры",
+      "description": "autoload/AudioManager.gd: шины Master/Music/SFX c громкостями из Config; смена трека при входе в зону за ≤2 с с кроссфейдом ≤1 с (AC-07.2); SFX удара/парирования/смерти/фазы; «субтитры звуков» (тумблер Config) — тосты значимых звуков (босс рядом, удар, смена фазы). Звуковой контент — CC0/заглушки.",
+      "acceptance": [
+        "Смена музыки зоны происходит ≤2 с с кроссфейдом ≤1 с, без обрыва (AC-07.2)",
+        "Громкости Master/Music/SFX управляются из настроек (Config)",
+        "«Субтитры звуков» показывают текстовые подсказки значимых звуков (DESIGN §9.4)",
+        "Ключевые звуковые события не зависят только от слуха"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-01"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/autoload/AudioManager.gd", "game/assets/audio/music/", "game/assets/audio/sfx/", "game/audio/default_bus_layout.tres"]
+    },
+    {
+      "id": "T-35",
+      "title": "Освещение и атмосфера",
+      "description": "world/lighting/: CanvasModulate ambient (0.26–0.5, меню 0.78), PointLight2D с радиусом/интенсивностью, шейдер постеризации/дизеринга Байера 4×4 на CanvasLayer (DESIGN §8.7). Эмиссивные объекты (небо/луна/окна/пламя) не затемняются. Читаемость силуэта героя (AC-07.1) через silhouette_outline.gdshader; режим «читаемость силуэтов» и «без мигания» (мерцание факелов, вспышки).",
+      "acceptance": [
+        "Тёмная атмосфера с тёплыми источниками; нет плавных градиентов/неона (дизеринг)",
+        "Силуэт героя различим на фоне зоны при яркости по умолчанию (AC-07.1)",
+        "Режим «читаемость силуэтов» включает контур и убирает виньетку",
+        "Режим «без мигания» отключает мерцание света и вспышки урона (нет >3 вспышек/с)",
+        "Слои z-order соответствуют DESIGN §4.4"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-13"],
+      "assignee": "tasker-backend",
+      "stack": "godot",
+      "files": ["game/world/lighting/", "game/assets/shaders/dither_light.gdshader", "game/assets/shaders/silhouette_outline.gdshader"]
+    },
+    {
+      "id": "T-36",
+      "title": "Локализация RU/EN",
+      "description": "assets/locale/{ru,en}.csv + Locale.gd (TranslationServer.set_locale), весь UI и диалоги через tr(key); переключатель языка в меню (T-20). Проверка переполнения обеих локализаций в панелях при масштабе UI 100/150% (DESIGN §9.6).",
+      "acceptance": [
+        "Смена языка мгновенно обновляет весь интерфейс без перезапуска",
+        "Все пользовательские строки идут через tr(); нет хардкода текста в UI",
+        "Тексты RU и EN помещаются во все панели при масштабе 100% и 150% (DESIGN §9.6 п.6)",
+        "Скриншоты обоих языков на ключевых экранах без обрезки"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-18"],
+      "assignee": "tasker-frontend",
+      "stack": "godot",
+      "files": ["game/autoload/Locale.gd", "game/assets/locale/ru.csv", "game/assets/locale/en.csv"]
+    },
+    {
+      "id": "T-37",
+      "title": "Сквозной QA-пасс (E2E, a11y, NFR)",
+      "description": "Независимая проверка как игрок: меню → зона 1 → получение 3 способностей → бой/враги → костёр/сохранение → смерть/corpse run → фракции/диалоги → 5 боссов → финал/концовка. Проверить a11y-чек-лист DESIGN §9.6 (управление без мыши, фокус, контраст, без-мигания, переполнение RU/EN). NFR: 60 FPS в бою с 5 врагами (95-й перцентиль ≥55), загрузка зоны ≤3 с, отсутствие утечек (сохранение/загрузка 20 раз). Артефакт — docs/QA.md (pass/fail, расхождения, воспроизведение).",
+      "acceptance": [
+        "Полный сквозной проход от меню до концовки без вылетов и блокировок",
+        "a11y-чек-лист DESIGN §9.6 пройден (пункты 1–7)",
+        "NFR: FPS ≥60 в бою с 5 врагами; загрузка зоны ≤3 с; 20 циклов save/load без утечек >10% (AC-09.1/09.2)",
+        "docs/QA.md содержит pass/fail, расхождения и шаги воспроизведения"
+      ],
+      "status": "pending",
+      "dependsOn": ["T-17", "T-19", "T-22", "T-23", "T-26", "T-32", "T-33", "T-34", "T-35", "T-36"],
+      "assignee": "qa",
+      "stack": "godot",
+      "files": ["docs/QA.md", "game/tests/e2e/"]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макеты — Пепельный Бастион (рабочее название)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0c10; color: #c9c5b6; font: 14px/1.5 system-ui, 'Segoe UI', sans-serif; padding: 24px; }
+  h1 { color: #e0b56a; font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+  h2 { color: #d6c9a8; font-size: 15px; margin: 22px 0 8px; }
+  p.lead { color: #9a9a9c; max-width: 820px; margin: 0 0 8px; }
+  ul.cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .card { background: #10131c; border: 1px solid #303035; display: block; color: inherit; text-decoration: none; }
+  .card:hover, .card:focus-visible { border-color: #c08a3e; outline: 2px solid #e0b56a; outline-offset: 2px; }
+  .card .th { width: 100%; aspect-ratio: 16/9; overflow: hidden; position: relative; background: #000; border-bottom: 1px solid #303035; }
+  .card iframe { width: 960px; height: 540px; border: 0; transform-origin: 0 0; transform: scale(var(--k, .3)); pointer-events: none; position: absolute; left: 0; top: 0; }
+  .card b { display: block; padding: 8px 10px 0; color: #e6e1d0; }
+  .card span { display: block; padding: 0 10px 10px; color: #9a9a9c; font-size: 13px; }
+  .sw { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sw div { width: 96px; font-size: 11px; color: #b9b9bb; }
+  .sw i { display: block; height: 28px; border: 1px solid #000; margin-bottom: 2px; }
+  code { color: #e0b56a; }
+</style>
+</head>
+<body>
+<h1>Макеты · Пепельный Бастион <small style="color:#7f9aa8;font-weight:400">(рабочее название)</small></h1>
+<p class="lead">Mockup-first: HTML/CSS + canvas. Внутреннее разрешение <b>480×270</b>, масштаб только целыми числами, без сглаживания. Палитра — SPEC §6.1, без неона. Все макеты — статичные прототипы, не игровой код. Откройте карточку; кнопки сверху переключают состояния.</p>
+
+<h2>Экраны</h2>
+<ul class="cards">
+  <li><a class="card" href="main-menu.html"><div class="th"><iframe src="main-menu.html?embed=1" tabindex="-1" title="Превью: главное меню" loading="lazy"></iframe></div><b>Главное меню</b><span>Меню · загрузка (3 слота, повреждённый слот) · настройки и доступность.</span></a></li>
+  <li><a class="card" href="hud.html"><div class="th"><iframe src="hud.html?embed=1&state=hint" tabindex="-1" title="Превью: HUD" loading="lazy"></iframe></div><b>Игровой HUD</b><span>HP, выносливость, способности, мини-карта, быстрые слоты. Состояния: подсказка, нет сил, мало HP, босс, загрузка.</span></a></li>
+  <li><a class="card" href="death.html"><div class="th"><iframe src="death.html?embed=1" tabindex="-1" title="Превью: экран смерти" loading="lazy"></iframe></div><b>Экран смерти</b><span>Потеря инвентаря, карта возвращения (corpse run), повторная смерть.</span></a></li>
+  <li><a class="card" href="inventory.html"><div class="th"><iframe src="inventory.html?embed=1" tabindex="-1" title="Превью: инвентарь" loading="lazy"></iframe></div><b>Инвентарь и характеристики</b><span>Экипировка, сетка, требования, статы, очки обучения, репутация.</span></a></li>
+  <li><a class="card" href="campfire.html"><div class="th"><iframe src="campfire.html?embed=1" tabindex="-1" title="Превью: костёр" loading="lazy"></iframe></div><b>Костёр · диалог и сохранение</b><span>Реплика NPC, выбор слота, сохранено, запрет в бою, ошибка диска.</span></a></li>
+  <li><a class="card" href="zone-village.html"><div class="th"><iframe src="zone-village.html?embed=1" tabindex="-1" title="Превью: зона деревня" loading="lazy"></iframe></div><b>Зона 1 · Деревня-бастион</b><span>Скриншот-макет зоны, слои, освещение, палитры всех 5 зон.</span></a></li>
+</ul>
+
+<h2>Палитра</h2>
+<div class="sw" role="list">
+  <div role="listitem"><i style="background:#1f2a1c"></i>#1f2a1c зелёный</div>
+  <div role="listitem"><i style="background:#3b2e22"></i>#3b2e22 коричневый</div>
+  <div role="listitem"><i style="background:#4a4a4f"></i>#4a4a4f камень</div>
+  <div role="listitem"><i style="background:#1a1f2e"></i>#1a1f2e ночь</div>
+  <div role="listitem"><i style="background:#c08a3e"></i>#c08a3e золото</div>
+  <div role="listitem"><i style="background:#7a2a24"></i>#7a2a24 кровь</div>
+  <div role="listitem"><i style="background:#4f6b7a"></i>#4f6b7a сталь</div>
+</div>
+
+<h2>Заметки для гейта 2</h2>
+<p class="lead">Шрифт в макетах — <code>Press Start 2P</code> (загружается с Google Fonts; офлайн — моноширинный запасной). Лицензия OFL, а не CC0 — см. DESIGN.md, открытый вопрос. Название игры — заглушка.</p>
+
+<script>
+  // масштаб превью под ширину карточки
+  function k() { document.querySelectorAll('.card .th').forEach(function (t) { t.querySelector('iframe').style.setProperty('--k', t.clientWidth / 960 * 1); }); }
+  addEventListener('load', k); addEventListener('resize', k);
+</script>
+</body>
+</html>

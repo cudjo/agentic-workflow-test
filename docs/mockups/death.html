@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Экран смерти — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .dim { inset: 0; background: linear-gradient(0deg, rgba(5,6,8,.5), rgba(5,6,8,.5)); }
+  .edge { inset: 0; box-shadow: inset 0 0 0 4px rgba(74,26,23,.8), inset 0 0 0 8px rgba(122,42,36,.4), inset 0 0 0 12px rgba(122,42,36,.2), inset 0 0 0 16px rgba(122,42,36,.08); }
+  .title { left: 0; right: 0; top: 10px; text-align: center; }
+  .title h1 { color: var(--blood-3); text-shadow: 2px 2px 0 var(--void), 4px 4px 0 var(--blood-9); letter-spacing: 4px; }
+  .title p { margin-top: 8px; }
+  .left { left: 24px; top: 70px; width: 216px; height: 142px; }
+  .right { left: 248px; top: 70px; width: 208px; height: 142px; padding: 6px; }
+  .loss-row { display: flex; align-items: center; gap: 6px; height: 20px; }
+  .loss-row .v { margin-left: auto; }
+  .items { display: flex; gap: 4px; margin: 4px 0; }
+  .items .slot { width: 24px; height: 24px; }
+  .more { align-self: center; margin-left: 2px; }
+  .mapwrap { position: relative; width: 192px; height: 108px; margin: 0; }
+  .mapwrap canvas { width: 192px; height: 108px; }
+  .pin { position: absolute; width: 12px; height: 12px; }
+  .pin--bag { filter: none; }
+  .legend { display: flex; gap: 10px; margin-top: 3px; }
+  .legend span { display: flex; gap: 3px; align-items: center; }
+  .actions { left: 24px; top: 220px; display: flex; gap: 8px; }
+  .actions .item { border: 2px solid var(--stone-9); background: var(--void); padding: 3px 10px 3px 6px; min-height: 22px; font-size: 8px; }
+  .actions .item.is-focus, .actions .item:focus-visible { border-color: var(--gold); }
+  .warn { left: 24px; right: 24px; top: 248px; display: flex; gap: 6px; align-items: center; }
+  .keys { right: 24px; top: 225px; display: flex; gap: 10px; }
+
+
+  [data-state="first"] .only-second, [data-state="second"] .only-first { display: none; }
+
+  /* появление через T_death: ступенчатое, без плавности */
+  .fade { opacity: 0; animation: fadein .8s steps(4) forwards; }
+  .d1 { animation-delay: .2s; } .d2 { animation-delay: .9s; } .d3 { animation-delay: 1.5s; } .d4 { animation-delay: 2s; }
+  @keyframes fadein { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; opacity: 1; } }
+</style>
+</head>
+<body>
+<header class="chrome">
+  <h1>Экран смерти</h1>
+  <a href="index.html">← все макеты</a>
+  <span class="grow"></span>
+  <span role="group" aria-label="Вариант">
+    <button data-set-state="first" aria-pressed="true">Первая смерть (corpse run)</button>
+    <button data-set-state="second" aria-pressed="false">Повторная смерть (EC-05)</button>
+    <button id="replay">↻ Проиграть появление</button>
+  </span>
+  <span id="scale-tag"></span>
+</header>
+
+<main class="frame">
+<div class="stage" id="stage" data-state="first">
+  <canvas class="scene" data-scene="villageEmpty" role="img" aria-label="Затемнённая сцена: место гибели"></canvas>
+  <div class="dim abs" aria-hidden="true"></div>
+  <div class="edge abs" aria-hidden="true"></div>
+
+  <header class="title abs fade d1">
+    <h1 class="t-title" role="alert">ТЫ ПОГИБ</h1>
+    <p class="c-muted only-first">Болото — Топь · у Корней Старой Ивы</p>
+    <p class="c-muted only-second">Ты пал снова, не вернув своё</p>
+  </header>
+
+  <!-- Что потеряно (AC-05.2/05.3) -->
+  <section class="left panel panel--glass abs fade d2" aria-labelledby="lh">
+    <h2 id="lh" class="t-xs c-gold up only-first">Осталось на месте гибели</h2>
+    <h2 class="t-xs c-blood up only-second">Утрачено навсегда</h2>
+    <hr class="hr">
+    <div class="loss-row"><canvas data-spr="coin" data-zoom="1"></canvas>Монеты<span class="v c-gold">1 240</span></div>
+    <div class="loss-row"><canvas data-spr="bag" data-zoom="1"></canvas>Предметы<span class="v">14</span></div>
+    <ul class="items" aria-label="Часть потерянных предметов">
+      <li class="slot"><canvas data-spr="sword" data-zoom="2"></canvas></li>
+      <li class="slot"><canvas data-spr="shield" data-zoom="2"></canvas></li>
+      <li class="slot"><canvas data-spr="potion" data-zoom="2"></canvas><span class="cnt">3</span></li>
+      <li class="slot"><canvas data-spr="herb" data-zoom="2"></canvas><span class="cnt">5</span></li>
+      <li class="slot"><canvas data-spr="key" data-zoom="2"></canvas></li>
+      <li class="more c-muted">+9</li>
+    </ul>
+    <p class="c-muted only-first">Экипировка — тоже там.</p>
+    <p class="c-blood only-second">Вернуть уже нельзя.</p>
+  </section>
+
+  <!-- Карта: куда вернуться -->
+  <section class="right panel panel--glass abs fade d2" aria-label="Карта возвращения">
+    <div class="mapwrap">
+      <canvas data-minimap role="img" aria-label="Карта: место гибели на западе, костёр возрождения в центре"></canvas>
+      <span class="pin only-first" style="left:18px;top:58px"><canvas data-spr="bag" data-zoom="1"></canvas></span>
+      <span class="pin only-second" style="left:18px;top:58px"><canvas data-spr="skull" data-zoom="1"></canvas></span>
+    </div>
+    <div class="legend c-muted">
+      <span><canvas data-spr="bag" data-zoom="1"></canvas>Твои вещи</span>
+      <span><canvas data-spr="coin" data-zoom="1" style="display:none"></canvas><i style="width:6px;height:6px;background:var(--gold-3);display:inline-block"></i>Костёр</span>
+    </div>
+  </section>
+
+  <!-- Действия -->
+  <nav class="actions abs fade d3" aria-label="Действия" id="act">
+    <button class="item is-focus" id="respawn" autofocus>Возродиться у костра</button>
+    <button class="item">В главное меню</button>
+  </nav>
+  <div class="keys abs c-muted fade d3" aria-hidden="true">
+    <span><span class="kbd">Enter</span> Ок</span>
+  </div>
+  <p class="warn abs fade d4 only-first" role="note"><span class="kbd kbd--warn">!</span><span>Умрёшь до подбора — вещи пропадут навсегда.</span></p>
+  <p class="warn abs fade d4 only-second" role="note"><span class="kbd kbd--warn">!</span><span class="c-muted">Прошлая потеря необратима.</span></p>
+</div>
+</main>
+
+<footer class="chrome notes">
+  <p>Экран появляется через <code>T_death</code> после обнуления HP (ступенчатый fade 4 шага; при reduced-motion — сразу). Заголовок — <code>role="alert"</code>. Фокус по умолчанию на «Возродиться у костра». Красный — не единственный носитель смысла: восклицательный знак, подписи «Утрачено навсегда», иконка черепа.</p>
+</footer>
+<script src="assets/px.js"></script>
+<script>
+document.getElementById('replay').addEventListener('click', function () {
+  document.querySelectorAll('.fade').forEach(function (e) { e.style.animation = 'none'; e.offsetHeight; e.style.animation = ''; });
+});
+document.addEventListener('keydown', function (e) {
+  var a = document.querySelectorAll('#act .item');
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var i = document.activeElement === a[1] ? 0 : 1; a[i].focus(); a.forEach(function (x) { x.classList.remove('is-focus'); }); }
+});
+</script>
+</body>
+</html>

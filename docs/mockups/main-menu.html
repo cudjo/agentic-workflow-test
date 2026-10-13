@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Главное меню — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .scrim { inset: 0; }
+  .title { left: 32px; top: 24px; }
+  .title .l1 { color: var(--bone); text-shadow: 2px 2px 0 var(--void), 0 0 0 var(--gold); }
+  .title .l2 { color: var(--gold-3); text-shadow: 2px 2px 0 var(--brown-9), 4px 4px 0 var(--void); margin-top: 4px; }
+  .title .sub { margin-top: 10px; }
+  .rule { left: 32px; top: 96px; width: 200px; height: 4px; border-top: 1px solid var(--gold-9); border-bottom: 1px solid var(--gold-9); }
+  .rule::after { content: ''; position: absolute; left: 96px; top: -3px; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg) scale(.7); }
+  .menu { left: 24px; top: 112px; width: 216px; }
+  .menu .item { font-size: 16px; line-height: 16px; min-height: 24px; padding: 4px 8px; }
+  .menu .item::before { width: 16px; }
+  .menu .item:focus-visible::before, .menu .item.is-focus::before { width: 16px; }
+  .menu .item .why { display: none; }
+  .foot { left: 32px; right: 32px; bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .foot .keys { display: flex; gap: 10px; align-items: center; }
+  .lang { display: flex; gap: 4px; }
+  .lang button { padding: 1px 4px; border: 1px solid var(--stone-3); color: var(--stone-5); background: var(--void); }
+  .lang button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--void); }
+  .lang button:hover { color: var(--bone); border-color: var(--bone); }
+  .view { display: none; }
+  [data-state="main"] .v-main, [data-state="load"] .v-load, [data-state="settings"] .v-settings { display: block; }
+  .v-panel { left: 24px; top: 92px; width: 344px; }
+  [data-state="load"] .sub, [data-state="settings"] .sub, [data-state="load"] .rule, [data-state="settings"] .rule { display: none; }
+  .slotcard { display: flex; gap: 8px; align-items: center; padding: 3px 8px; border: 2px solid var(--stone-9); margin-bottom: 4px; background: var(--void); color: var(--bone); width: 100%; }
+  .slotcard:hover, .slotcard.is-focus, .slotcard:focus-visible { border-color: var(--gold); outline: 0; }
+  .slotcard .n { font-size: 16px; line-height: 16px; width: 16px; }
+  .slotcard .meta { flex: 1; }
+  .slotcard.is-empty { color: var(--stone-5); border-style: dashed; }
+  .slotcard.is-bad { border-color: var(--blood-3); }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px; min-height: 16px; color: var(--stone-5); }
+  .row:hover, .row:focus-visible, .row.is-focus { background: var(--night-3); color: var(--bone); outline: 0; box-shadow: inset 0 0 0 1px var(--gold-9); }
+  .row .val { color: var(--bone); }
+  .row .val b { color: var(--gold-3); font-weight: normal; }
+  .toggle { display: inline-block; width: 24px; height: 10px; border: 1px solid var(--stone-3); background: var(--void); position: relative; vertical-align: middle; }
+  .toggle::after { content: ''; position: absolute; top: 1px; left: 1px; width: 6px; height: 6px; background: var(--stone-5); }
+  .toggle[aria-checked="true"] { border-color: var(--gold); }
+  .toggle[aria-checked="true"]::after { left: 15px; background: var(--gold-3); }
+</style>
+</head>
+<body>
+<header class="chrome">
+  <h1>Главное меню</h1>
+  <a href="index.html">← все макеты</a>
+  <span class="grow"></span>
+  <span role="group" aria-label="Экран">
+    <button data-set-state="main" aria-pressed="true">Меню</button>
+    <button data-set-state="load">Загрузка (3 слота)</button>
+    <button data-set-state="settings">Настройки / a11y</button>
+  </span>
+  <span id="scale-tag"></span>
+</header>
+
+<main class="frame">
+<div class="stage" id="stage" data-state="main">
+  <canvas class="scene" data-scene="menu" role="img" aria-label="Фон: замок на скале под луной, фигура героя на утёсе"></canvas>
+  <div class="scrim scrim-l abs" aria-hidden="true"></div>
+
+  <header class="title abs">
+    <h1 class="t-h1 l1">ПЕПЕЛЬНЫЙ</h1>
+    <h1 class="t-title l2">БАСТИОН</h1>
+    <p class="sub c-muted">ASHEN BASTION <span class="c-steel">· рабочее название</span></p>
+  </header>
+  <div class="rule abs" aria-hidden="true"></div>
+
+  <!-- Главное меню -->
+  <nav class="menu abs view v-main" aria-label="Главное меню">
+    <ul role="menu" id="mainmenu">
+      <li role="none"><button class="item" role="menuitem" data-go="continue">Продолжить</button></li>
+      <li role="none"><button class="item" role="menuitem" data-go="new">Новая игра</button></li>
+      <li role="none"><button class="item" role="menuitem" data-go="load">Загрузить</button></li>
+      <li role="none"><button class="item" role="menuitem" data-go="settings">Настройки</button></li>
+      <li role="none"><button class="item" role="menuitem" data-go="exit">Выход</button></li>
+    </ul>
+    <p id="menu-help" class="c-muted" style="margin:8px 0 0 8px;height:12px" aria-live="polite"></p>
+  </nav>
+
+  <!-- Загрузка: 3 слота (SPEC §7.4), повреждённый слот — EC-07 -->
+  <section class="v-panel panel panel--glass abs view v-load" aria-label="Загрузить игру">
+    <h2 class="t-xs c-gold up" style="margin-bottom:6px">Загрузить игру</h2>
+    <ul id="slots">
+      <li><button class="slotcard" aria-describedby="s1">
+        <span class="n c-gold">1</span>
+        <span class="meta"><span style="display:block">Болото — Топь, костёр «Корни»</span><span id="s1" class="c-muted">УР7 · 6ч 12м · 14.10.2026</span></span>
+        <canvas data-spr="ring" data-zoom="1"></canvas>
+      </button></li>
+      <li><button class="slotcard is-empty">
+        <span class="n">2</span><span class="meta">— Пусто —</span>
+      </button></li>
+      <li><button class="slotcard is-bad" aria-describedby="s3">
+        <span class="n c-blood">3</span>
+        <span class="meta"><span style="display:block">Файл повреждён</span><span id="s3" class="c-muted">Контрольная сумма не совпала</span></span>
+        <span class="kbd kbd--warn">!</span>
+      </button></li>
+    </ul>
+    <p class="c-muted" role="alert" style="margin-top:2px"><span class="c-blood">!</span> Слот 3 повреждён — выберите другой.</p>
+  </section>
+
+  <!-- Настройки: языки, масштаб UI, доступность -->
+  <section class="v-panel panel panel--glass abs view v-settings" aria-label="Настройки" style="width:376px">
+    <h2 class="t-xs c-gold up" style="margin-bottom:6px">Настройки · Доступность</h2>
+    <ul role="list">
+      <li class="row" tabindex="0"><span>Язык / Language</span><span class="val">‹ <b>Русский</b> ›</span></li>
+      <li class="row" tabindex="0"><span>Масштаб интерфейса</span><span class="val">‹ <b>150%</b> ›</span></li>
+      <li class="row" tabindex="0"><span>Режим окна</span><span class="val">‹ <b>Полный экран</b> ›</span></li>
+      <li class="row" tabindex="0"><span>Читаемость силуэтов</span><span class="toggle" role="switch" aria-checked="true" aria-label="Читаемость силуэтов"></span></li>
+      <li class="row" tabindex="0"><span>Без мигания экрана</span><span class="toggle" role="switch" aria-checked="true" aria-label="Без мигания экрана"></span></li>
+      <li class="row" tabindex="0"><span>Субтитры звуков</span><span class="toggle" role="switch" aria-checked="false" aria-label="Субтитры звуков"></span></li>
+      <li class="row" tabindex="0"><span>Управление</span><span class="val">Клавиатура · Геймпад <b>›</b></span></li>
+    </ul>
+  </section>
+
+  <footer class="foot abs">
+    <div class="keys c-muted">
+      <span><span class="kbd">↑</span><span class="kbd">↓</span> Выбор</span>
+      <span><span class="kbd">Enter</span> Ок</span>
+      <span><span class="kbd">Esc</span> Назад</span>
+    </div>
+    <div class="lang" role="group" aria-label="Язык интерфейса">
+      <button aria-pressed="true">RU</button><button aria-pressed="false">EN</button>
+    </div>
+    <div class="c-muted">v0.1.0</div>
+  </footer>
+</div>
+</main>
+
+<footer class="chrome notes">
+  <p>Состояния пункта меню: обычный · наведение/фокус (золотой «>» + подсветка) · нажатие (золотая заливка) · отключён («Продолжить» без сохранений, подсказка «Нет сохранений»).
+  Управление: <code>↑/↓</code>, <code>Enter</code>, <code>Esc</code>; наведите мышь на пункт, чтобы увидеть состояние hover. Скрим — ступенчатый (без плавного градиента).</p>
+</footer>
+<script src="assets/px.js"></script>
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  var items = Array.prototype.slice.call(document.querySelectorAll('#mainmenu .item'));
+  var help = document.getElementById('menu-help');
+  // «Продолжить» — отключён, если нет сохранений: ?nosave=1
+  var noSave = new URLSearchParams(location.search).get('nosave') === '1';
+  if (noSave) { items[0].setAttribute('aria-disabled', 'true'); }
+  var idx = noSave ? 1 : 0;
+  function focusItem(i) { idx = (i + items.length) % items.length; items[idx].focus(); }
+  function updateHelp() {
+    var cur = document.activeElement;
+    help.textContent = cur && cur.getAttribute('aria-disabled') === 'true' ? 'Нет сохранений' : '';
+  }
+  items.forEach(function (b, i) {
+    b.addEventListener('focus', function () { idx = i; updateHelp(); });
+    b.addEventListener('click', function () {
+      if (b.getAttribute('aria-disabled') === 'true') return;
+      var go = b.dataset.go;
+      if (go === 'load' || go === 'settings') document.querySelector('[data-set-state="' + go + '"]').click();
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (stage.dataset.state !== 'main') { if (e.key === 'Escape') document.querySelector('[data-set-state="main"]').click(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); focusItem(idx + 1); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); focusItem(idx - 1); }
+  });
+  stage.addEventListener('statechange', function (e) { if (e.detail === 'main') { setTimeout(function () { items[idx].focus(); }, 0); } });
+  items[idx].classList.add('is-focus');
+  items[idx].addEventListener('blur', function () { items[idx].classList.remove('is-focus'); });
+  items.forEach(function (b) { b.addEventListener('focus', function () { items.forEach(function (x) { x.classList.remove('is-focus'); }); }); });
+})();
+</script>
+</body>
+</html>
