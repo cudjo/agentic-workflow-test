@@ -10,6 +10,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import Notes from './pages/Notes';
+import Editor from './pages/Editor';
 import Register from './pages/Register';
 
 export default function App() {
@@ -21,6 +22,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/notes" element={<Notes />} />
+          <Route path="/notes/new" element={<Editor />} />
+          <Route path="/notes/:id/edit" element={<Editor />} />
         </Route>
       </Route>
 

@@ -29,6 +29,13 @@ export interface NotesListResponse {
   total: number;
 }
 
+/** Тело создания/обновления заметки (PLAN §3.2). */
+export interface NoteInput {
+  title: string | null;
+  bodyMarkdown: string;
+  tags: string[];
+}
+
 /** Тег пользователя со счётчиком заметок (GET /api/tags). */
 export interface TagCount {
   name: string;
@@ -50,6 +57,17 @@ export const notesApi = {
   /** `DELETE /api/notes/:id` → 204 (204 → `undefined`). */
   remove: (id: number): Promise<void> =>
     apiRequest<void>(`/api/notes/${id}`, { method: 'DELETE' }),
+
+  /** `GET /api/notes/:id` → `Note` (чужой/несуществующий → `404`). */
+  get: (id: number): Promise<Note> => apiRequest<Note>(`/api/notes/${id}`),
+
+  /** `POST /api/notes` → `201 Note` (пустая заметка → `422`). */
+  create: (input: NoteInput): Promise<Note> =>
+    apiRequest<Note>('/api/notes', { method: 'POST', body: input }),
+
+  /** `PATCH /api/notes/:id` (частично) → `200 Note`. */
+  update: (id: number, input: NoteInput): Promise<Note> =>
+    apiRequest<Note>(`/api/notes/${id}`, { method: 'PATCH', body: input }),
 };
 
 export const tagsApi = {

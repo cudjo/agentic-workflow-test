@@ -823,4 +823,114 @@ TagFilter,EmptyState,Skeleton,DeleteDialog}.tsx` (новые), `web/src/pages/No
 - **Dev-грабли:** jsdom под Node 26 не даёт `localStorage` — в `setupTests.ts` добавлен polyfill; если тесты
   будут переноситься в другой раннер с нативным Storage, polyfill безвреден (используется только при отсутствии).
 
+---
+
+## T-09 — Экран редактора: заголовок, теги, markdown, toolbar, live-превью, сохранение — tasker-frontend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `react` (компоненты/хуки/состояние/a11y/тесты)
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **`web/src/lib/editor.ts` (новый)** — чистые функции toolbar (DESIGN §2.7), независимые от DOM:
+  `applyPrefix` (построчно, снимает прежний маркер блока `#…`/`- ` / `1. ` / `> ` — повторное нажатие
+  **не дублирует**; пустые строки внутри выделения не размечаются; нумерованный список нумеруется с 1),
+  `applyWrap` (`**…**`, `*…*`, `` `…` ``, toggle — повторный вызов снимает обёртку), `applyCodeBlock`
+  (ограждение ``` до/после), `applyLink` (`[выделение](https://)`), диспетчер `applyToolbarOp`.
+  Все возвращают `{value, selectionStart, selectionEnd}`.
+- **`web/src/components/MdToolbar.tsx` (новый)** — `role="toolbar"` + `aria-label` + `aria-describedby`
+  (sr-only подсказка), 4 группы `role="group"` (Заголовки, Начертание, Списки, Блоки и ссылки),
+  `role="separator" aria-orientation="vertical"`, у кнопок `aria-label` + `title` + `aria-keyshortcuts`,
+  глифы `aria-hidden`; `data-md-prefix/insert/block/link` — контракт разметки. Вставка учитывает выделение
+  textarea; при клике мышью фокус возвращается в textarea, при активации с клавиатуры — остаётся на кнопке
+  (флаг захватывается на `mousedown`); выделение применяется в `useLayoutEffect` после перерисовки.
+- **`web/src/components/TagInput.tsx` (новый)** — чипы `.tag--removable` с кнопкой `aria-label="Убрать тег «…»"`
+  и «призрачным» инпутом внутри `.input`: Enter/запятая добавляют, пустые и дубликаты без учёта регистра
+  отбрасываются, лимиты **≤20 тегов** / **≤50 символов** с сообщением («Не больше 20 тегов» /
+  «Тег длиннее 50 символов», `aria-invalid`, `role=alert`); подсказки — `datalist`. `addTag()` экспортируется
+  и покрыт unit-тестами.
+- **`web/src/components/UnsavedDialog.tsx` (новый)** — нативный `<dialog>` «Есть несохранённые изменения»
+  (§4.2.8): «Остаться в редакторе» (`autofocus`), «Выйти без сохранения», «Сохранить и выйти»;
+  Esc/backdrop = остаться.
+- **`web/src/pages/Editor.tsx` (новый)** — `S4` для `/notes/new` и `/notes/:id/edit`:
+  - заголовок `.input` (`maxlength=200`, подпись «Заголовок — необязательно», хинт E3);
+  - `TagInput` + `datalist` из `GET /api/tags`;
+  - textarea `.md-input` (`maxlength=100000`, счётчик «{N} / 100 000», sr-only label «Текст заметки в markdown»);
+  - **live-сплит** `.editor-grid` (≥1025px по CSS) с `renderMarkdown` (T-07) в `.md-preview`;
+    на ≤1024px CSS показывает `.editor-tabs` (`role=tablist`) и скрывает одну панель по
+    `data-editor-mode`; ArrowLeft/Right переключают (roving tabindex). Панели — `role=tabpanel aria-labelledby`;
+  - **явное сохранение**: пустая (нет заголовка и текста) → запрет с сообщением «Заметка пустая» (без запроса);
+    иначе `POST /api/notes` (создание) / `PATCH /api/notes/:id` (редактирование); статус в шапке
+    «Сохранено {время}» (`role=status`) / «● Есть несохранённые изменения»; ошибка → `.alert--error`
+    «Не удалось сохранить», текст не теряется, статус не «сохранено»;
+  - **диалог ухода** при несохранённых правках (кнопка «Отмена», ссылка «← Мои заметки») + `beforeunload`;
+  - загрузка заметки для редактирования (`GET /api/notes/:id`), 404 → «Не удалось загрузить заметку».
+- **`web/src/api/notes.ts`** — добавлены `get`, `create`, `update` и тип `NoteInput`.
+- **`web/src/components/icons.tsx`** — `EyeIcon`, `SaveIcon`.
+- **`web/src/App.tsx`** — маршруты `/notes/new` и `/notes/:id/edit` (под `ProtectedRoute` + `AppLayout`).
+- **Тесты:** `editor-lib.test.ts` (16), `tag-input.test.tsx` (7), `editor.test.tsx` (18) — 41 новый.
+
+### Покрытие приёмки T-09 (тесты + e2e)
+
+| Критерий | Проверка |
+|---|---|
+| Создание (заголовок+текст+теги) → POST, персистентно (AC-16/AC-33) | тест (тело запроса) + e2e POST→GET→PATCH→GET |
+| Пустая заметка → запрет с сообщением (AC-17/E1) | тест (POST не отправляется) + e2e 422 |
+| Markdown хранится raw; превью рендерит (AC-28/AC-29) | тест (raw значение + `<strong>`/`<h2>`) |
+| Toolbar: префикс/обёртка/блок/ссылка, без дублей, по выделению (§2.7) | 16 unit (lib) + 4 интеграционных |
+| Сплит ≥1025 / табы ≤1024 (AC-30/NFR-23) | 2 теста (`data-editor-mode`, tablist/Arrow) |
+| Несохранённые → предупреждение (AC-20/E10) | 3 теста (диалог «остаться»/«выйти»/«сохранить и выйти» + beforeunload) |
+| Ошибка сохранения не теряет текст (E17) | тест (500 → текст на месте, статус не «сохранено») |
+| Загрузка/редактирование заметки (PATCH) | 3 теста + e2e |
+
+### Как проверить
+
+```powershell
+cd web
+npm install
+npm test          # vitest: 96 тестов (9 T-06 + 28 T-07 + 18 T-08 + 41 T-09)
+npm run build     # tsc --noEmit && vite build
+# e2e-data-path:
+cd ..\server; $env:PORT='3411'; $env:DATABASE_PATH="$env:TEMP\t09-notes.db"; npm start
+# сценарий: register → POST /api/notes (raw markdown + теги) → GET:id → PATCH → GET (персистентно)
+#           → пустая → 422 → POST без CSRF → 403
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm test`: **Test Files 6 passed (6) · Tests 96 passed (96)** = 55 существующих (T-06..T-08) + 41 новых T-09
+  (16 `editor-lib` + 7 `tag-input` + 18 `editor`).
+- `npm run build`: `tsc --noEmit` без ошибок; `vite build` → `dist/` (CSS 33.41 kB, JS 344.89 kB).
+- **E2E data-path** (`npm start`, порт 3411, tmp-БД, Node `fetch` с cookie-jar + `X-CSRF-Token`):
+  **13/13 PASS** — register 201; POST заметки (raw markdown + теги) 201; `bodyMarkdown` сохранён как raw;
+  теги сохранены (сервер сортирует → `["планы","работа"]`); `GET /api/notes/:id` → идентичный markdown;
+  PATCH 200 и поля применены; повторный GET — изменения персистентны; пустая заметка → 422 с сообщением;
+  POST без `X-CSRF-Token` → 403.
+- **UI-проверка:** реальный браузер в песочнице недоступен (как T-06..T-08) — экран проверен
+  интеграционными тестами, рендерящими **реальный `App`** с настоящим роутером/контекстом и мок-`fetch`,
+  отвечающим как сервер; a11y — через роли/имена/aria (toolbar/группы/табы/диалог/статусы).
+
+### Артефакты
+
+`web/src/lib/editor.ts` (новый), `web/src/components/{MdToolbar,TagInput,UnsavedDialog}.tsx` (новые),
+`web/src/pages/Editor.tsx` (новый), `web/src/__tests__/{editor-lib.test.ts,editor.test.tsx,tag-input.test.tsx}`
+(новые), `web/src/api/notes.ts`, `web/src/components/icons.tsx`, `web/src/App.tsx`
+
+**Коммит:** `feat(T-09): экран редактора (заголовок, теги, markdown, toolbar, live-превью, сохранение)`
+
+### Заметки для следующих задач
+
+- **T-10 (просмотр S5):** рендерер `renderMarkdown` уже подключён в Editor (превью) — на S5 использовать
+  тот же вызов для идентичного HTML (AC-31). `notesApi.get(id)` готов. В Editor после создания заметки
+  происходит `navigate('/notes/:id/edit', {replace})` — когда появится S5, можно вернуть переход на
+  `/notes/:id` после сохранения (DESIGN поток C).
+- **T-11 (a11y):** toolbar (toolbar/group/separator, aria-keyshortcuts), табы (roving tabindex/Arrow),
+  поле тегов (label + aria-invalid + role=alert), статусы сохранения (`role=status`), диалог ухода
+  (native dialog, autofocus, Esc) — реализованы; остаётся сквозной пас (фокус-ловушка, контраст, брейкпоинты).
+- **T-12:** сборка `web/dist` (JS 344.89 kB) — цель прод-раздачи; SPA-fallback обязателен для
+  `/notes/new` и `/notes/:id/edit`.
+- **Инвариант сервера для QA:** `PATCH` возвращает полный `Note`; теги сортируются — сравнение наборов
+  тегов на клиенте сделано регистро-/порядко-независимым (`sameTags`), поэтому ложных «несохранённых».
+
 
