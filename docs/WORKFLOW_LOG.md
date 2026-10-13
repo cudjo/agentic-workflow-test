@@ -117,3 +117,20 @@
   4. Godot не создаёт каталоги экспорта → в CI добавлен `mkdir -p game/build/{windows,linux}`.
 - **Известное, вне скоупа T-02:** тест T-03 `test_device_changed_keyboard_event` падает (сигнал `device_changed` не эмитится при событии клавиатуры) — поведенческая логика InputManager, домен tasker-backend (T-03 в работе). CI-инфраструктура к этому готова.
 - **Коммит:** T-02-артефакты + минимальные кросс-фиксы (п.1) + файлы `game/core/input/input_buffer.gd` и `game/tests/unit/test_input_*.gd` параллельной T-03 — включены в коммит, т.к. закоммиченный `InputManager.gd` ссылается на глобальный класс `InputBuffer` (без них HEAD не компилируется). Статус задачи остаётся `pending` — отметит QA/Guardian.
+
+## 2026-10-14 — tasker-backend: T-03 InputSystem
+
+- **Действие:** Реализована задача T-03 (`docs/TASKS.json`) — полноценный автозагрузчик `game/autoload/InputManager.gd`.
+- **Артефакты:**
+  - `game/core/input/input_buffer.gd` — класс `InputBuffer` (150 мс окно), API `press`/`is_pressed`/`just_pressed`/`get_buffer_time`.
+  - `game/autoload/InputManager.gd` — unified `is_pressed`/`just_pressed` с учётом буфера, `press_buffered`, coyote-time helpers (`start_coyote_time`, `is_coyote_time_available`, `consume_coyote_time`, `just_pressed_or_coyote`, 0.1 с), `get_action_strength` для аналогового ввода, ремап действий через `InputMap`, сохранение/загрузка в `user://settings.cfg` (атомарная запись temp → rename), `reset_to_defaults`, определение активного устройства (keyboard/xbox/playstation/gamepad) и сигнал `device_changed`. Ключи не хардкодятся.
+  - `game/tests/unit/test_input_buffer.gd` — 6 GUT-тестов на буфер.
+  - `game/tests/unit/test_input_manager.gd` — 6 GUT-тестов: персистентность ремапа, сброс к дефолтам, coyote-time, `just_pressed_or_coyote`, переключение устройства keyboard/gamepad.
+  - `game/addons/gut/gut_loader.gd` — кросс-фикс совместимости с Godot 4.7: fallback на `false`, если настройка `debug/gdscript/warnings/exclude_addons` отсутствует (в 4.7 заменена на `directory_rules`).
+- **Проверки (локально Godot 4.7.2-stable portable, headless):**
+  - GUT: `-gdir=res://tests/unit -ginclude_subdirs -gexit` — **12/12 тестов passed**, 23 asserts.
+  - Smoke-запуск проекта `--headless --path game` — стартует без ошибок/скрипт-ошибок.
+- **Найденные и исправленные проблемы:**
+  - `test_device_changed_keyboard_event` падал, т.к. `active_device` по умолчанию уже `keyboard`; сигнал не эмитился. Исправлено: в тесте устанавливается `DEVICE_GENERIC` перед эмитацией клавиатурного события.
+  - `remap_action` принимает `Array[InputEvent]`; передача `[new_jump]` вызывала ошибку typed array — исправлено явным приведением `var events: Array[InputEvent] = [new_jump]`.
+- **Коммит:** `b806feb` «T-03: InputSystem — буфер ввода, ремап, устройства, coyote-time». Статус задачи остаётся `pending` — отметит QA/Guardian по гейтам.
