@@ -16,6 +16,9 @@ import { loadConfig, type Config } from './config.js';
 import { openDatabase, prepareStatements, type Statements } from './db/client.js';
 import { migrateUp } from './db/migrate.js';
 import { errorBody, toHttpError } from './lib/errors.js';
+import { attachSession } from './middleware/auth.js';
+import { csrfGuard } from './middleware/csrf.js';
+import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 
 declare module 'fastify' {
@@ -96,16 +99,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     });
   }
 
-  // CORS: в dev фронтенд на 5173 ходит с credentials (cookie-сессия, PLAN §4.2).
-  await app.register(cors, {
-    origin: config.corsOrigin,
-    credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
-  });
-
-  await app.register(healthRoutes);
-
+  // Единый формат ошибок и 404 регистрируем ДО роут-плагинов: Fastify инкапсулирует
+  // обработчики, и дочерний контекст (`register(authRoutes)`) наследует их только если они
+  // установлены до его создания. Иначе ошибки из роутов/хуков уходят в дефолтный формат
+  // Fastify (`{statusCode,error,message}`), ломая контракт `{error:{code,message,field?}}`.
   app.setNotFoundHandler((request, reply) => {
     reply.code(404).send(errorBody('NOT_FOUND', `Маршрут ${request.method} ${request.url} не найден`));
   });
@@ -120,6 +117,22 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
     reply.code(statusCode).send(body);
   });
+
+  // CORS: в dev фронтенд на 5173 ходит с credentials (cookie-сессия, PLAN §4.2).
+  await app.register(cors, {
+    origin: config.corsOrigin,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
+  });
+
+  // Контекст сессии и CSRF-защита — до роутов. Порядок важен: attachSession заполняет
+  // `request.session`, который читает csrfGuard (PLAN §4.2/§4.3).
+  attachSession(app);
+  csrfGuard(app);
+
+  await app.register(healthRoutes);
+  await app.register(authRoutes);
 
   return app;
 }

@@ -153,3 +153,98 @@ curl.exe -i http://127.0.0.1:3000/nope
 - CSRF-заголовок уже разрешён в CORS (`X-CSRF-Token`); при добавлении cookie-ответов
   `Set-Cookie` автоматически редактируется логгером.
 - Тесты с `:memory:`-БД: `buildApp` сам применяет миграции; для изоляции передавайте свой `db`.
+
+---
+
+## T-03 — Аутентификация: register/login/logout/me, сессии, CSRF, rate-limit — tasker-backend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `typescript-node`
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+**Контекст:** задача была частично реализована прерванной сессией (не закоммичена). Реализация
+осмотрена, дополнена, покрыта тестами и проверена end-to-end; рабочий код не переписывался.
+
+### Что сделано
+
+- **Осмотрена и подтверждена частичная реализация** (из прошлой сессии): `routes/auth.ts`,
+  `middleware/auth.ts` (`attachSession`/`requireAuth`), `middleware/csrf.ts` (`csrfGuard`),
+  `middleware/rateLimit.ts` (лимитер `ip+email`, окно 15 мин / 5 неудач), `lib/password.ts`
+  (bcryptjs cost 10 + `DUMMY_PASSWORD_HASH` для выравнивания времени), `lib/sessions.ts`
+  (opaque `randomBytes(32).base64url`, SHA-256 в БД, cookie-утилиты, `touchSession`),
+  `lib/validation.ts` (email-формат, пароль ≥ 8, `field` в ошибке). Соответствие PLAN §4/§3.2 —
+  полное; переписывать было нечего.
+- **Исправлен найденный дефект в `server/src/app.ts`**: `setErrorHandler`/`setNotFoundHandler`
+  регистрировались ПОСЛЕ `app.register(authRoutes)`. Fastify инкапсулирует обработчики — дочерний
+  контекст роутов не наследовал кастомный обработчик, и ошибки из `routes/auth.ts` и из хуков
+  (`requireAuth` → 401, `csrfGuard` → 403, `tooManyRequests` → 429, `assertValidCredentials` → 422)
+  уходили в дефолтный формат Fastify `{statusCode,error,message}`, ломая контракт
+  `{error:{code,message,field?}}` (PLAN §3.2). Обработчики перенесены до регистрации плагинов —
+  контракт восстановлен.
+- **Дописаны тесты** `server/tests/auth.test.ts` (30 тестов, vitest, `app.inject`): свой tmp-файл БД
+  на каждый тест (`mkdtempSync` + удаление каталога в `afterEach`), cookie-помощники, проверки
+  атрибутов `Set-Cookie`, состояния БД и ответов.
+- Бизнес-логика auth **не менялась** — только порядок регистрации обработчиков в `app.ts`.
+
+### Покрытие приёмки T-03 (тесты + live-проверка)
+
+| Критерий | Проверка |
+|---|---|
+| register → 201 + cookie; me → `{user:{id,email}}`; logout → 204; повторный me → 401 | 4 теста + live |
+| дубликат email в разном регистре → 409 `field=email`; слабый пароль/невалидный email → 422 `field` | 6 тестов + live |
+| login неверный → 401 обобщённо; 6-я неудача → 429 + `Retry-After` | 6 тестов + live |
+| state-changing без `X-CSRF-Token` → 403; с корректным → проходит | 7 тестов + live |
+| истёкшая/удалённая сессия → 401 | 4 теста |
+
+Дополнительно: raw-токен не хранится в БД (только SHA-256), `session` — HttpOnly, `XSRF-TOKEN` —
+читаемый, скользящее продление сессии, сброс счётчика лимита после успешного входа, отсутствие
+секретов в ответах.
+
+### Как проверить
+
+```powershell
+cd server
+npm install
+npm test          # vitest (все файлы)
+npm run typecheck # tsc --noEmit
+npm start         # :3000 (DATABASE_PATH по умолчанию server/data/app.db)
+```
+
+### Результаты проверок (13.10.2026, Node v26, Windows)
+
+- `npm test`: **Test Files 3 passed (3) · Tests 51 passed (51)** = 21 существующих (T-01/T-02) + 30 новых.
+- `npm run typecheck`: без ошибок.
+- **Реальный прогон** (`npm start`, порт 3000, `curl.exe`, cookie-jar в tmp-каталоге) — все ожидаемые коды:
+  1. `POST /api/auth/register` → `201`, тело `{"user":{"id":1,"email":"e2e.user@example.com"}}`,
+     `Set-Cookie: session=…; Max-Age=604800; HttpOnly; SameSite=Lax` и
+     `Set-Cookie: XSRF-TOKEN=…; Max-Age=604800; SameSite=Lax` (без HttpOnly);
+  2. `GET /api/auth/me` (cookie) → `200 {"user":{"id":1,"email":"e2e.user@example.com"}}`;
+  3. `POST /api/auth/login` (неверный пароль) → `401 {"error":{"code":"UNAUTHORIZED","message":"Неверные учётные данные"}}`;
+  4. `POST /api/auth/logout` без `X-CSRF-Token` → `403 field=x-csrf-token`; сессия сохраняется (`me` → `200`);
+  5. `POST /api/auth/logout` с корректным `X-CSRF-Token` → `204` + очищенные cookie (`Max-Age=0`); `me` → `401`;
+  6. повторная регистрация того же email в другом регистре → `409 field=email`;
+  7. 6 неудачных входов (тот же ip+email): попытки 1–5 → `401`, 6-я → `429` + `Retry-After: 900`.
+- **Логи (NFR-9/A9):** только `method/url/statusCode/responseTime` и коды ошибок; тел запросов, cookie,
+  паролей и токенов нет (проверено поиском по логу реального прогона).
+
+### Артефакты
+
+`server/src/routes/auth.ts`, `server/src/middleware/auth.ts`, `server/src/middleware/csrf.ts`,
+`server/src/middleware/rateLimit.ts`, `server/src/lib/password.ts`, `server/src/lib/sessions.ts`,
+`server/src/lib/validation.ts`, `server/src/app.ts` (порядок обработчиков), `server/tests/auth.test.ts`,
+`server/package.json` (+`package-lock.json`, `bcryptjs`)
+
+**Коммит:** `feat(T-03): аутентификация (register/login/logout/me, сессии, CSRF, rate-limit)`
+(хеш — `git log --oneline -1`; задача коммитится одним коммитом)
+
+### Заметки для следующих задач
+
+- **T-04+**: в защищённых роутах использовать `preHandler: requireAuth` — заполняет `request.user = {id,email}`;
+  ownership-фильтр по `request.user.id`. В `app.ts` показан рабочий порядок: обработчики ошибок/404 —
+  ДО `register(роут-плагины)`, иначе кастомный формат ошибок не наследуется (инкапсуляция Fastify).
+- **State-changing роуты** (`POST/PATCH/DELETE`) автоматически проходят через `csrfGuard` при наличии
+  сессии — фронтенд (T-06) обязан слать `X-CSRF-Token` из cookie `XSRF-TOKEN`. `POST /api/auth/logout`
+  уже защищён CSRF.
+- **Rate-limit** in-memory и per-app (перезапуск сбрасывает) — ограничение для однопроцессного деплоя
+  (PLAN R4, документируется в T-12).
+- **Валидация тела** реализована в `lib/validation.ts` (не JSON-schema): даёт стабильный `422` с `field`,
+  соответствующий контракту PLAN §3.2.
