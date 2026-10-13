@@ -606,3 +606,97 @@ curl.exe --noproxy "*" -i http://localhost:5173/api/auth/me -b "$env:TEMP\ck.txt
   статику; в `init.ps1`/`init.sh` шаг сборки выполняется автоматически.
 - **Dev-грабли:** Vite `strictPort: true` (5173 занят → падать, а не менять порт); при проверках
   `curl.exe`/браузерных проксях учитывать системный `HTTP_PROXY` (см. выше).
+
+---
+
+## T-07 — Markdown-рендерер с санитизацией (общий для превью и просмотра) — tasker-frontend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `react` (компоненты/состояние/a11y/тесты)
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **`web/src/lib/markdown.ts` (новый)** — единый рендерер `markdown → безопасный HTML`, один на всё
+  приложение (превью S4, T-09 — и просмотр S5, T-10; AC-31).
+  - Конвейер **`markdown-it` → `DOMPurify`** по allowlist (DESIGN §8, PLAN §4.5, NFR-5):
+    `strong, em, code, pre, ul, ol, li, blockquote, h2, h3, h4, a, hr, table, thead, tbody, tr, th, td, p`.
+    Экспорт `ALLOWED_TAGS` (контракт) и `renderMarkdown(md: string): string`.
+  - `markdown-it` настроен `html: true` (сырой HTML проходит через санитайзер), `linkify: true`,
+    `breaks/typographer: false`. DOMPurify: `ALLOWED_TAGS` + `ALLOWED_ATTR` (`href,title,target,rel`),
+    `ALLOW_DATA_ATTR/ALLOW_ARIA_ATTR: false`, безопасные схемы URI по умолчанию DOMPurify.
+    `script`/`iframe`/`style` (+ их содержимое) и `on*`-обработчики **вырезаются**, `javascript:` в `href`
+    блокируется; элемент вне allowlist разворачивается — текст остаётся, элемент не рендерится
+    (`<b>текст</b>` → «текст», AC-46).
+  - **Сдвиг заголовков +1 с ограничением `h4`:** markdown `#` → `h2`, `##` → `h3`, `###`/`####` → `h4`.
+    В статье не появляется второй `h1` (DESIGN §5.4: `h1` — заголовок заметки) и не выходим за allowlist
+    (`h2–h4`).
+  - **Ссылки:** DOMPurify-хук `afterSanitizeAttributes` вешает `target="_blank"` +
+    `rel="noopener noreferrer"` на каждый `<a>` (защита от reverse tabnabbing).
+  - Пустой/нестроковый ввод → `''`; битый/незакрытый markdown не роняет рендер (E8/E9).
+- **Стили `.md`** — проверены в `web/src/styles/glass.css` (§T-06): уже полностью соответствуют
+  DESIGN §2.13/§3.5 — `max-width: 72ch`, `font-size: 16px`, `line-height: 1.7` (`--lh-relaxed`),
+  `h2..h4`, `pre` тёмный (`rgb(15 23 42 / .9)` + светлый текст), `code`-плашка, `table` с фоном,
+  `blockquote`, `hr`, списки, ссылки. **Правок не потребовалось** — контракт сохранён.
+- **Зависимости `web/`:** добавлены `markdown-it ^15.0.2`, `dompurify ^3.4.17` (+ devDep
+  `@types/markdown-it`).
+- **Тесты:** `web/src/__tests__/markdown.test.ts` (28 тестов).
+
+### Покрытие приёмки T-07 (тесты + e2e)
+
+| Критерий | Проверка |
+|---|---|
+| AC-45/NFR-5: `<script>`/`on*`/`javascript:`/`iframe`/`style` не исполняется, опасное вырезано | 6 тестов + e2e (script/iframe/style → `""`, `onerror`/`onclick` вырезаны, href `javascript:` не создаётся) |
+| AC-46: `<b>текст</b>` как текст → детерминированный рендер по allowlist | 3 теста + e2e (`<b>текст</b>` → `<p>текст</p>`, без `<b>`) |
+| E8/E9: битый/незакрытый markdown не ломает | 10 параметризованных кейсов + длинный/юникод-ввод |
+| AC-31: один рендерер даёт идентичный HTML для превью и просмотра; тест на совпадение | 2 теста (идентичность + идемпотентность) |
+| allowlist совпадает с DESIGN §8 | тест на точный состав `ALLOWED_TAGS` |
+| `<a>` → `rel="noopener noreferrer"` + `target="_blank"` | тест + e2e |
+| заголовки начинаются с `h2`, `h1` не выводится (DESIGN §5.4) | тест + e2e (`# H1` → `<h2>`) |
+
+### Как проверить
+
+```powershell
+cd web
+npm install
+npm test          # vitest (28 новых T-07 + 9 T-06)
+npm run build     # tsc --noEmit && vite build
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm test`: **Test Files 2 passed (2) · Tests 37 passed (37)** = 9 существующих (T-06) + 28 новых T-07.
+- `npm run build`: `tsc --noEmit` без ошибок; `vite build` → `dist/` (CSS 33.41 kB, JS 183.14 kB).
+  `markdown.ts` пока не импортируется страницами (подключат T-09/T-10) — в текущий бандл не входит,
+  но типизируется `tsc` и покрыт тестами.
+- **E2E (реальный модуль в DOM, jsdom через `vite-node`, временный скрипт удалён):** все кейсы как
+  пользователь:
+  - `# H1` → `<h2>H1</h2>`; `**bold**`/`*em*`/`` `code` ``/списки/цитата/таблица — корректно;
+  - `<script>window.__pwned=1</script>` → вырезан, `window.__pwned === undefined`;
+  - `<img onerror=…>`, `<iframe>`, `<style>` → `""` (вырезаны целиком);
+  - `[click](javascript:…)` → ссылка не создаётся; `<a href="javascript:…">` → `href` снят (`null`),
+    остаются безопасные `target`/`rel`;
+  - `<b>текст</b>` → `<p>текст</p>`;
+  - в каждом выводе: `script=0 iframe=0 style=0 onAttrs=0`; ссылки: `target="_blank" rel="noopener noreferrer"`.
+- **UI-проверка:** реальный браузер в песочнице недоступен (как в T-06); поведение санитайзера проверено
+  в DOM (jsdom) — эквивалент того, что видит пользователь, включая неисполнение опасного кода.
+
+### Артефакты
+
+`web/src/lib/markdown.ts` (новый), `web/src/__tests__/markdown.test.ts` (новый),
+`web/package.json` (+`package-lock.json`): `markdown-it`, `dompurify`, `@types/markdown-it`
+
+**Коммит:** `feat(T-07): markdown-рендерер (markdown-it + DOMPurify по allowlist) — единый для превью и просмотра`
+(хеш — `git log --oneline -1`)
+
+### Заметки для следующих задач
+
+- **T-09 (превью) / T-10 (просмотр):** импортировать `renderMarkdown` из `src/lib/markdown.ts` и вставлять
+  результат одним способом (напр. `<article className="md" dangerouslySetInnerHTML={{__html: renderMarkdown(bodyMarkdown)}} />`).
+  Тот же вызов на обоих экранах гарантирует AC-31 (тест на идентичность уже есть). Теги/заголовок заметки —
+  только текстовые узлы React (не через `renderMarkdown`), т.к. AC-47/NFR-14.
+- **Заголовки:** рендерер сам сдвигает markdown-заголовки к `h2+`, поэтому страница может держать
+  единственный `<h1>` (заголовок заметки) без доп. обработки.
+- **Стили:** класс `.md` (glass.css) уже покрывает вёрстку markdown — отдельные стили не нужны.
+  Блок `.md-raw` — демонстрационный (в продукте не используется).
+
