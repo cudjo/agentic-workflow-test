@@ -470,3 +470,139 @@ npm start         # :3000
 - **PowerShell 5.1 грабли (для QA e2e):** `.ps1` с юникодом читается как ANSI — сохранять с UTF-8 BOM;
   JSON-тела с кириллицей передавать в `curl.exe` через `--data-binary @file` (UTF-8 без BOM), иначе
   native-аргументы кодируются в ANSI; `Del`/`del` — алиас `Remove-Item`, не использовать как имя функции.
+
+---
+
+## T-06 — Фронтенд-фундамент + auth-экраны (login/register) + guard маршрутов — tasker-frontend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `react` (компоненты/хуки/состояние/a11y/тесты)
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **Инициализация `web/` (React 18 + TypeScript + Vite):** `package.json` (скрипты `dev`, `build`
+  = `tsc --noEmit && vite build`, `typecheck`, `test`/`test:watch`), `vite.config.ts` (dev 5173,
+  `strictPort`, proxy `/api` и `/health` → `http://localhost:3000`; блок `test` для vitest),
+  `tsconfig.json` (strict, `moduleResolution: bundler`, `jsx: react-jsx`, `verbatimModuleSyntax`,
+  `noUnusedLocals/Parameters`), `index.html` (RU, `#root`), `src/main.tsx`, `src/vite-env.d.ts`.
+- **Дизайн-токены и стили — прямой перенос `mockups/styles.css` с сохранением имён (DESIGN §0):**
+  - `src/styles/tokens.css` — раздел 1 (все `--c-*`, `--glass-*`, `--sh-*`, `--fs-*`, `--sp-*`, `--r-*`,
+    `--container`, `--topbar-h`) + token-override для `@supports not (backdrop-filter)` и
+    `prefers-contrast: more`;
+  - `src/styles/base.css` — mesh-фон (`body::before`, `meshDrift`), ресеты, `:focus-visible`,
+    `.sr-only`, `.skip-link`, утилиты (`.container`, `.stack*`, `.row*`, `.clamp-2/3`, `.page`);
+  - `src/styles/glass.css` — примитивы стекла, topbar/brand/userchip/avatar, кнопки, поля, алерты,
+    бейджи, теги/чипы, segmented, результаты grid/list, empty, скелетоны, диалог, `.auth*`, `.pw-meter`,
+    редактор/`.md`, адаптив (1024/900/640), fallback (`@supports not`), `prefers-contrast`,
+    `prefers-reduced-motion`. Проверено: собранный CSS содержит `--glass-bg-hi/…`, `--r-lg`, `--sp-4`,
+    `backdrop-filter`, `meshDrift`, `@supports not`, `prefers-reduced-motion` (contract сохранён).
+- **`src/api/client.ts` — fetch-обёртка (PLAN §3.3):** `credentials: 'include'`; на state-changing
+  (`POST/PATCH/PUT/DELETE`) добавляет `X-CSRF-Token` из читаемой cookie `XSRF-TOKEN`; `401` вне
+  auth-эндпоинтов вызывает `notifyUnauthorized()` → редирект на `/login` с сохранением целевого URL;
+  ошибки приводятся к `ApiError {status, code, message, field?, retryAfter?}` (единый контракт ошибок
+  PLAN §3.2 + `Retry-After`). `authApi`: `me`/`login`/`register`/`logout`.
+- **Auth-состояние:** `src/auth/AuthContext.tsx` — восстановление сессии `GET /api/auth/me` при
+  монтировании (`loading → authenticated|anonymous`), `login`/`register`/`logout`, глобальный обработчик
+  401 (сброс состояния + редирект с `reason: 'expired'`).
+- **Router + guard:** `src/App.tsx` (маршруты `/login`, `/register`, защищённый `/notes`, `/` → `/notes`,
+  `*` → NotFound), `src/router.tsx` (BrowserRouter + AuthProvider), `src/components/ProtectedRoute.tsx`
+  (loading → `role=status`; anonymous → `<Navigate to="/login" state={{from}}>`; после входа возврат на
+  сохранённый URL — AC-10).
+- **Компоненты:** `Topbar` (brand, `userchip` с email + кнопка «Выйти» → `POST /api/auth/logout` →
+  редирект `/login`, поток F), `SkipLink` (первый в tab-порядке), `AppLayout` (skip-link + Topbar + `<main>`),
+  `AuthLayout` (брендовая панель `S1/S2` + карточка), `Alert` (role=alert/status), инлайн-иконки.
+- **Страницы по DESIGN §2.11:** `pages/Login.tsx` — email/пароль, `novalidate`, клиентская валидация
+  (email-формат, пароль непустой), ошибки под полем (`aria-invalid`/`aria-describedby`/`role=alert`),
+  обобщённая ошибка «Неверные учётные данные» (AC-5), rate-limit баннер с обратным отсчётом `mm:ss` и
+  блокировкой формы (AC-6), баннер «Сессия истекла» (`reason=expired`, AC-9), авто-редирект на запрошенный
+  URL/`/notes` (AC-4). `pages/Register.tsx` — email/пароль/повтор, валидация ≥8 и совпадение, индикатор
+  силы пароля (3 сегмента + текстовая оценка — не только цветом), дубликат → «Этот email уже зарегистрирован»
+  + ошибка поля (AC-2), успех → авто-авторизация и `/notes` (AC-1). `pages/Notes.tsx` — каркас `S3`
+  (заголовок + empty-state; полный список — T-08), `pages/NotFound.tsx`.
+- **Тесты (vitest + @testing-library/react + user-event):** `src/__tests__/auth.test.tsx` (9 тестов).
+- **`init.ps1`/`init.sh` уже рассчитаны на `web/`** (шаг `npm install` + `npm run build`) — структура
+  и скрипты совпадают, правок скриптов не требовалось.
+
+### Покрытие приёмки T-06 (тесты + live-проверка)
+
+| Критерий | Проверка |
+|---|---|
+| Токены/классы совпадают с `mockups/styles.css` (DESIGN §0) | grep собранного CSS: `--glass-bg-hi/…`, `--r-lg`, `--sp-4`, `backdrop-filter`, `meshDrift`, media-условия |
+| Регистрация → авто-авторизация → `/notes` (AC-1) | тест «успешная регистрация ведёт на /notes» + live `POST /register → 201`, `me → 200` |
+| Дубликат email → «Этот email уже зарегистрирован» (AC-2) | тест + live `POST /register` (другой регистр) → `409 field=email` |
+| Вход успех → `/notes` (AC-4) | тест + live |
+| Неверные данные → обобщённая ошибка (AC-5) | тест «обобщённая ошибка» + live `401` «Неверные учётные данные» |
+| Неавторизованный доступ к `/notes` → `/login`, данные не видны; возврат после входа (AC-10) | 2 теста guard + live `GET /api/auth/me → 401` |
+| «Выйти» → инвалидация сессии → `/login` (AC-7/F) | тест (проверяет `X-CSRF-Token` в logout) + live `logout без CSRF → 403`, `с CSRF → 204`, `me → 401` |
+| Rate-limit баннер + disabled (AC-6) | тест «429 → баннер + disabled» |
+
+### Как проверить
+
+```powershell
+cd web
+npm install
+npm test          # vitest (9 тестов)
+npm run build     # tsc --noEmit && vite build
+npm run dev       # :5173, proxy /api -> :3000
+# в другом терминале:
+cd ..\server; npm start   # :3000
+# e2e через Vite-proxy (внимание: системный HTTP_PROXY 127.0.0.1:9989 даёт 502 → нужен --noproxy "*"):
+curl.exe --noproxy "*" -i -X POST http://localhost:5173/api/auth/register -H "Content-Type: application/json" `
+  --data-binary '{"email":"e2e.t06@example.com","password":"Secret12345"}' -c "$env:TEMP\ck.txt"
+curl.exe --noproxy "*" -i http://localhost:5173/api/auth/me -b "$env:TEMP\ck.txt"
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm test`: **Test Files 1 passed (1) · Tests 9 passed (9)** (guard-редирект; возврат на запрошенный URL;
+  вход успех; обобщённая ошибка; rate-limit 429 + disabled; регистрация успех; дубликат 409; клиентская
+  валидация без запроса; logout с CSRF-заголовком).
+- `npm run build`: `tsc --noEmit` без ошибок; `vite build` → `dist/` (`index.html` 0.47 kB, CSS 33.4 kB,
+  JS 183 kB).
+- **Реальный прогон end-to-end через Vite dev-proxy** (`server npm start` :3000 + `web npm run dev` :5173,
+  `curl.exe --noproxy "*"`):
+  1. `GET http://localhost:5173/` → `200 text/html`, `<div id="root">`, `<script src="/src/main.tsx">`;
+  2. `GET /notes` → `200` (SPA-fallback Vite);
+  3. `POST /api/auth/register` → `201 {"user":{"id":1,"email":"e2e.t06@example.com"}}` +
+     `Set-Cookie: session=…; Max-Age=604800; HttpOnly; SameSite=Lax` и `XSRF-TOKEN=…` (без HttpOnly);
+  4. `GET /api/auth/me` (cookie) → `200 {"user":{…}}`;
+  5. `POST /api/auth/logout` без `X-CSRF-Token` → `403` (подтверждает необходимость CSRF-заголовка, который
+     шлёт `api/client.ts`); с заголовком → `204` + очищенные cookie;
+  6. `GET /api/auth/me` после logout → `401`;
+  7. `POST /api/auth/login` (неверный пароль) → `401` «Неверные учётные данные»;
+  8. повторная регистрация того же email в другом регистре → `409` «Этот email уже зарегистрирован».
+- **UI-проверка:** реальный браузер в песочнице недоступен; рендер и сценарии проверены через
+  `@testing-library/react` (jsdom) по ролям/aria + реальный HTTP-обмен через Vite-прокси. Серверные логи
+  прогона не содержат паролей, cookie и токенов (NFR-9/A9).
+- **Грабли окружения:** системный `HTTP_PROXY=http://127.0.0.1:9989` перехватывает `curl.exe`/`localhost`
+  и отдаёт `502` — для локальных проверок использовать `curl.exe --noproxy "*"`.
+
+### Артефакты
+
+`web/package.json`, `web/package-lock.json`, `web/vite.config.ts`, `web/tsconfig.json`, `web/index.html`,
+`web/src/vite-env.d.ts`, `web/src/main.tsx`, `web/src/router.tsx`, `web/src/App.tsx`,
+`web/src/styles/{tokens,base,glass}.css`, `web/src/api/client.ts`, `web/src/lib/{format,validation}.ts`,
+`web/src/auth/AuthContext.tsx`,
+`web/src/components/{Topbar,AppLayout,AuthLayout,ProtectedRoute,Alert,SkipLink,icons}.tsx`,
+`web/src/pages/{Login,Register,Notes,NotFound}.tsx`, `web/src/setupTests.ts`,
+`web/src/__tests__/auth.test.tsx`
+
+**Коммит:** `feat(T-06): фронтенд-фундамент web/ (Vite+React+TS), токены/glass-стили, api/client, router+guard, Topbar, Login/Register`
+(хеш — `git log --oneline -1`)
+
+### Заметки для следующих задач
+
+- **T-07/T-08/T-09/T-10:** фундамент готов. Использовать `apiRequest<T>()`/`ApiError` из
+  `src/api/client.ts` (сам добавит CSRF и обработает 401); `useAuth()` даёт `user/status/login/register/logout`;
+  защищённые страницы добавляются вложенным `<Route>` под `<ProtectedRoute>` + `<AppLayout>` в `src/App.tsx`.
+  Стили/утилиты уже перенесены (`.results--grid/--list`, `.note-item*`, `.segmented`, `.search`, `.md`,
+  `.editor-*`, `.modal`, `.empty`, `.skeleton`, `.tag`, `.chip`) — классы совпадают с макетом.
+- **T-08:** `pages/Notes.tsx` сейчас — каркас (заголовок + empty-state без CTA); заменить на полный `S3`
+  (плитки/список, поиск `?q=`, чипы тегов `?tag=`, `localStorage notes.view`, DeleteDialog, скелетоны/ошибки).
+- **T-11 (a11y):** базовые aria-паттерны форм/guard/topbar уже есть (`aria-invalid`/`aria-describedby`/
+  `role=alert`, `skip-link`, `aria-busy` на submit); кросс-экранный пас — после T-08..T-10.
+- **T-12:** `web/dist` — цель прод-раздачи Fastify (SPA-fallback). `npm run build` в `web/` собирает
+  статику; в `init.ps1`/`init.sh` шаг сборки выполняется автоматически.
+- **Dev-грабли:** Vite `strictPort: true` (5173 занят → падать, а не менять порт); при проверках
+  `curl.exe`/браузерных проксях учитывать системный `HTTP_PROXY` (см. выше).
