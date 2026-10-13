@@ -77,3 +77,79 @@ npm run typecheck        # tsc --noEmit
 - `T-05`: `listTagsByUser` уже отдаёт `{name, count}`; `linkNoteTag` — `INSERT OR IGNORE`;
   осиротевшие теги после удаления заметки не чистятся (по PLAN — зона T-05).
 - Миграции только добавлять новыми файлами `NNN_*.sql` (+ парный `NNN_*.down.sql`) — `001_init.sql` не править.
+
+---
+
+## T-02 — Каркас бэкенда (Fastify + конфиг + health + ошибки) — tasker-backend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `typescript-node`
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **`server/src/config.ts`** — конфиг из env (PLAN §2, §4.7): `PORT` (дефолт 3000), `HOST` (127.0.0.1),
+  `DATABASE_PATH` (дефолт `server/data/app.db` из `db/client.ts`), `SESSION_SECRET`, `COOKIE_SECURE`
+  (дефолт `false` в dev, `true` в проде), `CORS_ORIGIN` (дефолт `http://localhost:5173`), `LOG_LEVEL`.
+  Валидация порта/булевых флагов; секрет `SESSION_SECRET` **не** имеет значения в коде — в проде
+  обязателен (иначе `MissingSecretError`, NFR-8), в dev/test генерируется эфемерный.
+- **`server/src/lib/errors.ts`** — единый контракт ошибок `{error:{code,message,field?}}` (PLAN §3.2):
+  класс `AppError(statusCode, code, message, {field?})`, `errorBody()`, `toHttpError()` (маппинг
+  неизвестных исключений; для 5xx — обобщённое `INTERNAL` без деталей/stack, NFR-9).
+- **`server/src/routes/health.ts`** — `GET /health → 200 {ok:true}` (без авторизации).
+- **`server/src/app.ts`** — `buildApp()`: Fastify-инстанс, декораторы `config`/`db`/`stmts`
+  (`openDatabase()` + `prepareStatements()` из T-01, закрытие соединения в `onClose`),
+  `@fastify/cors` (`origin=CORS_ORIGIN`, `credentials:true`, `allowedHeaders:[Content-Type,X-CSRF-Token]`),
+  `setNotFoundHandler` → 404 JSON, `setErrorHandler` → ответ в каноническом формате + серверный лог.
+  Логгер pino с `redact` (`REDACT_PATHS`: `password*`/`token`/`csrf*`/`cookie`/`authorization`/`set-cookie`,
+  censor `[redacted]`). `buildApp` не вызывает `listen`. При старте идемпотентно применяет миграции
+  (`migrateUp`, опция `autoMigrate`, дефолт `true`) — сервер поднимается на чистой БД.
+- **`server/src/index.ts`** — entrypoint: `loadConfig()` → `buildApp()` → `listen()` + graceful shutdown
+  по SIGINT/SIGTERM. `buildApp` импортирует `db/migrate.ts` (T-01) для автоприменения схемы.
+- **`server/package.json`** — зависимости `fastify ^5.6`, `@fastify/cors ^11.1`; скрипты `dev`
+  (`tsx watch src/index.ts`), `start`.
+- **Тесты:** `server/tests/app.test.ts` (12 тестов) — конфиг (дефолты/env/обязательный секрет в проде),
+  `/health`, CORS (простой + preflight с `X-CSRF-Token`), 404 JSON, `AppError` → статус/код/field,
+  500 без stack/деталей, редактирование лога, `errorBody`.
+
+### Как проверить
+
+```powershell
+cd server
+npm install
+npm run typecheck        # tsc --noEmit
+npm test                 # vitest
+npm start                # :3000 (или npm run dev — watch)
+# в другом терминале:
+curl.exe -i http://127.0.0.1:3000/health
+curl.exe -i http://127.0.0.1:3000/nope
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm run typecheck`: без ошибок (exit 0).
+- `npm test`: **Test Files 2 passed (2) · Tests 21 passed (21)** (12 новых T-02 + 9 из T-01).
+- Реальный запуск `npm start` (tsx, порт 3000) + `curl.exe`:
+  - `GET /health` → `200 {"ok":true}`;
+  - `GET /health` с `Origin: http://localhost:5173` → `Access-Control-Allow-Origin: http://localhost:5173`,
+    `Access-Control-Allow-Credentials: true`;
+  - preflight `OPTIONS /health` → `204` с `Access-Control-Allow-Headers: Content-Type, X-CSRF-Token`;
+  - `GET /nope` → `404 {"error":{"code":"NOT_FOUND","message":"Маршрут GET /nope не найден"}}`.
+- Лог сервера (pino) проверен: только `method/url/statusCode/responseTime`, без cookie, паролей,
+  токенов и тел запросов (NFR-9/A9); 500-й путь отдаёт `INTERNAL` без stack, полный `err` — только в лог.
+
+### Артефакты
+
+`server/src/config.ts`, `server/src/lib/errors.ts`, `server/src/routes/health.ts`, `server/src/app.ts`,
+`server/src/index.ts`, `server/tests/app.test.ts`, обновлён `server/package.json` (+`package-lock.json`)
+
+**Коммит:** `6d38555` — `feat(T-02): каркас Fastify (config, /health, CORS, единый формат ошибок, логгер без секретов)`
+
+### Заметки для следующих задач
+
+- **T-03+**: `app.decorate('db')` / `app.decorate('stmts')` / `app.decorate('config')` доступны в роутах;
+  ошибки бросать через `AppError(422|401|404|409|429, code, message, {field})` — формат ответа
+  централизован в `app.ts`. Cookie-флаги — из `app.config` (`cookieSecure`, `sessionSecret`).
+- CSRF-заголовок уже разрешён в CORS (`X-CSRF-Token`); при добавлении cookie-ответов
+  `Set-Cookie` автоматически редактируется логгером.
+- Тесты с `:memory:`-БД: `buildApp` сам применяет миграции; для изоляции передавайте свой `db`.
