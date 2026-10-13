@@ -20,7 +20,8 @@ import DOMPurify from 'dompurify';
 
 /**
  * Разрешённые к выводу теги (DESIGN §8). Всё остальное не рендерится как элемент.
- * Заголовки начинаются с `h2`: `h1` в статье — это заголовок заметки (DESIGN §5.4).
+ * Заголовки начинаются с `h2`: `h1` в статье — это заголовок заметки (DESIGN §5.4),
+ * уровень при этом нормализуется (минимальный заголовок заметки → `h2`).
  */
 export const ALLOWED_TAGS: readonly string[] = [
   'strong',
@@ -59,18 +60,28 @@ const md = new MarkdownIt({
 });
 
 /**
- * Сдвигает уровни заголовков на +1 (с ограничением сверху `h4`):
- * markdown `#` → `h2`, `##` → `h3`, `###`/`####` → `h4`.
- * Так внутри статьи не появляется второй `h1` (DESIGN §5.4, allowlist `h2–h4`).
+ * Нормализует уровни заголовков так, чтобы **минимальный** уровень в заметке
+ * стал `h2`: `#` → `h2`, `##` → `h3`, а заметка без `#`, начинающаяся с `##`,
+ * даёт `h2` (а не `h3`). Так внутри статьи не появляется второй `h1`, нет
+ * пропуска уровней (`h1` страницы → `h2` статьи — без «дыры»), а уровни выше
+ * `h4` прижимаются к `h4` (DESIGN §5.4, allowlist `h2–h4`).
  */
-md.core.ruler.push('heading_shift', (state) => {
+md.core.ruler.push('heading_normalize', (state) => {
+  const opening = state.tokens.filter((token) => token.type === 'heading_open');
+  if (opening.length === 0) return true;
+
+  const levels = opening
+    .map((token) => Number.parseInt(token.tag.slice(1), 10))
+    .filter((level) => Number.isFinite(level));
+  if (levels.length === 0) return true;
+
+  const shift = 2 - Math.min(...levels);
+
   for (const token of state.tokens) {
-    if (token.type === 'heading_open' || token.type === 'heading_close') {
-      const level = Number.parseInt(token.tag.slice(1), 10);
-      if (Number.isFinite(level)) {
-        token.tag = `h${Math.min(level + 1, MAX_HEADING_LEVEL)}`;
-      }
-    }
+    if (token.type !== 'heading_open' && token.type !== 'heading_close') continue;
+    const level = Number.parseInt(token.tag.slice(1), 10);
+    if (!Number.isFinite(level)) continue;
+    token.tag = `h${Math.max(2, Math.min(level + shift, MAX_HEADING_LEVEL))}`;
   }
   return true;
 });

@@ -99,7 +99,7 @@ export default function Note() {
         <div className="empty__art" aria-hidden="true">
           <ErrorIcon size={30} />
         </div>
-        <p className="empty__title">Заметка не найдена</p>
+        <h1 className="empty__title">Заметка не найдена</h1>
         <p className="empty__text">
           Возможно, она удалена или ссылка неверна. Чужая заметка выглядит так же, как несуществующая —
           мы не подтверждаем её существование.
@@ -117,10 +117,11 @@ export default function Note() {
         <Link className="small" to="/notes" style={{ textDecoration: 'none' }}>
           <span aria-hidden="true">←</span> Мои заметки
         </Link>
+        <h1>Не удалось загрузить заметку</h1>
         <Alert
           variant="error"
-          title="Не удалось загрузить заметку"
-          body="Сервер не ответил. Данные на сервере не потеряны — просто повторите попытку."
+          title="Сервер не ответил"
+          body="Данные на сервере не потеряны — просто повторите попытку."
         />
         <div className="row">
           <button
@@ -172,7 +173,9 @@ export default function Note() {
               </span>
               <span>{formatCharsCount(note.bodyMarkdown.length)}</span>
             </div>
-            <div className="row wrap" aria-label="Теги заметки">
+            {/* Теги — статичный текст (NFR-14), но с именем группы, чтобы
+                скринридер объявлял их вместе с заметкой. */}
+            <div className="row wrap" role="group" aria-label="Теги заметки">
               {note.tags.length > 0 ? (
                 note.tags.map((tag) => (
                   <span className="tag" key={tag}>

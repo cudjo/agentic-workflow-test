@@ -432,8 +432,8 @@ export default function Editor() {
             <section className="preview-pane" id="pane-preview" role="tabpanel" aria-labelledby="tab-preview">
               <div className="pane__header">
                 <span className="pane__title">Превью</span>
-                <span className="tiny dim" aria-label="Рендер проходит через санитайзер">
-                  🛡 через санитайзер
+                <span className="tiny dim">
+                  <span aria-hidden="true">🛡</span> через санитайзер
                 </span>
               </div>
               <div className="md-preview">

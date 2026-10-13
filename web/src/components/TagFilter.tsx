@@ -48,7 +48,9 @@ export function TagFilter({ tags, active, onToggle, onReset, hasQuery }: TagFilt
         ))}
       </div>
       <span className="topbar__spacer" />
-      <span className="tiny dim" data-filter-count>
+      {/* Статичная подпись состояния фильтров — не live-регион (DESIGN §2.6),
+          размер ≥13px и `--c-text-2` (правило контраста §5.1.3). */}
+      <span className="small muted" data-filter-count>
         {label}
       </span>
       <button

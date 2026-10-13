@@ -407,10 +407,6 @@
 .results--list .note-item__side { align-items: center; gap: var(--sp-3); flex: 0 0 auto; }
 .results--list .note-item__tags { justify-content: flex-end; max-width: 300px; flex-wrap: nowrap; overflow: hidden; }
 .results--list .note-item__actions { position: absolute; top: 50%; right: var(--sp-3); transform: translateY(-50%); }
-@media (max-width: 860px) {
-  .results--list .note-item__snippet { display: none; }
-  .results--list .note-item__tags { max-width: 140px; }
-}
 
 /* ---------- Empty state ------------------------------------------------ */
 .empty {
@@ -699,6 +695,13 @@ dialog.modal::backdrop {
   .results--list .note-item__tags { max-width: 180px; }
 }
 
+/* ≤860px (узкий планшет/крупный телефон): фрагмент в списке скрыт, теги уже.
+   Блок идёт ПОСЛЕ ≤1024px, иначе правило 180px из того блока перебивало бы 140px. */
+@media (max-width: 860px) {
+  .results--list .note-item__snippet { display: none; }
+  .results--list .note-item__tags { max-width: 140px; }
+}
+
 @media (max-width: 640px) {
   :root { --topbar-h: 58px; --glass-blur: 14px; }
   h1 { font-size: var(--fs-24); }
@@ -713,11 +716,21 @@ dialog.modal::backdrop {
   .results--list .note-item__tags { max-width: 100%; }
   .page { padding-block: var(--sp-4) var(--sp-10); }
   .toolbar { flex-direction: column; align-items: stretch; }
+  /* В колоночном toolbar `flex: 1 1 260px` работал бы по вертикали и растянул
+     поиск на 260px по высоте — возвращаем ему auto-basis и свою высоту. */
+  .toolbar .search { flex: 0 0 auto; width: 100%; }
   .toolbar .segmented { align-self: flex-start; }
+  /* Тулбары/фильтры в столбик (§3.10): подпись, чипы, «Сбросить» — на всю ширину. */
+  .filterbar { flex-direction: column; align-items: stretch; }
+  .filterbar .row.wrap { justify-content: flex-start; }
+  .filterbar .topbar__spacer { display: none; }
+  .filterbar [data-reset-filters] { align-self: flex-start; }
   .modal__actions { flex-direction: column-reverse; }
   .modal__actions .btn { width: 100%; }
   .userchip__name { display: none; }
   .auth__card { padding: var(--sp-4); }
+  /* Поле markdown на мобильном — 16px: иначе iOS зумит страницу при фокусе (§5.6). */
+  .md-input { font-size: var(--fs-16); }
   /* Toolbar на мобильном: компактнее, чтобы не съедал высоту панели */
   .pane__toolbar { padding: var(--sp-2); }
   .md-toolbar__group { padding: 2px; }

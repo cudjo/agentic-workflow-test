@@ -2,12 +2,14 @@
  * components/DeleteDialog.tsx — подтверждение удаления (DESIGN §2.8/§4.2.9).
  *
  * Нативный `<dialog>.showModal()`: `aria-labelledby` → заголовок, `aria-describedby`
- * → текст, фокус на безопасном «Отмена». Esc/клик по backdrop = отмена (AC-22).
+ * → текст, фокус на безопасном «Отмена»; Esc (и клик по backdrop) = отмена,
+ * фокус возвращается на инициатора (см. `useModalDialog`, NFR-15/§5.3).
  * Подтверждение не удаляет здесь — вызывает `onConfirm` (страница делает
  * оптимистичное удаление), при ошибке алерт показывает страница (E17).
  */
-import { useEffect, useId, useRef, type MouseEvent } from 'react';
+import { useId, useRef, type MouseEvent } from 'react';
 import { TrashIcon } from './icons';
+import { useModalDialog } from './useModalDialog';
 
 interface DeleteDialogProps {
   open: boolean;
@@ -28,19 +30,7 @@ export function DeleteDialog({
   const titleId = useId();
   const descId = useId();
 
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog || dialog.open) return;
-    if (typeof dialog.showModal === 'function') {
-      try {
-        dialog.showModal();
-        return;
-      } catch {
-        /* тестовое окружение без поддержки — падаем на открытый атрибут */
-      }
-    }
-    dialog.setAttribute('open', '');
-  }, [open]);
+  useModalDialog(open, ref, onCancel);
 
   if (!open) return null;
 

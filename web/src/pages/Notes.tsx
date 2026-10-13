@@ -204,17 +204,19 @@ export default function Notes() {
             onReset={resetFilters}
             hasQuery={hasQuery}
           />
-          {status === 'ready' ? (
-            <p
-              className="small muted"
-              id="result-status"
-              role="status"
-              aria-live="polite"
-              data-result-status
-            >
-              {formatNotesCount(notes.length)} — {filtersActive ? 'по фильтру' : 'все заметки'}
-            </p>
-          ) : null}
+          {/* Живой регион результатов существует всегда: на него ссылается
+              `aria-describedby` поля поиска (DESIGN §2.4/§2.6, NFR-16/20). */}
+          <p
+            className="small muted"
+            id="result-status"
+            role="status"
+            aria-live="polite"
+            data-result-status
+          >
+            {status === 'ready'
+              ? `${formatNotesCount(notes.length)} — ${filtersActive ? 'по фильтру' : 'все заметки'}`
+              : ''}
+          </p>
         </div>
       </section>
 

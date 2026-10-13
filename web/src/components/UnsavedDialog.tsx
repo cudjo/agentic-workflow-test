@@ -5,9 +5,11 @@
  *   * «Остаться в редакторе» (`autofocus`) — отмена ухода;
  *   * «Выйти без сохранения» — уход с потерей правок;
  *   * «Сохранить и выйти» — сохранение, затем уход.
- * Esc/клик по backdrop = «остаться» (безопасное действие).
+ * Esc/клик по backdrop = «остаться» (безопасное действие); при закрытии фокус
+ * возвращается на кнопку, открывшую диалог (`useModalDialog`, §5.3).
  */
-import { useEffect, useId, useRef, type MouseEvent } from 'react';
+import { useId, useRef, type MouseEvent } from 'react';
+import { useModalDialog } from './useModalDialog';
 
 export interface UnsavedDialogProps {
   open: boolean;
@@ -31,19 +33,7 @@ export function UnsavedDialog({
   const titleId = useId();
   const descId = useId();
 
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog || dialog.open) return;
-    if (typeof dialog.showModal === 'function') {
-      try {
-        dialog.showModal();
-        return;
-      } catch {
-        /* тестовое окружение без поддержки — открытый атрибут */
-      }
-    }
-    dialog.setAttribute('open', '');
-  }, [open]);
+  useModalDialog(open, ref, onStay);
 
   if (!open) return null;
 
