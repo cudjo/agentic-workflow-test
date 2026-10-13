@@ -5,6 +5,27 @@
  * строки текста, чипы и «дата». Контейнер `aria-hidden`, состояние объявляется
  * скрытым `role="status"` «Загрузка заметок…» — спиннеров на весь экран нет.
  */
+export function NoteArticleSkeleton() {
+  return (
+    <div data-note-skeleton>
+      <p className="sr-only" role="status">
+        Загрузка заметки…
+      </p>
+      <div className="stack" aria-hidden="true" style={{ gap: 'var(--sp-4)' }}>
+        <span className="skeleton skeleton--title" style={{ width: '58%', height: 26 }} />
+        <span className="skeleton skeleton--line" style={{ width: '42%' }} />
+        <div className="stack" style={{ gap: 'var(--sp-3)', marginTop: 'var(--sp-4)' }}>
+          <span className="skeleton skeleton--line" />
+          <span className="skeleton skeleton--line" style={{ width: '92%' }} />
+          <span className="skeleton skeleton--line" style={{ width: '84%' }} />
+          <span className="skeleton skeleton--line" style={{ width: '76%' }} />
+          <span className="skeleton skeleton--line" style={{ width: '88%' }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function NoteListSkeleton() {
   return (
     <div data-results-wrap>

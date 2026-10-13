@@ -144,6 +144,15 @@ export function EyeIcon({ size = 16, ...rest }: IconProps) {
   );
 }
 
+export function ClockIcon({ size = 14, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} {...rest}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
 export function SaveIcon({ size = 16, ...rest }: IconProps) {
   return (
     <svg {...base(size)} {...rest}>
