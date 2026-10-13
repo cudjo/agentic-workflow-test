@@ -1,15 +1,17 @@
 extends GutTest
 
 const CONFIG_PATH: String = "user://settings.cfg"
-# Автозагружаемый InputManager не объявляет class_name (конфликт "hides an autoload
-# singleton"), поэтому ссылка на скрипт — через preload.
 const InputManagerScript := preload("res://autoload/InputManager.gd")
 
-var _manager: InputManagerScript
+var _manager: Node
 var _original_events: Dictionary = {}
 
 
 func before_all() -> void:
+	_cleanup_config()
+	# Reset the autoload singleton to project defaults before capturing originals.
+	InputManager.reset_to_defaults()
+
 	_original_events.clear()
 	for action in InputMap.get_actions():
 		_original_events[action] = InputMap.action_get_events(action).duplicate()
@@ -44,7 +46,8 @@ func _cleanup_config() -> void:
 func test_remap_persists_after_reload() -> void:
 	var new_jump := InputEventKey.new()
 	new_jump.keycode = KEY_F
-	_manager.remap_action("jump", [new_jump])
+	var events: Array[InputEvent] = [new_jump]
+	_manager.remap_action("jump", events)
 
 	assert_eq(InputMap.action_get_events("jump").size(), 1, "remap should replace jump events")
 
@@ -62,7 +65,8 @@ func test_remap_persists_after_reload() -> void:
 func test_reset_restores_defaults() -> void:
 	var new_jump := InputEventKey.new()
 	new_jump.keycode = KEY_F
-	_manager.remap_action("jump", [new_jump])
+	var events: Array[InputEvent] = [new_jump]
+	_manager.remap_action("jump", events)
 	assert_eq(InputMap.action_get_events("jump").size(), 1)
 
 	_manager.reset_to_defaults()
@@ -88,11 +92,12 @@ func test_just_pressed_or_coyote_consumes_window() -> void:
 
 
 func test_device_changed_keyboard_event() -> void:
+	_manager.active_device = InputManagerScript.DEVICE_GENERIC
 	watch_signals(_manager)
 	var key_event := InputEventKey.new()
 	key_event.keycode = KEY_A
 	_manager._input(key_event)
-	assert_signal_emitted_with_parameters(_manager, "device_changed", [InputManager.DEVICE_KEYBOARD, -1])
+	assert_signal_emitted_with_parameters(_manager, "device_changed", [InputManagerScript.DEVICE_KEYBOARD, -1])
 
 
 func test_device_changed_gamepad_event() -> void:
@@ -101,4 +106,4 @@ func test_device_changed_gamepad_event() -> void:
 	pad_event.button_index = JOY_BUTTON_A
 	_manager._input(pad_event)
 	assert_signal_emitted(_manager, "device_changed")
-	assert_eq(_manager.active_device, InputManager.DEVICE_GENERIC)
+	assert_eq(_manager.active_device, InputManagerScript.DEVICE_GENERIC)
