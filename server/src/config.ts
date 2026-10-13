@@ -1,13 +1,13 @@
 /**
- * config.ts — конфигурация сервера из переменных окружения (PLAN §2, §4.7).
+ * config.ts — конфигурация сервера из переменных окружения (PLAN §2, §4).
  *
  * Правила:
- *   * секреты приходят только из env (NFR-8) — в коде нет значений по умолчанию для `SESSION_SECRET`;
- *   * в dev/test при отсутствии секрета генерируется эфемерный (сервер поднимается без настройки),
- *     в проде отсутствие секрета — фатальная ошибка;
+ *   * секреты приходят только из env (NFR-8) — в коде нет значений по умолчанию для секретов;
+ *     `SESSION_SECRET` опционален и не влияет на безопасность (см. ниже);
+ *   * `Cookie: Secure` включается по умолчанию в production (NFR-10), в dev/test — выкл; явный
+ *     `COOKIE_SECURE` перекрывает дефолт;
  *   * все значения типизированы и валидируются на границе (порт, булевы флаги).
  */
-import { randomBytes } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_DB_PATH } from './db/client.js';
@@ -23,7 +23,17 @@ export interface Config {
   host: string;
   port: number;
   databasePath: string;
-  sessionSecret: string;
+  /**
+   * Опциональный секрет окружения (PLAN §4.7). **Не** используется для целостности сессии:
+   * токен сессии — opaque (`randomBytes(32)`), в БД хранится только его SHA-256, подпись не нужна;
+   * CSRF — сверка `csrf_token` через `timingSafeEqual`. Значение переносится в конфиг как есть
+   * (совместимость с деплой-окружениями), отсутствие — не ошибка ни в одном режиме.
+   */
+  sessionSecret?: string;
+  /**
+   * Флаг `Secure` для cookie сессии. Дефолт: `NODE_ENV === 'production'` (NFR-10),
+   * явный `COOKIE_SECURE` перекрывает (нужен для локального прод-HTTP запуска).
+   */
   cookieSecure: boolean;
   corsOrigin: string;
   logLevel: string;
@@ -38,14 +48,6 @@ export const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
 export const DEFAULT_LOG_LEVEL = 'info';
 /** Собранный фронтенд по умолчанию: `web/dist` относительно корня репозитория (T-12). */
 export const DEFAULT_STATIC_DIR = resolve(MODULE_DIR, '..', '..', 'web', 'dist');
-
-/** Ошибка конфигурации: секрет обязателен и не задан (NFR-8). */
-export class MissingSecretError extends Error {
-  constructor(name: string) {
-    super(`Переменная окружения ${name} обязательна в production (NFR-8)`);
-    this.name = 'MissingSecretError';
-  }
-}
 
 function parseNodeEnv(raw: string | undefined): NodeEnv {
   if (raw === 'production' || raw === 'test') return raw;
@@ -72,16 +74,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const nodeEnv = parseNodeEnv(env.NODE_ENV);
   const isProduction = nodeEnv === 'production';
 
-  const providedSecret = env.SESSION_SECRET?.trim();
-  let sessionSecret: string;
-  if (providedSecret) {
-    sessionSecret = providedSecret;
-  } else if (isProduction) {
-    throw new MissingSecretError('SESSION_SECRET');
-  } else {
-    // Dev/test: эфемерный секрет — сервер поднимается без .env; при перезапуске сессии инвалидируются.
-    sessionSecret = randomBytes(32).toString('base64url');
-  }
+  // Секрет опционален во всех режимах: сессии — opaque token + SHA-256 в БД (подпись не нужна),
+  // CSRF — сверка csrf_token через timingSafeEqual (PLAN §4.7).
+  const sessionSecret = env.SESSION_SECRET?.trim() || undefined;
 
   const databasePath = env.DATABASE_PATH?.trim() || DEFAULT_DB_PATH;
 
@@ -92,6 +87,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: parsePort(env.PORT),
     databasePath,
     sessionSecret,
+    // Безопасный дефолт (NFR-10): в проде cookie только по HTTPS, в dev/test — по HTTP.
     cookieSecure: parseBool(env.COOKIE_SECURE, isProduction),
     corsOrigin: env.CORS_ORIGIN?.trim() || DEFAULT_CORS_ORIGIN,
     logLevel: env.LOG_LEVEL?.trim() || DEFAULT_LOG_LEVEL,

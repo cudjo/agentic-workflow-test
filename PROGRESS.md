@@ -1272,4 +1272,52 @@ node server/scripts/e2e-smoke.mjs     # NFR-28: 28 проверок
   `SESSION_SECRET` — только из окружения (в образ/репозиторий не попадает); том `/data` — для SQLite.
 - **Прод-гейт (человек):** любой деплой в прод — ручной апрув; агентам доступно тест-окружение.
 
+---
+
+## Fixpack по ревью Guardian (REVIEW.md, замечания #1, #2) — tasker-backend
+
+**Дата:** 2026-10-13
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **#1 «`SESSION_SECRET` обязателен в prod, но не используется» → выбран вариант (a): обязательность снята.**
+  - `server/src/config.ts`: `Config.sessionSecret` стал опциональным (`sessionSecret?: string`), значение —
+    простой passthrough из env (если задано), что задокументировано в JSDoc поля (сессии — opaque
+    `randomBytes(32)` + SHA-256 в БД, подпись не нужна; CSRF — `timingSafeEqual`). Удалены генерация
+    эфемерного секрета и `MissingSecretError` (в коде больше нет висячего класса/`throw`) — «ложное
+    ожидание» убрано полностью, формат сессий и публичное поведение API не менялись.
+  - Тесты: `server/tests/app.test.ts` — «падает без `SESSION_SECRET` в проде» заменён на
+    «не требует `SESSION_SECRET` в проде» (prod-конфиг грузится, `sessionSecret === undefined`);
+    в тесте дефолтов `sessionSecret` проверяется как `undefined`. Импорт `MissingSecretError` убран.
+  - Docs: `PLAN.md` §4 (пп. 2, 7), `.env.example` — уточнено, что секрет не участвует в целостности
+    сессии и необязателен в любом режиме.
+- **#2 «`.env.example`: `NODE_ENV=production` + `COOKIE_SECURE=false`» → прод-дефолт безопасен (NFR-10).**
+  - `.env.example`: `COOKIE_SECURE=true`; комментарии переписаны (дефолт в коде: `true` в production,
+    `false` в dev/test; для локального запуска прод-сборки по HTTP нужно явно `false`), убрано устаревшее
+    «ОБЯЗАТЕЛЕН в production» про `SESSION_SECRET`.
+  - `server/src/config.ts`: дефолт `cookieSecure = parseBool(env.COOKIE_SECURE, isProduction)` задокументирован
+    как безопасный прод-дефолт; явный `COOKIE_SECURE` по-прежнему перекрывает (нужно для локального HTTP).
+  - Тест добавлен: prod без `COOKIE_SECURE` → `cookieSecure === true`; test/development → `false`;
+    явный `COOKIE_SECURE=false` в prod → `false`.
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm run typecheck` (server): без ошибок.
+- `npm test` (server): **Test Files 6 passed (6) · Tests 122 passed (122)** (было 121: −1 устаревший
+  про обязательный секрет, +2 новых покрытия правок).
+- **E2E по реальному HTTP** (прод-режим, `NODE_ENV=production`, `PORT=3393`, tmp `DATABASE_PATH`,
+  **без** `SESSION_SECRET` и **без** `COOKIE_SECURE`): сервер поднялся (`Server listening`, `spaEnabled: true`)
+  — фатальной ошибки нет; `POST /api/auth/register` → `201 Created` +
+  `Set-Cookie: session=…; HttpOnly; **Secure**; SameSite=Lax` и `XSRF-TOKEN=…; **Secure**`;
+  `GET /health` → `200 {"ok":true}`.
+- Остаточное (вне scope правки, не блокирует): `docker-compose.yml` всё ещё требует `SESSION_SECRET`
+  через `:?` — это лишь обязательная передача переменной в контейнер, конфиг её игнорирует.
+
+### Артефакты
+
+`server/src/config.ts`, `server/tests/app.test.ts`, `.env.example`, `PLAN.md` (§4), `PROGRESS.md`
+
+**Коммит:** `fix(review): SESSION_SECRET необязателен (opaque-сессии) + безопасный Cookie Secure по умолчанию в prod`
+
 

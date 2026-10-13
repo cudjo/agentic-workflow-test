@@ -12,12 +12,7 @@ import { Writable } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp, REDACT_PATHS } from '../src/app.js';
-import {
-  DEFAULT_CORS_ORIGIN,
-  DEFAULT_PORT,
-  loadConfig,
-  MissingSecretError,
-} from '../src/config.js';
+import { DEFAULT_CORS_ORIGIN, DEFAULT_PORT, loadConfig } from '../src/config.js';
 import { openDatabase } from '../src/db/client.js';
 import { AppError, errorBody } from '../src/lib/errors.js';
 
@@ -38,13 +33,13 @@ afterEach(async () => {
 });
 
 describe('config', () => {
-  it('применяет значения по умолчанию (PORT=3000, CORS=dev-ориджин, COOKIE_SECURE=false)', () => {
+  it('применяет значения по умолчанию (PORT=3000, CORS=dev-ориджин, COOKIE_SECURE=false в dev)', () => {
     const config = loadConfig({ NODE_ENV: 'development' });
     expect(config.port).toBe(DEFAULT_PORT);
     expect(config.corsOrigin).toBe(DEFAULT_CORS_ORIGIN);
     expect(config.cookieSecure).toBe(false);
     expect(config.isProduction).toBe(false);
-    expect(config.sessionSecret.length).toBeGreaterThan(0);
+    expect(config.sessionSecret).toBeUndefined();
   });
 
   it('читает переопределения из env', () => {
@@ -63,8 +58,17 @@ describe('config', () => {
     expect(config.databasePath).toBe(':memory:');
   });
 
-  it('падает без SESSION_SECRET в проде (NFR-8)', () => {
-    expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow(MissingSecretError);
+  it('не требует SESSION_SECRET в проде: целостность сессии на opaque-токене (ревью #1)', () => {
+    const config = loadConfig({ NODE_ENV: 'production' });
+    expect(config.isProduction).toBe(true);
+    expect(config.sessionSecret).toBeUndefined();
+  });
+
+  it('в проде по умолчанию включает Secure-cookie (NFR-10, ревью #2)', () => {
+    expect(loadConfig({ NODE_ENV: 'production' }).cookieSecure).toBe(true);
+    expect(loadConfig({ NODE_ENV: 'test' }).cookieSecure).toBe(false);
+    // Явное значение из env перекрывает дефолт (локальный prod-HTTP запуск).
+    expect(loadConfig({ NODE_ENV: 'production', COOKIE_SECURE: 'false' }).cookieSecure).toBe(false);
   });
 });
 

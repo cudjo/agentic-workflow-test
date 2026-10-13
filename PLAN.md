@@ -166,12 +166,12 @@ CREATE INDEX idx_note_tags_tag ON note_tags(tag_id);
 ## 4. Модель безопасности
 
 1. **Пароли** — bcrypt (cost 10) через `bcryptjs`; в ответах/логах никогда (NFR-9, A9).
-2. **Сессии** — cookie `session` = opaque token (`crypto.randomBytes(32).base64url`), в БД — SHA-256 токена; флаги `HttpOnly`, `Secure` (когда `COOKIE_SECURE=true`, в локальном HTTP — выкл), `SameSite=Lax`, `Path=/`, срок 7 суток со скользящим продлением (Q-A3/Q-A4). Logout удаляет запись сессии.
+2. **Сессии** — cookie `session` = opaque token (`crypto.randomBytes(32).base64url`), в БД — SHA-256 токена (токен не подписывается — секрет окружения не требуется, §4.7); флаги `HttpOnly`, `Secure` (когда `COOKIE_SECURE=true`, дефолт в prod; в локальном HTTP — выкл), `SameSite=Lax`, `Path=/`, срок 7 суток со скользящим продлением (Q-A3/Q-A4). Logout удаляет запись сессии.
 3. **CSRF** (NFR-11, AC-15): double-submit — сервер выдаёт `csrf_token` в сессии и продублированный читаемый cookie `XSRF-TOKEN` (`SameSite=Lax`); клиент шлёт `X-CSRF-Token` на `POST/PATCH/DELETE`; middleware сверяет равенство с токеном сессии. Плюс `SameSite=Lax` как первый рубеж.
 4. **Ownership** (NFR-6, AC-11…14): каждая операция с заметкой фильтруется `WHERE user_id = :uid`; чужой/несуществующий ресурс → `404` (не раскрывая существование, Q-A7).
 5. **XSS** (NFR-5, AC-45…47): raw markdown хранится как текст (на сервере не рендерится в HTML); рендер только на клиенте через `markdown-it` → `DOMPurify` по allowlist (§8: `strong,em,code,pre,ul,ol,li,blockquote,h2–h4,a,hr,table,thead,tbody,tr,th,td,p`; `script/iframe/style/on*/javascript:` вырезаются, элемент вне allowlist — как текст). Один рендерер `.md` для превью (S4) и просмотра (S5) — AC-31. Теги/заголовки — только текстовые узлы (без `innerHTML`, AC-47).
 6. **Rate limiting** (NFR-12, AC-6): in-memory лимитер на вход/регистрацию (ключ `ip+email`, ~5 неудач / 15 мин → 429 с `retryAfter`). Допустимо для однопроцессного деплоя; при горизонтальном масштабировании — внешнее хранилище (риск §5).
-7. **Секреты** (NFR-8): `SESSION_SECRET` и т.п. — только env (`.env`, в `.gitignore`); в репозитории — `.env.example`.
+7. **Секреты** (NFR-8): значения — только env (`.env`, в `.gitignore`); в репозитории — `.env.example`. `SESSION_SECRET` **необязателен**: сессии — opaque-токен без подписи (п. 2), CSRF — сверка `csrf_token` (п. 3), поэтому секрет для целостности сессии не нужен; если задан в окружении — просто переносится в конфиг (совместимость с деплоем).
 
 ---
 
