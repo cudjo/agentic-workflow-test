@@ -20,6 +20,7 @@ import { attachSession } from './middleware/auth.js';
 import { csrfGuard } from './middleware/csrf.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { notesRoutes } from './routes/notes.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -133,6 +134,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   await app.register(healthRoutes);
   await app.register(authRoutes);
+  // Заметки: CRUD + ownership (T-04); требуют сессию (`requireAuth` внутри роутера).
+  await app.register(notesRoutes);
 
   return app;
 }

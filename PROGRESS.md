@@ -248,3 +248,106 @@ npm start         # :3000 (DATABASE_PATH по умолчанию server/data/app
   (PLAN R4, документируется в T-12).
 - **Валидация тела** реализована в `lib/validation.ts` (не JSON-schema): даёт стабильный `422` с `field`,
   соответствующий контракту PLAN §3.2.
+
+---
+
+## T-04 — CRUD заметок с ownership-проверкой — tasker-backend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `typescript-node`
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **`server/src/lib/notes.ts`** — доменные правила заметок (без HTTP):
+  `Note`/`NoteRow` (контракт PLAN §3.2), `toNote()`, лимиты `MAX_TITLE_LENGTH=200` /
+  `MAX_BODY_LENGTH=100000`, `EMPTY_NOTE_MESSAGE`, `NOTE_NOT_FOUND_MESSAGE`, `noteNotFound()`,
+  `parseNoteInput()` (POST), `parseNotePatch()` (PATCH, только переданные поля),
+  `parseTags()` (тримминг, отбрасывание пустых, дедуп без учёта регистра с сохранением первого
+  написания — Q-T2), `assertNoteNotEmpty()` (AC-17/E1).
+  Семантика `title`: `undefined`/`null`/пробельная строка → `null` («заголовка нет»);
+  отсутствие текста → `''` (колонка `body_markdown NOT NULL`).
+- **`server/src/routes/notes.ts`** — HTTP-слой (`preHandler: requireAuth` на всех роутах):
+  `GET /api/notes` → `200 {items, total}` (порядок `updated_at DESC`, AC-13/Q-S3),
+  `POST /api/notes` → `201 Note`, `GET /api/notes/:id` → `200 Note`/`404`,
+  `PATCH /api/notes/:id` (частично) → `200 Note`, `DELETE /api/notes/:id` → `204`.
+  **Ownership:** каждый доступ к заметке идёт через `getNoteById`/`deleteNote` с
+  `WHERE user_id = :uid`; чужой и несуществующий id неразличимы (404 `NOT_FOUND`,
+  сообщение «Заметка не найдена», Q-A7/AC-11..14). Нечисловой/неположительный `:id` → тоже 404.
+  **Транзакции (NFR-26):** создание/обновление (вместе со связями тегов) и удаление — в `transaction()`.
+  **Теги (T-04 база):** `tags[]` принимаются, нормализуются и сохраняются в `note_tags`
+  (переиспользование тега пользователя по `name_norm`), в ответе — массив строк исходного написания.
+  Лимиты (≤20 шт., ≤50 символов), `GET /api/tags`, поиск/фильтр и чистка осиротевших тегов — **T-05**.
+- **`server/src/app.ts`** — `notesRoutes` зарегистрирован после `authRoutes` (порядок обработчиков
+  ошибок/404 не менялся — кастомный формат наследуется, см. грабли T-03).
+- **Тесты:** `server/tests/notes.test.ts` (30 тестов, `app.inject`, tmp-файл БД на каждый тест).
+
+### Решения по неоднозначностям (зафиксировано для QA/T-05)
+
+| Вопрос | Решение |
+|---|---|
+| `tags` в T-04 | **Хранятся уже сейчас** (нормализация + `note_tags`), т.к. контракт `Note.tags` обязателен;
+  лимиты/`/api/tags`/поиск — T-05. Осиротевшие теги после снятия/удаления не чистятся (зона T-05). |
+| PATCH с пустым телом | `422 VALIDATION_ERROR` «Укажите хотя бы одно поле для обновления» (явная ошибка вместо
+  молчаливого no-op). `tags: []` — валидное поле (очистка тегов), не пустое тело. |
+| PATCH, делающий заметку пустой | `422` (`title` → `null` + текст пустой) — то же правило, что и при создании (AC-17/E1). |
+| `updatedAt` при PATCH только тегов | Обновляется (тег — часть заметки), заметка поднимается наверх списка. |
+| Ответ списка | `{items, total}` по PLAN §3.2 (`total` = число своих заметок). |
+| Ошибка не найденной заметки | Одно сообщение и код для чужой/несуществующей/битой `:id` (без раскрытия, Q-A7). |
+
+### Как проверить
+
+```powershell
+cd server
+npm test          # vitest (все файлы)
+npm run typecheck # tsc --noEmit
+npm start         # :3000
+# реальный прогон: register → create → list → patch → delete → me (curl, cookie-jar + X-CSRF-Token)
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm test`: **Test Files 4 passed (4) · Tests 81 passed (81)** = 51 существующих (T-01..T-03) + 30 новых T-04.
+- `npm run typecheck`: без ошибок (exit 0).
+- **Реальный прогон** (`npm start`, `NODE_ENV=production`, порт 3111, `curl.exe`, cookie-jar, два пользователя):
+  1. `POST /api/auth/register` alice → `201`; `GET /api/auth/me` → `200`;
+  2. `POST /api/notes` `{title, bodyMarkdown, tags:[" Work ","work","Home"]}` + `X-CSRF-Token` →
+     `201 {"id":1,...,"tags":["Home","Work"],...}` (дедуп `Work`/`work` — сохранилось первое написание);
+  3. `POST /api/notes` без `X-CSRF-Token` → `403 FORBIDDEN field=x-csrf-token`;
+  4. пустая заметка `{"title":"   "}` → `422 VALIDATION_ERROR` с сообщением;
+  5. `GET /api/notes` → `200 {items:[note], total:1}`;
+  6. `PATCH /api/notes/1 {title, tags:["home"]}` → `200`, `updatedAt` вырос, `tags:["Home"]`;
+  7. bob: `GET`/`PATCH`/`DELETE /api/notes/1` → все `404 NOT_FOUND`; список bob `{items:[],total:0}`;
+     заметка alice после атак не изменилась (`200`, тот же `updatedAt`);
+  8. **рестарт сервера** → `GET /api/notes` alice → `200`, `total:2` (обе заметки, включая PATCH-правку) — NFR-25;
+  9. `DELETE /api/notes/1` → `204` без тела, затем `GET` → `404`;
+  10. `POST /api/auth/logout` → `204`, `GET /api/auth/me` → `401`;
+  11. юникод round-trip: заметка «Привет мир» с тегами `Робота`/`работа` → ответ
+      `{"title":"Привет мир","bodyMarkdown":"**жирный** текст","tags":["Home","Работа"]}` — данные целы,
+      дедуп регистронезависим с сохранением первого написания (Q-T2);
+  12. **логи:** паролей, cookie, CSRF/сессионных токенов и тел запросов нет (NFR-9/A9).
+- Дефектов в процессе не найдено; правок вне T-04 (кроме регистрации роутера) нет.
+
+### Артефакты
+
+`server/src/lib/notes.ts`, `server/src/routes/notes.ts`, `server/tests/notes.test.ts`,
+`server/src/app.ts` (+2 строки: импорт и `register(notesRoutes)`)
+
+**Коммит:** `feat(T-04): CRUD заметок с ownership-проверкой (404 на чужой id, транзакции, теги базово)`
+(хеш — `git log --oneline -1`)
+
+### Заметки для следующих задач
+
+- **T-05:** statements уже готовы: `getTagByUserAndNorm` / `insertTag` / `linkNoteTag` /
+  `unlinkNoteTagsByNote` / `getTagsForNote` / `listTagsByUser`; в `routes/notes.ts` —
+  готовый `replaceNoteTags(app, userId, noteId, names)` (замена набора в транзакции) и
+  `parseTags()` в `lib/notes.ts` — лимиты (≤20/≤50) и `GET /api/tags` добавляются туда/в новый
+  `routes/tags.ts`. `name_norm` считается в JS (`toLowerCase()`), т.к. SQLite `lower()` не знает
+  кириллицу. Поиск (`?q=&tag=`) — `GET /api/notes` в этом же файле, контракт `{items, total}` сохранён.
+- **T-08/T-09:** PATCH возвращает полный `Note` (фронт может обновлять состояние без доп. GET);
+  `tags: []` — валидный способ очистить теги; пустой PATCH → `422` (не отправлять пустое тело).
+- Типизация `node:sqlite`: `stmt.all()` возвращает `Record<string, SQLOutputValue>[]`, поэтому
+  приведение к строковым типам требует `as unknown as T[]` (иначе `tsc` падает) — см. `noteTags()`,
+  `listNotesByUser`.
+- Предупреждение по окружению: `curl.exe -o $null` в PowerShell 5.1 создаёт файл с именем `--max-time`
+  (пустой аргумент); в скриптах использовать `-o NUL`.
