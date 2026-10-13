@@ -16,6 +16,7 @@ import { loadConfig, type Config } from './config.js';
 import { openDatabase, prepareStatements, type Statements } from './db/client.js';
 import { migrateUp } from './db/migrate.js';
 import { errorBody, toHttpError } from './lib/errors.js';
+import { isSpaNavigation, registerStatic, resolveSpaIndex } from './lib/spa.js';
 import { attachSession } from './middleware/auth.js';
 import { csrfGuard } from './middleware/csrf.js';
 import { authRoutes } from './routes/auth.js';
@@ -70,10 +71,17 @@ export interface BuildAppOptions {
    * По умолчанию `true` — сервер поднимается на чистой БД; `false` — схема управляется извне.
    */
   autoMigrate?: boolean;
+  /**
+   * Каталог собранного фронтенда (`web/dist`), который раздаёт Fastify (T-12).
+   * По умолчанию — `config.staticDir`. `null` — не раздавать SPA (API-only: тесты/дев).
+   * SPA-fallback активируется только при наличии `index.html` в каталоге.
+   */
+  staticDir?: string | null;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const config = options.config ?? loadConfig();
+  const staticDir = options.staticDir === undefined ? config.staticDir : options.staticDir;
 
   const logger =
     options.logger === false
@@ -105,7 +113,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // обработчики, и дочерний контекст (`register(authRoutes)`) наследует их только если они
   // установлены до его создания. Иначе ошибки из роутов/хуков уходят в дефолтный формат
   // Fastify (`{statusCode,error,message}`), ломая контракт `{error:{code,message,field?}}`.
+  // SPA-fallback (T-12): навигационные GET вне /api и /health получают index.html, если сборка есть.
+  const spaIndex = resolveSpaIndex(staticDir);
   app.setNotFoundHandler((request, reply) => {
+    if (spaIndex && isSpaNavigation(request)) {
+      return reply.type('text/html; charset=utf-8').sendFile('index.html');
+    }
     reply.code(404).send(errorBody('NOT_FOUND', `Маршрут ${request.method} ${request.url} не найден`));
   });
 
@@ -127,6 +140,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
   });
+
+  // SPA: собранная статика `web/dist` в том же процессе (T-12). Пропускается, если сборки нет.
+  const spaEnabled = await registerStatic(app, staticDir);
+  app.log.info({ staticDir, spaEnabled }, 'раздача собранного фронтенда (SPA)');
 
   // Контекст сессии и CSRF-защита — до роутов. Порядок важен: attachSession заполняет
   // `request.session`, который читает csrfGuard (PLAN §4.2/§4.3).

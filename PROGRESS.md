@@ -1161,4 +1161,115 @@ cd ..\web;    npm run dev      # :5173 → proxy /api → :3000
 - **Мобильная типографика:** `.md-input` — 14px по §2.13, но 16px на ≤640px (антизум iOS, §5.6);
   при снижении альфы стекла или смене размеров инпутов — повторный замер контраста (DESIGN §5.1.5).
 
+---
+
+## T-12 — Прод-сборка и однопроцессный деплой (+ Docker-артефакты) — tasker-devops
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `docker` (multi-stage, минимизация образа, секреты вне образа, healthcheck, e2e-проверка)
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **Раздача SPA из Fastify — `server/src/lib/spa.ts` (новый).** Однопроцессный деплой: тот же
+  Fastify отдаёт и API (`/api`, `/health`), и собранный `web/dist`.
+  - `registerStatic(app, staticDir)` — `@fastify/static ^10` (совместим с Fastify 5): отдаёт
+    `index.html` и хэшированные ассеты; `index.html` — `Cache-Control: no-cache`, `/assets/*` —
+    `public, max-age=31536000, immutable`. Регистрируется только при наличии `index.html`
+    (иначе сервер API-only — dev/tests).
+  - `isSpaNavigation(request)` — SPA-fallback только для **GET/HEAD**, вне `/api` и `/health`
+    и при `Accept: text/html`. Проверка `Accept` отделяет переходы браузера (SPA) от
+    fetch/asset-запросов (`Accept: */*`), поэтому неизвестный API-роут и отсутствующий ассет
+    остаются **JSON-404** — контракт T-02 (`/nope → 404 JSON`) не нарушен.
+  - `resolveSpaIndex`/`isApiPath` — чистые хелперы (тестируются юнит).
+- **`server/src/app.ts`** — новый опшн `buildApp({ staticDir })` (по умолчанию `config.staticDir`,
+  `null` — отключить); `registerStatic` вызывается после CORS до роутов; `setNotFoundHandler`
+  отдаёт `index.html` для навигации (SPA-fallback) либо JSON-404 как прежде; при старте логируется
+  `{staticDir, spaEnabled}`.
+- **`server/src/config.ts`** — env `STATIC_DIR` + `DEFAULT_STATIC_DIR` (`web/dist` относительно корня
+  репозитория). Существующие env (`PORT`, `DATABASE_PATH`, `SESSION_SECRET`, `COOKIE_SECURE`,
+  `CORS_ORIGIN`, `HOST`) без изменений.
+- **npm-скрипты prod — `server/package.json`:** `build:web` (`npm --prefix ../web run build`),
+  `serve` (`build:web && start`), `smoke` (`node scripts/e2e-smoke.mjs`); `start` = `tsx src/index.ts`
+  (прод-запуск). `@fastify/static` добавлен в `dependencies`; `tsx` перенесён в `dependencies`
+  (сервер запускается из TS напрямую) — образ может ставить `npm ci --omit=dev`.
+- **`server/scripts/e2e-smoke.mjs` (новый)** — полный сценарный smoke NFR-28 (PLAN §6.3) по реальному
+  HTTP с cookie-jar и `X-CSRF-Token` (double-submit): health → SPA тем же процессом → регистрация →
+  me → CSRF-guard → создание заметки с тегами → список → поиск по тексту (регистронезависимо) →
+  фильтр по тегу → комбинированно (и пустое пересечение) → `/api/tags` → редактирование →
+  персистентность → **изоляция** (B не видит/не меняет заметки A; чужой id → 404) → удаление →
+  logout. Печатает `✓/✗` по шагам, exit 0/1.
+- **`.env.example` (корень)** — все env (PORT/HOST/DATABASE_PATH/STATIC_DIR/SESSION_SECRET/
+  COOKIE_SECURE/CORS_ORIGIN/LOG_LEVEL) с пояснениями; секрет — пустой. Реальный `.env` в
+  `.gitignore` (NFR-8).
+- **Docker (опциональные артефакты, PLAN R7):** `Dockerfile` (multi-stage: `web-build` →
+  `server-deps --omit=dev` → `runtime`; `USER node`, `VOLUME /data`, `HEALTHCHECK` GET /health,
+  `CMD node --import tsx src/index.ts`), `docker-compose.yml` (сервис `notes`, том `notes-data` для
+  SQLite, `SESSION_SECRET` обязателен из окружения — `:?`), `.dockerignore` (исключает
+  node_modules/dist/.env/данные). Секреты в образ/репозиторий не попадают.
+
+### Как проверить
+
+```powershell
+# прод-сборка + однопроцессный запуск (API + SPA в одном процессе)
+cd server
+npm run build:web                     # tsc --noEmit && vite build -> web/dist
+$env:NODE_ENV='production'; $env:SESSION_SECRET='<32+ символа>'; $env:PORT='3000'
+$env:DATABASE_PATH="$env:TEMP\notes.db"
+npm start                             # http://localhost:3000 (SPA + /api + /health)
+# в другом терминале:
+node server/scripts/e2e-smoke.mjs     # NFR-28: 28 проверок
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm run build:web`: `tsc --noEmit` без ошибок; `vite build` → `web/dist` (`index.html` 0.47 kB,
+  CSS 33.68 kB, JS 351.15 kB).
+- **Прод-запуск** (`NODE_ENV=production`, `PORT=3000`, `SESSION_SECRET`, tmp `DATABASE_PATH`) —
+  лог старта `{staticDir: ...\web\dist, spaEnabled: true}`; реальные запросы:
+  - `GET /health` → `200 {"ok":true}`;
+  - `GET /` с `Accept: text/html` → `200 text/html`, `Cache-Control: no-cache`, ссылки на
+    `/assets/index-*.js|.css`;
+  - `GET /assets/index-Cexs2Nkf.js` → `200 application/javascript`, `Cache-Control: public,
+    max-age=31536000, immutable` (355 478 B);
+  - `GET /nope` (без `Accept: text/html`) → `404 application/json` (контракт T-02 сохранён).
+- **`node server/scripts/e2e-smoke.mjs` против реального прод-сервера: 28/28 PASS** (полный сценарий
+  NFR-28, включая изоляцию пользователей и 403 без CSRF).
+- **env-конфиг** (второй инстанс `PORT=3212`, `COOKIE_SECURE=true`, `DATABASE_PATH=...\t12-env-prod.db`):
+  `GET /health` на `:3212` → `200`; `POST /api/auth/register` → `201` + `Set-Cookie: session=…;
+  HttpOnly; **Secure**; SameSite=Lax` и `XSRF-TOKEN=…; **Secure**`; файл БД создан по указанному
+  `DATABASE_PATH`. Все три переменные применяются.
+- `npm test`: **Test Files 6 passed (6) · Tests 121 passed (121)** = 110 существующих (T-01..T-05) +
+  11 новых `spa.test.ts`; `npm run typecheck` — без ошибок.
+- **Секреты (NFR-8):** `.env` отсутствует и в `.gitignore`; `git grep` по реальным секретам пуст
+  (единственное совпадение `SESSION_SECRET=` — фикстура теста T-02, проверяющая отсутствие утечки);
+  `.env.example` — без значений. В коммит секреты не попадают.
+- **Docker:** CLI в песочнице отсутствует (подтверждено: `docker` не найден) → контейнер не
+  собирался (PLAN R7). Артефакты созданы и проверены статически: все `COPY`-источники существуют,
+  стадии `web-build → server-deps → runtime`, есть `HEALTHCHECK`/`CMD`/`USER node`; compose
+  содержит сервис, том для SQLite и обязательный `SESSION_SECRET`. Вместо Docker проверен
+  **тот же runtime-путь** (`node --import tsx src/index.ts` = `CMD` образа) — однопроцессный запуск
+  с раздачей SPA прошёл.
+- **Ограничения (документировано, PLAN R4/R7):** rate-limit — in-memory, per-process (сбрасывается
+  при перезапуске; горизонтальное масштабирование потребует внешнего хранилища); SQLite — единый
+  писатель (том `/data`); контейнерная сборка/запуск не проверены в песочнице — проверяются в CI.
+
+### Артефакты
+
+`server/src/lib/spa.ts` (новый), `server/src/app.ts`, `server/src/config.ts`,
+`server/package.json` (+`package-lock.json`: `@fastify/static`, `tsx` → dependencies),
+`server/tests/spa.test.ts` (новый), `server/scripts/e2e-smoke.mjs` (новый),
+`.env.example` (новый), `Dockerfile` (новый), `docker-compose.yml` (новый), `.dockerignore` (новый)
+
+**Коммит:** `feat(T-12): прод-сборка и однопроцессный деплой (SPA+API в Fastify), e2e-smoke NFR-28, Docker-артефакты`
+
+### Заметки для следующих задач
+
+- **QA:** `server/scripts/e2e-smoke.mjs` — быстрый API-гейт (28 проверок); UI-гейт (браузер) — по
+  PLAN §6.3. Для прод-режима важна проверка `Accept: text/html`: навигация отдаёт SPA, fetch/asset —
+  JSON; без сборки (`web/dist` нет) сервер работает API-only.
+- **DevOps/CI:** образ собирается из корня репозитория (`docker build -t notes-service:local .`);
+  `SESSION_SECRET` — только из окружения (в образ/репозиторий не попадает); том `/data` — для SQLite.
+- **Прод-гейт (человек):** любой деплой в прод — ручной апрув; агентам доступно тест-окружение.
+
 

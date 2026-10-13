@@ -8,14 +8,18 @@
  *   * все значения типизированы и валидируются на границе (порт, булевы флаги).
  */
 import { randomBytes } from 'node:crypto';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DEFAULT_DB_PATH } from './db/client.js';
 
 export type NodeEnv = 'development' | 'production' | 'test';
 
+const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
+
 export interface Config {
   nodeEnv: NodeEnv;
   isProduction: boolean;
-  /** Адрес прослушивания. По умолчанию только localhost (dev). */
+  /** Адрес прослушивания. По умолчанию только localhost (dev); в контейнере — 0.0.0.0. */
   host: string;
   port: number;
   databasePath: string;
@@ -23,6 +27,8 @@ export interface Config {
   cookieSecure: boolean;
   corsOrigin: string;
   logLevel: string;
+  /** Каталог собранного фронтенда (`web/dist`), который раздаёт Fastify (T-12). */
+  staticDir: string;
 }
 
 export const DEFAULT_PORT = 3000;
@@ -30,6 +36,8 @@ export const DEFAULT_HOST = '127.0.0.1';
 /** Dev-ориджин Vite (PLAN §2: фронтенд-dev 5173). */
 export const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
 export const DEFAULT_LOG_LEVEL = 'info';
+/** Собранный фронтенд по умолчанию: `web/dist` относительно корня репозитория (T-12). */
+export const DEFAULT_STATIC_DIR = resolve(MODULE_DIR, '..', '..', 'web', 'dist');
 
 /** Ошибка конфигурации: секрет обязателен и не задан (NFR-8). */
 export class MissingSecretError extends Error {
@@ -87,5 +95,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cookieSecure: parseBool(env.COOKIE_SECURE, isProduction),
     corsOrigin: env.CORS_ORIGIN?.trim() || DEFAULT_CORS_ORIGIN,
     logLevel: env.LOG_LEVEL?.trim() || DEFAULT_LOG_LEVEL,
+    staticDir: env.STATIC_DIR?.trim() || DEFAULT_STATIC_DIR,
   };
 }

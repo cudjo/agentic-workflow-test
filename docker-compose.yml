@@ -1,0 +1,39 @@
+# Notes Service — docker-compose (T-12, PLAN §6). Однопроцессный сервис: API + SPA.
+#
+# Секрет SESSION_SECRET НЕ хранится в репозитории (NFR-8): задайте его в окружении или в
+# локальном `.env` (в .gitignore) перед запуском:
+#   SESSION_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")" \
+#     docker compose up --build
+#
+# Прод-гейт: поднятие в прод — только через ручной апрув человека. Здесь — локальное/тестовое окружение.
+
+services:
+  notes:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: notes-service:local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+      # Персистентная БД в томе (NFR-25).
+      DATABASE_PATH: /data/app.db
+      # Собранный SPA внутри образа (раздаётся тем же процессом).
+      STATIC_DIR: /app/web/dist
+      # Локальный HTTP → cookie без Secure. За TLS/в проде: COOKIE_SECURE=true.
+      COOKIE_SECURE: "false"
+      # SPA и API одного происхождения; значение нужно только для dev-фронтенда Vite.
+      CORS_ORIGIN: http://localhost:3000
+      LOG_LEVEL: info
+      # Обязательный секрет — вне репозитория. Отсутствие → явная ошибка старта.
+      SESSION_SECRET: ${SESSION_SECRET:?задайте SESSION_SECRET в окружении или .env (в репозитории секретов нет)}
+    volumes:
+      - notes-data:/data
+    # HEALTHCHECK описан в Dockerfile (GET /health).
+
+volumes:
+  notes-data:
