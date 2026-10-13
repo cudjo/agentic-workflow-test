@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мокап — Мои заметки (список)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Перейти к заметкам</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="index.html"><span class="brand__mark" aria-hidden="true">З</span> Заметки</a>
+    <span class="topbar__spacer"></span>
+    <span class="userchip">
+      <span class="avatar" aria-hidden="true">АК</span>
+      <span class="small userchip__name">anna@example.com</span>
+    </span>
+    <button class="btn btn--ghost btn--sm" type="button">
+      <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Выйти
+    </button>
+  </div>
+</header>
+
+<main id="main" class="container page">
+
+  <!-- ======================= Заголовок страницы ======================= -->
+  <div class="page__head">
+    <div class="stack">
+      <h1>Мои заметки</h1>
+      <p class="dim small">Сортировка: сначала обновлённые (Q-S3).</p>
+    </div>
+    <a class="btn btn--primary" href="editor.html">
+      <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Создать заметку
+    </a>
+  </div>
+
+  <!-- ============== Поиск, фильтр по тегам, переключатель вида ======== -->
+  <section class="panel stack" aria-labelledby="search-h">
+    <h2 class="sr-only" id="search-h">Поиск и фильтрация заметок</h2>
+
+    <div class="panel__body stack">
+      <div class="toolbar">
+        <!-- Поиск: подстрочный, регистронезависимый по заголовку+тексту (Q-S1/S2).
+             В продукте — серверный запрос с debounce (NFR-4). -->
+        <div class="search">
+          <svg class="search__icon" aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <label class="sr-only" for="q">Поиск по заметкам</label>
+          <input class="input" id="q" type="search" name="q" placeholder="Поиск по заголовку и тексту…"
+                 autocomplete="off" aria-describedby="result-status" data-search-input>
+          <button class="search__clear" type="button" hidden aria-label="Очистить поиск" data-search-clear>
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Переключатель вида: role=group + aria-pressed (NFR-16).
+             Выбор хранится в localStorage, дефолт — плитки (AC-25..AC-27). -->
+        <div class="segmented" role="group" aria-label="Вид отображения заметок" data-view-toggle>
+          <button class="segmented__btn" type="button" data-view-btn data-view="grid" aria-pressed="true">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            Плитки
+          </button>
+          <button class="segmented__btn" type="button" data-view-btn data-view="list" aria-pressed="false">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Список
+          </button>
+        </div>
+        <span class="sr-only" data-view-status role="status">Текущий вид: плитки</span>
+      </div>
+
+      <!-- Фильтр по тегам: чипы = toggle-кнопки с aria-pressed.
+           Только теги пользователя, регистронезависимо (Q-T1..Q-T4). -->
+      <div class="filterbar">
+        <span class="small muted" id="filter-label">Фильтр по тегу:</span>
+        <div class="row wrap" role="group" aria-labelledby="filter-label">
+          <button class="chip" type="button" aria-pressed="false" data-tag-chip="работа">работа <span class="chip__count" aria-hidden="true">3</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-tag-chip="идеи">идеи <span class="chip__count" aria-hidden="true">1</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-tag-chip="учёба">учёба <span class="chip__count" aria-hidden="true">1</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-tag-chip="рецепты">рецепты <span class="chip__count" aria-hidden="true">1</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-tag-chip="книги">книги <span class="chip__count" aria-hidden="true">1</span></button>
+        </div>
+        <span class="topbar__spacer"></span>
+        <span class="tiny dim" data-filter-count>Фильтры не применены</span>
+        <button class="btn btn--ghost btn--sm" type="button" data-reset-filters>
+          <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+          Сбросить
+        </button>
+      </div>
+
+      <!-- Результаты читаются скринридером (NFR-20) -->
+      <p class="small muted" id="result-status" role="status" aria-live="polite" data-result-status>7 заметок — все заметки</p>
+    </div>
+  </section>
+
+  <!-- ============================ Результаты =========================== -->
+  <div data-results-wrap style="margin-top: var(--sp-5)">
+    <!-- Один DOM на оба вида: меняется только раскладка (AC-26).
+         data-text — упрощённый индекс для демо-поиска (в проде — сервер). -->
+    <ul class="results results--grid" data-notes-list data-view="grid" aria-label="Список заметок">
+
+      <li class="note-item" data-note data-tags="работа, планы"
+          data-text="план на неделю доработать поиск по заметкам ревью макетов созвон с командой">
+        <div class="note-item__row">
+          <div class="note-item__main">
+            <h3 class="note-item__title"><a href="note.html">План на неделю</a></h3>
+            <p class="note-item__snippet clamp-3">Доработать поиск по заметкам. Ревью макетов интерфейса. Созвон с командой в четверг — обсудить теги и фильтры. Собрать список задач на спринт.</p>
+          </div>
+          <div class="note-item__side">
+            <div class="note-item__tags">
+              <span class="tag"><span class="tag__label">работа</span></span>
+              <span class="tag"><span class="tag__label">планы</span></span>
+            </div>
+            <time class="note-item__date" datetime="2026-10-13T09:20">13 окт, 09:20</time>
+          </div>
+        </div>
+        <div class="note-item__actions">
+          <a class="btn btn--ghost btn--icon btn--sm" href="editor.html" aria-label="Редактировать заметку «План на неделю»">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </a>
+          <button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Удалить заметку «План на неделю»" data-open-dialog="dlg-delete">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+
+      <li class="note-item" data-note data-tags="рецепты"
+          data-text="рецепт борща свёкла капуста бульон варить 40 минут сметана">
+        <div class="note-item__row">
+          <div class="note-item__main">
+            <h3 class="note-item__title"><a href="note.html">Рецепт борща</a></h3>
+            <p class="note-item__snippet clamp-3">Свёкла, капуста, картофель, бульон. Варить 40 минут, в конце добавить зелень и сметану. На следующий день вкуснее.</p>
+          </div>
+          <div class="note-item__side">
+            <div class="note-item__tags">
+              <span class="tag"><span class="tag__label">рецепты</span></span>
+            </div>
+            <time class="note-item__date" datetime="2026-10-12T18:04">12 окт, 18:04</time>
+          </div>
+        </div>
+        <div class="note-item__actions">
+          <a class="btn btn--ghost btn--icon btn--sm" href="editor.html" aria-label="Редактировать заметку «Рецепт борща»">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </a>
+          <button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Удалить заметку «Рецепт борща»" data-open-dialog="dlg-delete">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+
+      <li class="note-item" data-note data-tags="идеи, работа"
+          data-text="идеи для пет-проекта ai-ассистент для заметок markdown-редактор трекер привычек">
+        <div class="note-item__row">
+          <div class="note-item__main">
+            <h3 class="note-item__title"><a href="note.html">Идеи для пет-проекта</a></h3>
+            <p class="note-item__snippet clamp-3">AI-ассистент для заметок, лёгкий markdown-редактор, трекер привычек с тепловой картой. Отдельно — плагин для экспорта заметок в PDF.</p>
+          </div>
+          <div class="note-item__side">
+            <div class="note-item__tags">
+              <span class="tag"><span class="tag__label">идеи</span></span>
+              <span class="tag"><span class="tag__label">работа</span></span>
+              <span class="tag"><span class="tag__label">🎯 цели</span></span>
+            </div>
+            <time class="note-item__date" datetime="2026-10-10T11:30">10 окт, 11:30</time>
+          </div>
+        </div>
+        <div class="note-item__actions">
+          <a class="btn btn--ghost btn--icon btn--sm" href="editor.html" aria-label="Редактировать заметку «Идеи для пет-проекта»">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </a>
+          <button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Удалить заметку «Идеи для пет-проекта»" data-open-dialog="dlg-delete">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+
+      <li class="note-item" data-note data-tags="учёба, базы данных"
+          data-text="конспект индексы в postgresql b-tree gin объяснение плана запроса explain analyze">
+        <div class="note-item__row">
+          <div class="note-item__main">
+            <h3 class="note-item__title"><a href="note.html">Конспект: индексы в PostgreSQL</a></h3>
+            <p class="note-item__snippet clamp-3">B-tree для сравнений и сортировки, GIN — для массивов и jsonb. Проверять план запроса через EXPLAIN ANALYZE, а не на глаз.</p>
+          </div>
+          <div class="note-item__side">
+            <div class="note-item__tags">
+              <span class="tag"><span class="tag__label">учёба</span></span>
+              <span class="tag"><span class="tag__label">базы данных</span></span>
+            </div>
+            <time class="note-item__date" datetime="2026-10-08T20:15">8 окт, 20:15</time>
+          </div>
+        </div>
+        <div class="note-item__actions">
+          <a class="btn btn--ghost btn--icon btn--sm" href="editor.html" aria-label="Редактировать заметку «Конспект: индексы в PostgreSQL»">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </a>
+          <button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Удалить заметку «Конспект: индексы в PostgreSQL»" data-open-dialog="dlg-delete">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+
+      <!-- Граничный случай E5: очень длинный заголовок → clamp, не ломает вёрстку -->
+      <li class="note-item" data-note data-tags="очень-длинный-тег-который-не-ломает-вёрстку"
+          data-text="заметка с очень длинным заголовком который должен обрезаться и не ломать вёрстку карточки и строки списка">
+        <div class="note-item__row">
+          <div class="note-item__main">
+            <h3 class="note-item__title clamp-2"><a href="note.html">Заметка с очень длинным заголовком, который должен обрезаться и не ломать вёрстку ни карточки, ни строки списка</a></h3>
+            <p class="note-item__snippet clamp-3">Проверяем clamp: 2 строки в заголовке, 3 строки в тексте карточки, 1 строка в списке. Длинные слова переносятся.</p>
+          </div>
+          <div class="note-item__side">
+            <div class="note-item__tags">
+              <!-- T3/T4: длинный и юникодный тег не ломают вёрстку (ellipsis) -->
+              <span class="tag" title="очень-длинный-тег-который-не-ломает-вёрстку"><span class="tag__label">очень-длинный-тег-который-не-ломает-вёрстку</span></span>
+            </div>
+            <time class="note-item__date" datetime="2026-10-06T14:00">6 окт, 14:00</time>
+          </div>
+        </div>
+        <div class="note-item__actions">
+          <a class="btn btn--ghost btn--icon btn--sm" href="editor.html" aria-label="Редактировать заметку с длинным заголовком">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </a>
+          <button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Удалить заметку с длинным заголовком" data-open-dialog="dlg-delete">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+
+      <!-- Граничный случай E3: только текст, без заголовка → заголовок из первой строки -->
+      <li class="note-item" data-note data-tags=""
+          data-text="купить молоко хлеб кофе купить молоко хлеб кофе список покупок">
+        <div class="note-item__row">
+          <div class="note-item__main">
+            <h3 class="note-item__title"><a href="note.html">Купить: молоко, хлеб, кофе</a></h3>
+            <p class="note-item__snippet clamp-3">Купить: молоко, хлеб, кофе</p>
+          </div>
+          <div class="note-item__side">
+            <div class="note-item__tags">
+              <span class="tiny dim">Без тегов</span>
+            </div>
+            <time class="note-item__date" datetime="2026-10-05T08:10">5 окт, 08:10</time>
+          </div>
+        </div>
+        <div class="note-item__actions">
+          <a class="btn btn--ghost btn--icon btn--sm" href="editor.html" aria-label="Редактировать заметку «Купить: молоко, хлеб, кофе»">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </a>
+          <button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Удалить заметку «Купить: молоко, хлеб, кофе»" data-open-dialog="dlg-delete">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+
+      <li class="note-item" data-note data-tags="книги"
+          data-text="книги на осень список чтения художник и его модели стальная крыса">
+        <div class="note-item__row">
+          <div class="note-item__main">
+            <h3 class="note-item__title"><a href="note.html">Книги на осень</a></h3>
+            <p class="note-item__snippet clamp-3">«Художник и его модели», «Стальная крыса», «Понедельник начинается в субботу». Отметить прочитанное прямо в тексте заметки.</p>
+          </div>
+          <div class="note-item__side">
+            <div class="note-item__tags">
+              <span class="tag"><span class="tag__label">книги</span></span>
+            </div>
+            <time class="note-item__date" datetime="2026-10-03T21:40">3 окт, 21:40</time>
+          </div>
+        </div>
+        <div class="note-item__actions">
+          <a class="btn btn--ghost btn--icon btn--sm" href="editor.html" aria-label="Редактировать заметку «Книги на осень»">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </a>
+          <button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Удалить заметку «Книги на осень»" data-open-dialog="dlg-delete">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+    </ul>
+
+    <!-- AC-42/S5: ничего не найдено по фильтру/поиску -->
+    <div class="empty" data-empty-noresults hidden>
+      <div class="empty__art" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </div>
+      <p class="empty__title">Ничего не найдено</p>
+      <p class="empty__text">Нет заметок, которые совпадают и с поиском, и с выбранным тегом. Попробуйте изменить запрос или снять фильтр.</p>
+      <button class="btn btn--primary" type="button" data-reset-filters>
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+        Сбросить поиск и фильтры
+      </button>
+    </div>
+
+    <!-- AC-23/E12/A: заметок нет вообще -->
+    <div class="empty" data-empty-nonotes hidden>
+      <div class="empty__art" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
+      </div>
+      <p class="empty__title">Пока ни одной заметки</p>
+      <p class="empty__text">Создайте первую заметку — markdown, теги и поиск подождут вас внутри.</p>
+      <a class="btn btn--primary" href="editor.html">
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Создать заметку
+      </a>
+    </div>
+  </div>
+
+  <!-- ==================== Прочие состояния экрана ====================== -->
+  <section aria-labelledby="states-h" style="margin-top: var(--sp-10)">
+    <h2 id="states-h" style="margin-bottom: var(--sp-2)">Состояния загрузки и ошибок</h2>
+    <p class="muted small" style="margin-bottom: var(--sp-4)">Демо-переключатель (в продукте этих кнопок нет): показываем, что видно пользователю до прихода данных и при сетевой ошибке.</p>
+
+    <div class="segmented" role="group" aria-label="Демонстрация состояний загрузки" data-state-group="#list-states" style="margin-bottom: var(--sp-4)">
+      <button class="segmented__btn" type="button" data-set-state="loading" aria-pressed="true">Загрузка</button>
+      <button class="segmented__btn" type="button" data-set-state="error" aria-pressed="false">Ошибка загрузки</button>
+      <button class="segmented__btn" type="button" data-set-state="stale" aria-pressed="false">Офлайн / сеть пропала</button>
+      <button class="segmented__btn" type="button" data-set-state="emptylist" aria-pressed="false">Пустой список</button>
+    </div>
+
+    <div id="list-states">
+      <!-- Загрузка: скелетоны в форме будущих плиток (не «крутилка» на весь экран) -->
+      <div data-state="loading">
+        <p class="sr-only" role="status">Загрузка заметок…</p>
+        <ul class="results results--grid" aria-hidden="true">
+          <li class="note-item"><div class="note-item__row"><div class="note-item__main stack"><span class="skeleton skeleton--title"></span><span class="skeleton skeleton--line"></span><span class="skeleton skeleton--line" style="width:88%"></span><span class="skeleton skeleton--line" style="width:64%"></span></div><div class="note-item__side stack"><div class="row"><span class="skeleton skeleton--chip"></span><span class="skeleton skeleton--chip"></span></div><span class="skeleton skeleton--line" style="width:80px"></span></div></div></li>
+          <li class="note-item"><div class="note-item__row"><div class="note-item__main stack"><span class="skeleton skeleton--title" style="width:45%"></span><span class="skeleton skeleton--line"></span><span class="skeleton skeleton--line" style="width:72%"></span></div><div class="note-item__side stack"><div class="row"><span class="skeleton skeleton--chip"></span></div><span class="skeleton skeleton--line" style="width:80px"></span></div></div></li>
+          <li class="note-item"><div class="note-item__row"><div class="note-item__main stack"><span class="skeleton skeleton--title" style="width:70%"></span><span class="skeleton skeleton--line"></span><span class="skeleton skeleton--line" style="width:52%"></span></div><div class="note-item__side stack"><div class="row"><span class="skeleton skeleton--chip"></span><span class="skeleton skeleton--chip"></span></div><span class="skeleton skeleton--line" style="width:80px"></span></div></div></li>
+        </ul>
+      </div>
+
+      <!-- Ошибка загрузки: понятное сообщение + повтор (E16/E17) -->
+      <div data-state="error" hidden>
+        <div class="alert alert--error" role="alert">
+          <svg class="alert__icon" aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          <div class="stack" style="gap:var(--sp-3)">
+            <div>
+              <p class="alert__title">Не удалось загрузить заметки</p>
+              <p class="small">Сервер не ответил. Данные на сервере не потеряны — просто повторите попытку.</p>
+            </div>
+            <div class="row">
+              <button class="btn btn--sm btn--primary" type="button">Повторить</button>
+              <button class="btn btn--sm" type="button">Выйти и войти снова</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Сеть пропала во время работы: предупреждение сверху, ввод не теряем (E16) -->
+      <div data-state="stale" hidden>
+        <div class="alert alert--warning" role="alert">
+          <svg class="alert__icon" aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          <div>
+            <p class="alert__title">Нет соединения</p>
+            <p class="small">Показываем последние загруженные заметки. Изменения не отправятся, пока сеть не вернётся — текст останется в форме, мы предупредим перед уходом.</p>
+          </div>
+        </div>
+        <p class="tiny dim" style="margin-top:var(--sp-2)">Ниже — данные из последнего успешного ответа.</p>
+      </div>
+
+      <!-- Пустой список: у пользователя ещё нет заметок (AC-23, E12) -->
+      <div data-state="emptylist" hidden>
+        <div class="empty">
+          <div class="empty__art" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
+          </div>
+          <p class="empty__title">Пока ни одной заметки</p>
+          <p class="empty__text">Создайте первую заметку — markdown, теги и поиск подождут вас внутри.</p>
+          <a class="btn btn--primary" href="editor.html">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Создать заметку
+          </a>
+          <p class="tiny dim">Тот же компонент, что показывается в списке, когда заметок нет вообще.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <details class="panel" style="margin-top: var(--sp-8)">
+    <summary style="padding:var(--sp-3) var(--sp-4); cursor:pointer; font-weight:var(--fw-medium)">Что утверждается на этом экране</summary>
+    <ul class="stack small muted" style="padding: var(--sp-3) var(--sp-4) var(--sp-4) var(--sp-8)">
+      <li><strong>Дефолтный вид</strong> — плитки; переключатель — две кнопки с <span class="mono">aria-pressed</span> в группе с подписью. Выбор сохраняется в localStorage.</li>
+      <li><strong>Структура карточки:</strong> заголовок → фрагмент текста (3 строки) → теги → дата обновления. Действия (изменить/удалить) — иконками, доступны с клавиатуры.</li>
+      <li><strong>Структура строки списка:</strong> заголовок + фрагмент в одну строку → теги → дата. На узких экранах фрагмент скрывается.</li>
+      <li><strong>Один DOM на оба вида</strong> — состав и порядок не меняются при переключении (AC-26).</li>
+      <li><strong>Поиск и тег комбинируются по «И»</strong>, поиск — подстрочный и регистронезависимый по заголовку и тексту (AC-39..AC-41, Q-S1).</li>
+      <li>Заметка без заголовка показывается первой строкой текста (E3); очень длинный заголовок обрезается (E5); длинный/юникодный тег обрезается многоточием (T3, T4).</li>
+      <li>Открытый вопрос: показывать ли счётчики заметок у тегов-чипов и нужна ли сортировка в UI (Q-S3 — по умолчанию свежие сверху).</li>
+      <li><strong>Стекло и производительность:</strong> в режиме «плитки» стеклянная каждая карточка, в режиме «список» — только контейнер
+          (иначе на каждой из сотен строк был бы свой <span class="mono">backdrop-filter</span>). Контраст текста на стекле — в <a href="index.html">index.html</a>.</li>
+    </ul>
+  </details>
+</main>
+
+<!-- ===================== Подтверждение удаления (AC-21/22) ============== -->
+<dialog class="modal" id="dlg-delete" aria-labelledby="dlg-delete-title" aria-describedby="dlg-delete-text">
+  <div class="modal__body">
+    <div class="row-3">
+      <span class="empty__art" aria-hidden="true" style="width:44px;height:44px;background:var(--c-danger-soft);color:var(--c-danger)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+      </span>
+      <div class="stack" style="gap:2px">
+        <h2 id="dlg-delete-title" style="font-size:var(--fs-18)">Удалить заметку?</h2>
+        <p class="small dim">Это действие нельзя отменить</p>
+      </div>
+    </div>
+    <p class="small muted" id="dlg-delete-text">
+      Заметка «План на неделю» будет удалена навсегда. Корзины нет — восстановить не получится (Q10).
+    </p>
+    <!-- Фокус при открытии ставится на безопасное действие «Отмена» -->
+    <div class="row" aria-hidden="true">
+      <span class="tag"><span class="tag__label">работа</span></span>
+      <span class="tag"><span class="tag__label">планы</span></span>
+      <span class="tiny dim">· обновлена 13 окт</span>
+    </div>
+  </div>
+  <div class="modal__actions">
+    <button class="btn" type="button" data-close-dialog autofocus>Отмена</button>
+    <button class="btn btn--danger" type="button" data-close-dialog>Удалить заметку</button>
+  </div>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

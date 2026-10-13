@@ -1,0 +1,206 @@
+{
+  "project": "notes-service",
+  "route": "full",
+  "stack": {
+    "frontend": "react",
+    "backend": "typescript-node",
+    "database": "sqlite (node:sqlite)",
+    "devops": "docker"
+  },
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "Схема БД и runner миграций (SQLite)",
+      "description": "Создать server/src/db/migrations/001_init.sql (users, sessions, notes, tags, note_tags + индексы + каскады) и runner миграций (server/src/db/migrate.ts + db/client.ts на node:sqlite DatabaseSync, таблица schema_migrations, идемпотентное применение по порядку). Скрипт npm run migrate создаёт server/data/app.db. Время — ISO-8601 UTC TEXT.",
+      "acceptance": [
+        "npm run migrate на пустой БД создаёт все 5 таблиц и индексы, повторный запуск идемпотентен (не падает, не дублирует)",
+        "PRAGMA foreign_keys=ON включён; удаление user каскадом удаляет notes/sessions/tags; удаление note удаляет note_tags",
+        "Есть индекс notes(user_id, updated_at DESC) и note_tags(tag_id)",
+        "db/client.ts экспортирует подготовленные statements с транзакциями; тест (vitest) проверяет вставку/чтение/каскад"
+      ],
+      "status": "not_started",
+      "dependsOn": [],
+      "assignee": "tasker-dba",
+      "stack": "postgres",
+      "notes": "Реализация — SQLite через node:sqlite (см. PLAN §3.1). Скилл postgres загружается ради дисциплины реляционного моделирования (нормализация, ограничения, индексы, транзакции, FK-каскады). SQL должен оставаться ANSI-совместимым для будущей замены на PostgreSQL."
+    },
+    {
+      "id": "T-02",
+      "title": "Каркас бэкенда (Fastify + конфиг + health + ошибки)",
+      "description": "Поднять server/: Fastify + TypeScript, config.ts (env: PORT, DATABASE_PATH, SESSION_SECRET, COOKIE_SECURE, CORS_ORIGIN), подключение db/client.ts, GET /health, централизованная обработка ошибок (единый JSON {error:{code,message,field?}}), CORS для dev-ориджина, логгер без паролей. Структура роутов/мидлварей по PLAN §2.",
+      "acceptance": [
+        "npm run dev поднимает сервер на :3000; GET /health → 200 {ok:true}",
+        "CORS пропускает http://localhost:5173; неизвестный роут → 404 JSON; ошибка → JSON без stack в проде",
+        "Логи не содержат паролей/токенов (A9/NFR-9)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-01"],
+      "assignee": "tasker-backend",
+      "stack": "typescript-node"
+    },
+    {
+      "id": "T-03",
+      "title": "Аутентификация: register/login/logout/me, сессии, CSRF, rate-limit",
+      "description": "POST /api/auth/register, /login, /logout, GET /api/auth/me. bcryptjs (cost 10), валидация (email-формат, пароль ≥ 8), обобщённая ошибка входа, 409 дубликат email, opaque session token (SHA-256 в sessions), cookie HttpOnly+SameSite=Lax+Secure(по env)+7d со скользящим продлением, CSRF double-submit (csrf_token в сессии + cookie XSRF-TOKEN), in-memory rate-limit входа/регистрации (~5/15 мин → 429 + retryAfter).",
+      "acceptance": [
+        "register → 201 + cookie; me → {id,email}; logout → 204; повторный me → 401",
+        "дубликат email (разный регистр) → 409; слабый пароль/невалидный email → 422 с field",
+        "login с неверными данными → 401 обобщённо (без раскрытия существования); 6-я неудачная попытка → 429 с retryAfter",
+        "state-changing запрос без X-CSRF-Token → 403; с корректным токеном — проходит (AC-15/NFR-11)",
+        "истёкшая/удалённая сессия → 401 без данных (AC-9/AC-10)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-02"],
+      "assignee": "tasker-backend",
+      "stack": "typescript-node"
+    },
+    {
+      "id": "T-04",
+      "title": "CRUD заметок с ownership-проверкой",
+      "description": "GET /api/notes (список, сортировка updatedAt DESC), POST /api/notes, GET/PATCH/DELETE /api/notes/:id. Валидация: title ≤ 200, bodyMarkdown ≤ 100000, пустая заметка (нет title и нет текста) → 422. Каждая операция фильтруется по user_id сессии; чужой/несуществующий id → 404. Парсинг сессии через middleware/auth.ts (req.user).",
+      "acceptance": [
+        "создание → 201 с Note; список содержит только заметки текущего пользователя (AC-13)",
+        "GET чужой заметки по id → 404, данные не раскрываются (AC-11/AC-14, Q-A7)",
+        "PATCH/DELETE чужой заметки → 404, заметка не меняется/не удаляется (AC-12)",
+        "пустая заметка → 422 с сообщением (AC-17/E1); только заголовок и только текст сохраняются (E2/E3)",
+        "изменения персистентны после перезапуска сервера (NFR-25); порядок списка — свежие сверху (Q-S3)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-03"],
+      "assignee": "tasker-backend",
+      "stack": "typescript-node"
+    },
+    {
+      "id": "T-05",
+      "title": "Теги (many-to-many) + серверный поиск/фильтр",
+      "description": "Теги на заметках: POST/PATCH принимают tags[] (тримминг, пустые отбрасываются, ≤ 20 шт., длина ≤ 50, регистронезависимая дедупликация с сохранением написания Q-T2), связь note_tags атомарно в транзакции, GET /api/tags (теги пользователя + счётчик). Поиск: GET /api/notes?q=&tag= — подстрочный регистронезависимый по title+body_markdown (LOWER LIKE, экранирование %/_ как литералов), комбинация q+tag по «И».",
+      "acceptance": [
+        "теги сохраняются/обновляются персистентно; пустой/пробельный тег не добавляется (AC-33/AC-36/T1)",
+        "дубликат тега в другом регистре не создаётся, сохраняется первое написание (AC-37/T2)",
+        ">20 тегов или тег >50 символов → 422 (Q-T3); спецсимволы/юникод в теге сохраняются (T4)",
+        "q находит по заголовку и по телу (регистронезависимо, спецсимволы как литералы S1/S2/S3); пустой q → все заметки (S4)",
+        "tag фильтрует только по тегу; q+tag вместе → пересечение (AC-40/AC-41); поиск ограничен владельцем (AC-44/S7)",
+        "удаление заметки не оставляет битых ссылок note_tags (T6); GET /api/tags возвращает корректные счётчики"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-04"],
+      "assignee": "tasker-backend",
+      "stack": "typescript-node"
+    },
+    {
+      "id": "T-06",
+      "title": "Фронтенд-фундамент + auth-экраны (login/register) + guard маршрутов",
+      "description": "Инициализировать web/ (React+TS+Vite), перенести дизайн-токены и базовые стили из mockups/styles.css (styles/tokens.css, glass.css, base.css), api/client.ts (fetch credentials:include + X-CSRF-Token, обработка 401), react-router с guard'ом (неавторизованный → /login с сохранением целевого URL), Topbar+userchip+skip-link, страницы Login/Register по DESIGN §2.11 (валидация, ошибки, rate-limit баннер, индикатор силы пароля).",
+      "acceptance": [
+        "токены --glass-*/*/--sp-*/--r-* и классы совпадают с mockups/styles.css (DESIGN §0)",
+        "регистрация → авто-авторизация → редирект на /notes (AC-1); дубликат → «Этот email уже зарегистрирован» (AC-2)",
+        "вход успех → /notes (AC-4); неверные данные → «Неверные учётные данные» обобщённо (AC-5)",
+        "неавторизованный доступ к /notes → редирект /login, данные не показываются (AC-10); после входа возврат на запрошенный URL",
+        "кнопка «Выйти» инвалидирует сессию и редиректит на /login (AC-7/F)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-03"],
+      "assignee": "tasker-frontend",
+      "stack": "react"
+    },
+    {
+      "id": "T-07",
+      "title": "Markdown-рендерер с санитизацией (общий для превью и просмотра)",
+      "description": "lib/markdown.ts: markdown-it → DOMPurify по allowlist (strong,em,code,pre,ul,ol,li,blockquote,h2–h4,a,hr,table,thead,tbody,tr,th,td,p; script/iframe/style/on*/javascript: вырезаются; элемент вне allowlist — как текст). Стили .md (72ch, h2.., pre/code/table) из DESIGN §2.13/§5.4. Тег <a> — rel=noopener noreferrer, target=_blank.",
+      "acceptance": [
+        "markdown с <script>/on*/javascript:/iframe → не исполняется, опасное вырезано (AC-45/NFR-5)",
+        "<b>текст</b> как текст → детерминированный рендер по allowlist (AC-46)",
+        "битый/незакрытый markdown не ломает страницу (E8/E9)",
+        "один и тот же рендерер даёт идентичный HTML для превью и просмотра (AC-31); тест на совпадение"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-06"],
+      "assignee": "tasker-frontend",
+      "stack": "react"
+    },
+    {
+      "id": "T-08",
+      "title": "Экран списка заметок: плитки/список, поиск, фильтр, empty-state, удаление",
+      "description": "Pages/Notes + компоненты (NoteItem карточка/строка единый DOM, Segmented переключатель вида, SearchBox с debounce 300ms серверный, чипы-фильтры тегов со счётчиком, два EmptyState, Skeleton, DeleteDialog). localStorage notes.view (grid/list, дефолт grid). Сортировка updatedAt desc. Заметки с тегами/датой по DESIGN §2.1–2.6.",
+      "acceptance": [
+        "список отображает свои заметки; переключение плитки↔список мгновенно, состав/порядок неизменны (AC-24/AC-26)",
+        "выбор вида сохраняется в localStorage notes.view и восстанавливается после перезагрузки; дефолт grid (AC-25/AC-27)",
+        "поиск (debounce 300ms, серверный) фильтрует; чип тега фильтрует; q+tag по «И»; «Сбросить» возвращает все (AC-39/40/41/43)",
+        "нет заметок → empty-state A с CTA «Создать заметку» (AC-23/E12); нет совпадений → empty-state B + «Сбросить» (AC-42)",
+        "удаление через dialog с подтверждением; отмена не меняет; подтверждение удаляет без перезагрузки (AC-21/22); удаление последней → empty-state (E14)",
+        "загрузка — скелетоны (не спиннер); ошибка загрузки — алерт с «Повторить» (DESIGN §4.2)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-05", "T-06"],
+      "assignee": "tasker-frontend",
+      "stack": "react"
+    },
+    {
+      "id": "T-09",
+      "title": "Экран редактора: заголовок, теги, markdown, toolbar, live-превью, сохранение",
+      "description": "Pages/Editor: поле заголовка (≤200), TagInput (Enter/запятая, чипы removable, datalist из /api/tags, лимиты 20/50), textarea markdown (≤100000, счётчик), toolbar форматирования (H1–H3, жирный, курсив, списки, код, код-блок, цитата, ссылка — по DESIGN §2.7), live-сплит превью (≥1025px) / табы Редактор-Просмотр (<1024px) через T-07 рендерер. Явное сохранение; статус «Сохранено {time}»/«Есть несохранённые изменения»; диалог при уходе (Остаться/Выйти без сохранения/Сохранить и выйти).",
+      "acceptance": [
+        "создание заметки (заголовок+текст+теги) → POST, персистентно (AC-16/AC-33)",
+        "пустая заметка → запрет сохранения с сообщением (AC-17/E1)",
+        "markdown сохраняется как raw; превью рендерит форматирование (AC-28/AC-29)",
+        "toolbar вставляет синтаксис (префикс/обёртка/блок/ссылка) с учётом выделения, не дублирует маркеры (DESIGN §2.7)",
+        "сплит на широких / табы на узких (≤1024px) (AC-30/NFR-23)",
+        "несохранённые правки → предупреждение при уходе (закрытие/переход/beforeunload) (AC-20/E10)",
+        "ошибка сохранения → текст не теряется, статус не «сохранено» (E17)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-05", "T-07"],
+      "assignee": "tasker-frontend",
+      "stack": "react"
+    },
+    {
+      "id": "T-10",
+      "title": "Экран просмотра заметки (S5) + 404",
+      "description": "Pages/Note: рендер заметки через T-07 (статья .md, один h1 = заголовок заметки, markdown-заголовки с h2), мета (даты «8 окт 2026, 20:15», теги как текст), действия Редактировать/Удалить (переиспользует DeleteDialog), «← Мои заметки», состояние «Заметка не найдена» для 404/чужой (Q-A7).",
+      "acceptance": [
+        "открытие заметки показывает отрендеренную markdown и сохранённое содержимое (AC-11/AC-18/AC-31)",
+        "чужой/несуществующий id → экран «Заметка не найдена» (404), без раскрытия (AC-11/Q-A7)",
+        "теги/заголовок рендерятся как текст, HTML-подобные символы не исполняются (AC-47/NFR-14)",
+        "удаление из просмотра → подтверждение → возврат к списку (AC-21/E13)",
+        "один h1 на страницу; заголовки markdown начинаются с h2 (DESIGN §5.4)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-07", "T-08"],
+      "assignee": "tasker-frontend",
+      "stack": "react"
+    },
+    {
+      "id": "T-11",
+      "title": "Доступность и адаптивность (кросс-экранный пас)",
+      "description": "Сквозная проверка всех экранов против DESIGN §5/§3.10 и NFR-15..24: клавиатурный обход, aria-контракт (§5.2: segmented, поиск, чипы, toolbar, табы, диалоги, формы), skip-link, видимый фокус, reduced-motion, prefers-contrast, @supports not(backdrop-filter), брейкпоинты 1280/1024/860/640, font-size 16px инпутов, один h1.",
+      "acceptance": [
+        "полный Tab/Shift+Tab без «залипания»; диалоги Esc + возврат фокуса (NFR-15)",
+        "переключатель вида и поиск/фильтр имеют корректную семантику/имена (role=group, aria-pressed, label) (NFR-16)",
+        "иконки-кнопки с aria-label; ошибки форм role=alert + aria-invalid + aria-describedby (NFR-17/19)",
+        "контраст WCAG AA и видимый фокус на стекле (NFR-18); результаты/empty-state читаются скринридером (NFR-20)",
+        "prefers-reduced-motion отключает mesh/shimmer/hover; prefers-contrast/fallback увеличивают плотность стекла (DESIGN §5.5)",
+        "адаптив 1280/1024/860/640: плитки перестраиваются, список читаем, сплит→табы, формы/поиск адаптивны (NFR-21..24)"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-08", "T-09", "T-10"],
+      "assignee": "tasker-frontend",
+      "stack": "react"
+    },
+    {
+      "id": "T-12",
+      "title": "Прод-сборка и однопроцессный деплой (+ опционально Docker)",
+      "description": "Сборка web (vite build → web/dist), Fastify раздаёт статику + SPA-fallback, конфиг через env (PORT, DATABASE_PATH, SESSION_SECRET, COOKIE_SECURE, CORS_ORIGIN), npm-скрипты prod, .env.example + .gitignore, healthcheck, e2e-smoke.mjs (сценарий NFR-28). Опционально: Dockerfile (multi-stage server) + docker-compose (docker-скилл).",
+      "acceptance": [
+        "npm run build (web) + npm start (server) → http://localhost:3000 отдаёт SPA и /api одним процессом",
+        "env-конфиг работает: смена PORT/DATABASE_PATH/COOKIE_SECURE применяется; секретов нет в репозитории (NFR-8)",
+        "node server/scripts/e2e-smoke.mjs проходит полный сценарий NFR-28 включая изоляцию пользователей",
+        "Dockerfile (если Docker доступен) собирается и запускается; docker-compose поднимает сервис"
+      ],
+      "status": "not_started",
+      "dependsOn": ["T-05", "T-11"],
+      "assignee": "tasker-devops",
+      "stack": "docker",
+      "notes": "Верификация без Docker обязательна (прод-сборка + однопроцессный запуск); Docker-часть — необязательный артефакт, т.к. Docker отсутствует в песочнице (PLAN R7)."
+    }
+  ]
+}

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мокап — Редактор заметки (live-сплит)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#md">Перейти к редактору</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="index.html"><span class="brand__mark" aria-hidden="true">З</span> Заметки</a>
+    <span class="topbar__spacer"></span>
+    <span class="userchip">
+      <span class="avatar" aria-hidden="true">АК</span>
+      <span class="small userchip__name">anna@example.com</span>
+    </span>
+    <button class="btn btn--ghost btn--sm" type="button">
+      <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Выйти
+    </button>
+  </div>
+</header>
+
+<main class="container page">
+  <!-- ======================= Шапка редактора ========================= -->
+  <div class="page__head">
+    <div class="stack" style="gap:var(--sp-2)">
+      <a class="small" href="notes.html" style="text-decoration:none">
+        <span aria-hidden="true">←</span> Мои заметки
+      </a>
+      <h1>Редактирование заметки</h1>
+      <!-- Статус сохранения читается скринридером (NFR-20) -->
+      <p class="small dim" role="status" aria-live="polite" data-dirty-state hidden>
+        <span style="color:var(--c-warning)">●</span> Есть несохранённые изменения
+      </p>
+      <p class="small dim" data-clean-state>Сохранено 13 окт, 09:20</p>
+    </div>
+    <div class="row wrap">
+      <a class="btn" href="notes.html">Отмена</a>
+      <button class="btn btn--primary" type="submit" form="note-form">
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        Сохранить
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ Демо-состояния сохранения (в продукте нет) ========= -->
+  <div class="segmented" role="group" aria-label="Демонстрация состояний сохранения" data-state-group="#save-states" style="margin-bottom: var(--sp-4)">
+    <button class="segmented__btn" type="button" data-set-state="clean" aria-pressed="true">Всё сохранено</button>
+    <button class="segmented__btn" type="button" data-set-state="emptynote" aria-pressed="false">Пустая заметка</button>
+    <button class="segmented__btn" type="button" data-set-state="savefail" aria-pressed="false">Ошибка сохранения</button>
+  </div>
+
+  <div id="save-states" style="margin-bottom: var(--sp-4)">
+    <div data-state="clean" class="alert alert--info" role="status">
+      <svg class="alert__icon" aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+      <div><p class="small">Изменения сохранены. Уход со страницы без предупреждения.</p></div>
+    </div>
+
+    <div data-state="emptynote" class="alert alert--error" role="alert" hidden>
+      <svg class="alert__icon" aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16h.01"/></svg>
+      <div>
+        <p class="alert__title">Заметка пустая</p>
+        <p class="small">Нужен хотя бы заголовок или текст (E1, AC-17). Пустую заметку сохранить нельзя.</p>
+      </div>
+    </div>
+
+    <div data-state="savefail" class="alert alert--error" role="alert" hidden>
+      <svg class="alert__icon" aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      <div>
+        <p class="alert__title">Не удалось сохранить</p>
+        <p class="small">Сервер вернул ошибку. Текст остался в редакторе — попробуйте «Сохранить» ещё раз (E17).</p>
+      </div>
+    </div>
+  </div>
+
+  <form class="editor-shell" id="note-form" data-editor-mode="editor" novalidate>
+
+    <!-- ======================= Заголовок заметки ===================== -->
+    <div class="field" style="margin-bottom: var(--sp-4)">
+      <label class="field__label" for="note-title">Заголовок <span class="dim">— необязательно</span></label>
+      <input class="input" id="note-title" name="title" type="text" maxlength="200"
+             placeholder="Например: План на неделю" value="План на неделю"
+             aria-describedby="title-hint">
+      <span class="field__hint" id="title-hint">До 200 символов. Если пусто — заголовком станет первая строка текста (E3).</span>
+    </div>
+
+    <!-- ============================ Теги ============================ -->
+    <div class="field" style="margin-bottom: var(--sp-4)">
+      <label class="field__label" for="note-tags">Теги</label>
+      <div class="input row wrap" style="gap:var(--sp-2); min-height:48px; padding:var(--sp-2) var(--sp-3)">
+        <span class="tag tag--removable">
+          <span class="tag__label">работа</span>
+          <button class="tag__remove" type="button" aria-label="Убрать тег «работа»">
+            <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </span>
+        <span class="tag tag--removable">
+          <span class="tag__label">планы</span>
+          <button class="tag__remove" type="button" aria-label="Убрать тег «планы»">
+            <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </span>
+        <input id="note-tags" name="tags" type="text" list="tag-suggestions" placeholder="Добавить тег…"
+               style="border:0; outline-offset:2px; flex:1 1 120px; min-width:120px; padding:var(--sp-1); font-size:var(--fs-16); font-family:inherit; background:transparent"
+               aria-describedby="tags-hint">
+        <datalist id="tag-suggestions">
+          <option value="работа"></option>
+          <option value="планы"></option>
+          <option value="учёба"></option>
+          <option value="рецепты"></option>
+          <option value="книги"></option>
+        </datalist>
+      </div>
+      <span class="field__hint" id="tags-hint">Enter или запятая — добавить. До 20 тегов, до 50 символов каждый, повторы и пустые не добавляются (T1, T2, Q-T3).</span>
+    </div>
+
+    <!-- =================== Live-сплит: редактор + превью ============= -->
+    <div class="row between wrap" style="margin-bottom: var(--sp-3)">
+      <div class="row-3 wrap">
+        <h2 style="font-size:var(--fs-18)">Содержимое</h2>
+        <!-- Табы видны только на узких экранах (CSS display). На широких — сплит. -->
+        <div class="segmented editor-tabs" role="tablist" aria-label="Редактор или просмотр" data-editor-tabs>
+          <button class="segmented__btn" type="button" role="tab" id="tab-editor" aria-controls="pane-editor"
+                  aria-selected="true" tabindex="0" data-editor-tab="editor">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Редактор
+          </button>
+          <button class="segmented__btn" type="button" role="tab" id="tab-preview" aria-controls="pane-preview"
+                  aria-selected="false" tabindex="-1" data-editor-tab="preview">
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            Просмотр
+          </button>
+        </div>
+      </div>
+      <p class="tiny dim editor-split-note">
+        Слева — markdown, справа — живое превью. На узких экранах они превращаются в переключатель (AC-30, NFR-23).
+      </p>
+    </div>
+
+    <div class="editor-grid">
+      <!-- ---------- Панель редактора ---------- -->
+      <section class="editor-pane" id="pane-editor" role="tabpanel" aria-labelledby="tab-editor">
+        <div class="pane__header">
+          <span class="pane__title">Markdown</span>
+          <span class="tiny dim">Слева — исходник, справа — результат</span>
+        </div>
+
+        <!-- Панель форматирования. Markdown-синтаксис обязателен и без неё —
+             кнопки лишь вставляют/оборачивают выделение.
+             Доступность: role="toolbar" + группы с подписями, у каждой кнопки
+             aria-label и title (подсказка), Tab — навигация, aria-keyshortcuts —
+             горячие клавиши-подсказки. Вставка в этом макете демонстрационная. -->
+        <div class="pane__toolbar">
+          <div class="md-toolbar" role="toolbar" aria-label="Форматирование markdown"
+               aria-describedby="md-toolbar-hint" data-md-toolbar>
+            <div class="md-toolbar__group" role="group" aria-label="Заголовки">
+              <button class="md-toolbar__btn" type="button" data-md-prefix="# "
+                      aria-label="Заголовок первого уровня" title="Заголовок 1" aria-keyshortcuts="Control+1">
+                <span class="md-toolbar__glyph" aria-hidden="true">H1</span>
+              </button>
+              <button class="md-toolbar__btn" type="button" data-md-prefix="## "
+                      aria-label="Заголовок второго уровня" title="Заголовок 2" aria-keyshortcuts="Control+2">
+                <span class="md-toolbar__glyph" aria-hidden="true">H2</span>
+              </button>
+              <button class="md-toolbar__btn" type="button" data-md-prefix="### "
+                      aria-label="Заголовок третьего уровня" title="Заголовок 3" aria-keyshortcuts="Control+3">
+                <span class="md-toolbar__glyph" aria-hidden="true">H3</span>
+              </button>
+            </div>
+
+            <span class="md-toolbar__sep" role="separator" aria-orientation="vertical"></span>
+
+            <div class="md-toolbar__group" role="group" aria-label="Начертание">
+              <button class="md-toolbar__btn" type="button" data-md-insert="**|**"
+                      aria-label="Жирный" title="Жирный" aria-keyshortcuts="Control+B">
+                <span class="md-toolbar__glyph" aria-hidden="true" style="font-weight:700">B</span>
+              </button>
+              <button class="md-toolbar__btn" type="button" data-md-insert="*|*"
+                      aria-label="Курсив" title="Курсив" aria-keyshortcuts="Control+I">
+                <span class="md-toolbar__glyph" aria-hidden="true" style="font-style:italic">I</span>
+              </button>
+            </div>
+
+            <span class="md-toolbar__sep" role="separator" aria-orientation="vertical"></span>
+
+            <div class="md-toolbar__group" role="group" aria-label="Списки">
+              <button class="md-toolbar__btn" type="button" data-md-prefix="- "
+                      aria-label="Маркированный список" title="Маркированный список">
+                <span class="md-toolbar__glyph" aria-hidden="true">•—</span>
+              </button>
+              <button class="md-toolbar__btn" type="button" data-md-prefix="1. "
+                      aria-label="Нумерованный список" title="Нумерованный список">
+                <span class="md-toolbar__glyph" aria-hidden="true">1.—</span>
+              </button>
+            </div>
+
+            <span class="md-toolbar__sep" role="separator" aria-orientation="vertical"></span>
+
+            <div class="md-toolbar__group" role="group" aria-label="Блоки и ссылки">
+              <button class="md-toolbar__btn" type="button" data-md-insert="`|`"
+                      aria-label="Код в строке" title="Код в строке">
+                <span class="md-toolbar__glyph mono" aria-hidden="true">&lt;/&gt;</span>
+              </button>
+              <button class="md-toolbar__btn" type="button" data-md-block="```"
+                      aria-label="Блок кода" title="Блок кода">
+                <span class="md-toolbar__glyph mono" aria-hidden="true">[ ]</span>
+              </button>
+              <button class="md-toolbar__btn" type="button" data-md-prefix="&gt; "
+                      aria-label="Цитата" title="Цитата">
+                <span class="md-toolbar__glyph" aria-hidden="true">❝</span>
+              </button>
+              <button class="md-toolbar__btn" type="button" data-md-link=""
+                      aria-label="Ссылка" title="Ссылка">
+                <span class="md-toolbar__glyph" aria-hidden="true">🔗</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="sr-only" id="md-toolbar-hint">
+          Кнопки применяются к выделенному тексту или вставляют заготовку в позицию курсора.
+          Вставляемые фрагменты — обычный markdown-синтаксис.
+        </p>
+
+        <label class="sr-only" for="md">Текст заметки в markdown</label>
+        <textarea class="md-input" id="md" name="body" spellcheck="false" data-md-input
+                  data-initial="# План на неделю&#10;&#10;Коротко: **три главных дела** и *одно приятное*.&#10;&#10;## Дела&#10;- доработать поиск по заметкам&#10;- ревью макетов интерфейса&#10;- созвон с командой в четверг&#10;&#10;## Заметки по коду&#10;Для поиска нужен `debounce`, иначе сервер получит лишние запросы:&#10;&#10;```js&#10;const search = debounce((q) =&gt; api.search(q), 300);&#10;```&#10;&#10;> Черновик: список дел может поменяться.&#10;&#10;Подробнее — в [спеке](SPEC.md)." aria-describedby="md-hint"># План на неделю
+
+Коротко: **три главных дела** и *одно приятное*.
+
+## Дела
+- доработать поиск по заметкам
+- ревью макетов интерфейса
+- созвон с командой в четверг
+
+## Заметки по коду
+Для поиска нужен `debounce`, иначе сервер получит лишние запросы:
+
+```js
+const search = debounce((q) => api.search(q), 300);
+```
+
+> Черновик: список дел может поменяться.
+
+Подробнее — в [спеке](SPEC.md).</textarea>
+
+        <div class="pane__foot">
+          <span id="md-hint">Текст сохраняется как raw markdown (AC-28). Лимит — 100 000 символов (Q7).</span>
+          <span class="mono" data-char-counter>286 / 100 000</span>
+        </div>
+      </section>
+
+      <!-- ---------- Панель превью ---------- -->
+      <section class="preview-pane" id="pane-preview" role="tabpanel" aria-labelledby="tab-preview">
+        <div class="pane__header">
+          <span class="pane__title">Превью</span>
+          <!-- ВАЖНО (AC-45..AC-47, NFR-5): markdown рендерится на сервере/клиенте
+               через санитайзер по allowlist. Сырой HTML (<script>, on*, style,
+               iframe) вырезается, а не исполняется. Здесь разметка превью
+               свёрстана руками — это макет, а не результат рендера. -->
+          <span class="tiny dim" aria-label="Рендер проходит через санитайзер">🛡 через санитайзер</span>
+        </div>
+        <div class="md-preview">
+          <!-- Наглядный макет результата рендера того же markdown -->
+          <article class="md">
+            <h1>План на неделю</h1>
+            <p>Коротко: <strong>три главных дела</strong> и <em>одно приятное</em>.</p>
+            <h2>Дела</h2>
+            <ul>
+              <li>доработать поиск по заметкам</li>
+              <li>ревью макетов интерфейса</li>
+              <li>созвон с командой в четверг</li>
+            </ul>
+            <h2>Заметки по коду</h2>
+            <p>Для поиска нужен <code>debounce</code>, иначе сервер получит лишние запросы:</p>
+            <pre><code>const search = debounce((q) =&gt; api.search(q), 300);</code></pre>
+            <blockquote>Черновик: список дел может поменяться.</blockquote>
+            <p>Подробнее — в <a href="#" onclick="return false">спеке</a>.</p>
+          </article>
+        </div>
+      </section>
+    </div>
+  </form>
+
+  <details class="panel" style="margin-top: var(--sp-8)">
+    <summary style="padding:var(--sp-3) var(--sp-4); cursor:pointer; font-weight:var(--fw-medium)">Что утверждается на этом экране</summary>
+    <ul class="stack small muted" style="padding: var(--sp-3) var(--sp-4) var(--sp-4) var(--sp-8)">
+      <li><strong>Сплит 50/50</strong> на широких экранах; на ≤1024px — табы «Редактор / Просмотр» (AC-30, NFR-23). Превью в мокапе не пересчитывается на ввод — в продукте live.</li>
+      <li><strong>Toolbar форматирования включён в MVP</strong> (решение гейта 2): H1/H2/H3, жирный, курсив, маркированный и нумерованный списки, код в строке, блок кода, цитата, ссылка. Кнопки вставляют markdown-синтаксис в позицию курсора или оборачивают выделение; есть <span class="mono">aria-label</span>, <span class="mono">title</span>, группы с подписями и <span class="mono">aria-keyshortcuts</span>.</li>
+      <li><strong>Явное сохранение</strong> (не autosave), с состоянием «есть несохранённые изменения» и предупреждением при уходе (Q9, AC-20, E10).</li>
+      <li><strong>Теги</strong>: ввод по Enter/запятой, чипы удаляются кнопкой с <span class="mono">aria-label</span>, дубли и пустые не добавляются (AC-33..AC-38).</li>
+      <li><strong>Превью — через санитайзер</strong> по allowlist: сырой HTML не исполняется (AC-45..AC-47). Оформление кода: тёмный блок, инлайн-код — светлая плашка.</li>
+      <li>Открытый вопрос: как toolbar ведёт себя на мобильном (перенос в 2 строки или горизонтальный скролл) и нужны ли горячие клавиши в MVP.</li>
+    </ul>
+  </details>
+</main>
+
+<!-- ============ Предупреждение о несохранённых правках (AC-20, E10) ===== -->
+<dialog class="modal" id="dlg-unsaved" aria-labelledby="dlg-unsaved-title" aria-describedby="dlg-unsaved-text">
+  <div class="modal__body">
+    <h2 id="dlg-unsaved-title" style="font-size:var(--fs-18)">Есть несохранённые изменения</h2>
+    <p class="small muted" id="dlg-unsaved-text">
+      Если уйти сейчас, правки в «План на неделю» будут потеряны. Данные на сервере останутся прежними.
+    </p>
+  </div>
+  <div class="modal__actions" style="flex-wrap:wrap">
+    <button class="btn" type="button" data-close-dialog autofocus>Остаться в редакторе</button>
+    <button class="btn btn--danger-quiet" type="button" data-close-dialog>Выйти без сохранения</button>
+    <button class="btn btn--primary" type="button" data-close-dialog>Сохранить и выйти</button>
+  </div>
+</dialog>
+<p class="container" style="padding-bottom:var(--sp-8)">
+  <button class="btn btn--sm" type="button" data-open-dialog="dlg-unsaved">Демо: показать диалог «есть несохранённые изменения»</button>
+</p>
+
+<script src="app.js"></script>
+</body>
+</html>
