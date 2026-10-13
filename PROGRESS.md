@@ -1034,4 +1034,131 @@ cd ..\server; $env:PORT='3000'; $env:DATABASE_PATH="$env:TEMP\t10-notes.db"; npm
 - **`formatCharsCount`** использует неразрывный пробел (`\u00a0`) для группировки разрядов — учитывать при
   сравнении строк в тестах.
 
+---
+
+## T-11 — Доступность и адаптивность (кросс-экранный пас) — tasker-frontend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `react` (компоненты/состояние/a11y/тесты)
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано (исправления)
+
+| # | Найдено | Исправление | Файл |
+|---|---|---|---|
+| 1 | Диалоги **не возвращали фокус** инициатору; `Esc` не обрабатывался, если окружение не умеет нативное закрытие | Общий хук `useModalDialog(open, ref, onEscape)`: `showModal()` + фокус на «безопасном» действии, `Esc` = безопасное действие (единообразно в браузере и jsdom), при закрытии `close()` + **возврат фокуса инициатору** (NFR-15/§5.3) | `components/useModalDialog.ts` (новый), `DeleteDialog.tsx`, `UnsavedDialog.tsx` |
+| 2 | `aria-describedby` поиска указывал на `#result-status`, которого в DOM не было в состоянии загрузки/ошибки (битая IDREF) | Живой регион результатов рендерится **всегда**, текст — в состоянии `ready` (DESIGN §2.4/§2.6, NFR-16/20) | `pages/Notes.tsx` |
+| 3 | `aria-label` на `div` без роли (теги заметки) не объявлялся | `role="group" aria-label="Теги заметки"` | `pages/Note.tsx` |
+| 4 | Экран 404/ошибки заметки был **без `h1`**; ошибка дублировала текст алерта | `h1` «Заметка не найдена» (`.empty__title`), `h1` «Не удалось загрузить заметку» + алерт «Сервер не ответил» | `pages/Note.tsx` |
+| 5 | `aria-label` на `span`-бейдже «🛡 через санитайзер» (не объявляется) и эмодзи в имени | Эмодзи — `aria-hidden`, текст несёт смысл | `pages/Editor.tsx` |
+| 6 | **Lighthouse `heading-order`**: заметка, начинающаяся с `##`, рендерилась как `h3` → пропуск уровня `h1`→`h3` | Нормализация уровней заголовков: **минимальный** уровень заметки → `h2` (было: жёсткий сдвиг +1), пропуска уровней нет, верх — `h4` (DESIGN §5.4, AC-31 сохраняется: рендерер один и тот же) | `lib/markdown.ts` |
+| 7 | Правило `≤860px` (`snippet: none`, `tags: 140px`) стояло **до** блока `≤1024px` и было мёртвым (`max-width: 180px` перебивал) | Блок `≤860px` перенесён после `≤1024px`; инвариант зафиксирован тестом | `styles/glass.css` |
+| 8 | **≤640px поиск растягивался на 260px по высоте** (`flex: 1 1 260px` в колоночном toolbar работает по вертикали) — найдено рендером в браузере | `.toolbar .search { flex: 0 0 auto; width: 100% }` на ≤640px | `styles/glass.css` |
+| 9 | Фильтр-бар на ≤640px не перестраивался в столбик (§3.10) | `.filterbar` в колонку, спейсер скрыт, «Сбросить» по левому краю | `styles/glass.css` |
+| 10 | `.md-input` 14px на мобильном → iOS зумит страницу при фокусе (§5.6) | ≤640px: `.md-input { font-size: var(--fs-16) }` (на десктопе по DESIGN §2.13 остаётся 14px) | `styles/glass.css` |
+| 11 | Подпись состояния фильтров — `--c-text-3` при 12px (нарушение правила §5.1.3) | `small muted` (13px, `--c-text-2`), остаётся не-live-подписью (§2.6) | `components/TagFilter.tsx` |
+
+**Подтверждено без изменений** (контракт уже соответствовал DESIGN §5.2/§5.3):
+segmented (`role=group`/`aria-pressed`/скрытый `role=status`), поиск (sr-only label, `type=search`,
+`autocomplete=off`), чипы (`group`/`aria-pressed`/`aria-hidden` счётчик), toolbar (`toolbar`/`group`/
+`separator`/`aria-label`+`title`+`aria-keyshortcuts`, глифы `aria-hidden`), табы редактора
+(`tablist`/`tab`/`aria-controls`/roving `tabindex`/Arrow), диалоги (`aria-labelledby`/`describedby`,
+`autofocus` на безопасном действии), формы (`aria-invalid`/`aria-describedby`/`role=alert`,
+фокус на алерте/первом невалидном поле), `skip-link` первым в tab-порядке, иконки
+(`aria-hidden`/`focusable=false`), контраст токенов (§5.1), fallback `@supports not (backdrop-filter)`,
+`prefers-contrast: more`, `prefers-reduced-motion` в токенах/стекле.
+
+### Тесты (витest + @testing-library/react): +32 (было 104 → стало 136 → 137)
+
+- `src/__tests__/a11y.test.tsx` (20 тестов) — сквозной a11y-контракт по экранам:
+  Login/Register (один `h1`, skip-link первым, `aria-invalid`/`aria-describedby`/`role=alert`,
+  фокус на алерте/первом невалидном поле, сила пароля не только цветом);
+  Notes (segmented-семантика, живые регионы поиска и результатов, чипы, контекстные `aria-label`
+  иконок-кнопок, empty-state, диалог: aria-связи + autofocus + `Esc` + возврат фокуса,
+  **Tab-обход 60 шагов без залипания и циклический**); Editor (`h1`, toolbar/группы/разделители,
+  табы + Arrow + roving tabindex, поле тегов + `role=alert` на лимите, статусы, диалог несохранённых
+  правок с `Esc` и возвратом фокуса); Note (один `h1`, группа тегов, диалог, 404/ошибка с заголовком,
+  порядок заголовков без пропуска уровней).
+- `src/__tests__/a11y-css.test.ts` (13 тестов) — статический CSS-контракт (jsdom не считает раскладку):
+  брейкпоинты 1024/900/860/640, 16px у инпутов и `.md-input` на мобильном, порядок media-блоков
+  (каскад), `prefers-reduced-motion`, `prefers-contrast: more` (значения токенов), fallback
+  `@supports not (backdrop-filter)`, кольцо фокуса, отсутствие `contain: paint`, blur только на
+  контейнере списка, плотности стекла `.98/.95/.97/.92` и базовые `.84/.68/.58/.42`.
+
+### Покрытие приёмки T-11
+
+| Критерий | Проверка |
+|---|---|
+| Полный Tab/Shift+Tab без «залипания»; диалоги `Esc` + возврат фокуса (NFR-15) | тест (60 табов, цикличность, без повторов) + **реальный браузер**: обход `/notes` и `/notes/new` по шагам, `Esc` в обоих диалогах, фокус вернулся на «Удалить заметку «…»» и «Отмена» |
+| Переключатель вида и поиск/фильтр: семантика/имена (NFR-16) | тест + a11y-дерево Chrome (`button "Плитки" pressed`, `searchbox "Поиск по заметкам" description="5 заметок — все заметки"`, чипы `aria-pressed`) |
+| Иконки-кнопки с `aria-label`; ошибки форм `role=alert`+`aria-invalid`+`aria-describedby` (NFR-17/19) | тесты + проверка «нет кнопок без имени / все `svg` `aria-hidden`» на 7 экранах |
+| Контраст AA, видимый фокус, результаты/empty-state читаются (NFR-18/20) | Lighthouse **Accessibility 100** на `/notes`, `/notes/new`, `/login`, `/register`, `/notes/:id`; контраст — по замерам Design-токенов §5.1 |
+| `prefers-reduced-motion` (mesh/shimmer/hover), `prefers-contrast`, fallback `@supports` (§5.5) | **CDP-эмуляция в реальном Chrome**: mesh `animation: none`, shimmer `1.6s infinite → 1e-05s/1`, hover `translateY(-2px) → none`, `--glass-bg-hi .84 → .98`, `--c-text-2 #3d4a5e → #2b3648`, `@supports not (…)` с `.96/.94/.95/.9` объявлен |
+| Адаптив 1280/1024/860/640 (NFR-21..24) | **реальный рендер** (Chrome, CDP `resize_page`): 1280 → 4 плитки, 1024 → 3, 860 → 2, 640 → 1; список: фрагмент скрыт ≤860, теги 300→180→140→100%; сплит→табы на ≤1024 (панель по `data-editor-mode`, Arrow), toolbar 30×30 на ≤640; формы: брендовая панель скрыта ≤1024, инпуты 16px, карточка 430px; горизонтального скролла нет ни на одной ширине |
+
+### Как проверить
+
+```powershell
+cd web
+npm install
+npm test          # vitest: 137 тестов (104 существующих + 33 T-11)
+npm run build     # tsc --noEmit && vite build
+# браузерная проверка (реальный Chrome/CDP или MCP chrome-devtools):
+cd ..\server; $env:PORT='3000'; $env:DATABASE_PATH="$env:TEMP\t11-notes.db"; npm start
+cd ..\web;    npm run dev      # :5173 → proxy /api → :3000
+# далее: register → 3+ заметки → resize 1280/1024/860/640 → Lighthouse (snapshot) → Tab/Esc
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm test`: **Test Files 9 passed (9) · Tests 137 passed (137)** = 104 существующих (T-06..T-10) + 33 новых.
+- `npm run build`: `tsc --noEmit` без ошибок; `vite build` → `dist/` (CSS 33.68 kB, JS 351.15 kB).
+- **Браузерный e2e (реальный Chrome + MCP `chrome-devtools`, полный стек Vite :5173 → Fastify :3000,
+  реальная сессия + CSRF), 7 экранов**:
+  - ровно один `h1` и один `<main>` на каждом экране; `skip-link` первым (кроме служебного 404-роута
+    вне `AppLayout`); кнопок без доступного имени — 0; `svg` без `aria-hidden` — 0; ошибок в консоли нет
+    (только dev-warning React Router о future-флагах);
+  - **Lighthouse Accessibility: `/notes` 100, `/notes/new` 100, `/login` 100, `/register` 100,
+    `/notes/:id` 98 → после нормализации заголовков 100** (failures после правки — только SEO
+    `meta-description`/`robots.txt` и agentic-browsing `llms.txt`, вне a11y);
+  - клавиатура `/notes`: `skip-link → бренд → Выйти → Создать заметку → поиск → Плитки → Список →
+    5 чипов → Сбросить → заметка → Редактировать → Удалить`, далее цикл; `Enter` на «Удалить…» открывает
+    диалог с фокусом внутри («Отмена»), `Esc` закрывает и возвращает фокус на инициатора, заметка на месте;
+  - клавиатура `/notes/new`: `… → Отмена/Сохранить → заголовок → теги → [таб «Редактор» на ≤1024] →
+    11 кнопок toolbar → textarea`; на 1280 табы скрыты (`display:none`) и в tab-порядке отсутствуют;
+  - адаптив: разметка/плитки/список/сплит-табы/формы — см. таблицу приёмки (ширины 1280/1024/860/640,
+    измерены `getComputedStyle` и габариты узлов; горизонтального скролла нет);
+  - скриншоты `/notes` 1280 (4 плитки — плитки/список), 640 (1 колонка, столбик фильтров) и
+    `/notes/:id/edit` 1024 (табы) просмотрены: вёрстка целая, стекло/контраст не поплыли.
+- **Найденные дефекты** — все 11 из таблицы выше; #7/#8/#9/#10 найдены **только** реальным рендером
+  (jsdom раскладку не считает) — подтверждение ценности браузерного гейта.
+- **Грабли окружения (для QA/DevOps):** `resize_page(640)` даёт `innerWidth = 642` (окно + 2px) —
+  для попадания в media-условие `≤640px` запрашивать 638 (аналогично 858/1022);
+  MCP `emulate` не умеет `prefers-reduced-motion`/`prefers-contrast` — использован прямой CDP
+  (`Emulation.setEmulatedMedia`) в headless Chrome с временными скриптами (удалены).
+
+### Артефакты
+
+`web/src/components/useModalDialog.ts` (новый), `web/src/components/{DeleteDialog,UnsavedDialog,TagFilter}.tsx`,
+`web/src/pages/{Notes,Note,Editor}.tsx`, `web/src/lib/markdown.ts`, `web/src/styles/glass.css`,
+`web/src/__tests__/a11y.test.tsx` (новый), `web/src/__tests__/a11y-css.test.ts` (новый),
+`web/package.json`/`package-lock.json` (`@types/node` для чтения CSS в тесте), `web/tsconfig.json` (types: node)
+
+**Коммит:** `1996858` — `feat(T-11): сквозной пас доступности и адаптивности (фокус диалогов + Esc, aria-контракт, prefers-*, брейкпоинты)`
+
+### Заметки для следующих задач
+
+- **T-12 (deploy):** сборка `web/dist` (JS 351 kB) — цель прод-раздачи; новые маршруты не добавлялись,
+  но SPA-fallback обязателен для `/notes`, `/notes/new`, `/notes/:id`, `/notes/:id/edit`.
+- **QA:** браузерный гейт обязателен — `jsdom` не считает раскладку, и 4 из 11 дефектов T-11
+  (высота поиска на 640, мёртвое правило ≤860, сплит-табы, font-size поля markdown) видны только в рендере.
+  Для проверок ширины учитывать `+2px` у `resize_page`.
+- **`renderMarkdown`** нормализует **минимальный** уровень заголовка заметки к `h2` (не жёсткий +1):
+  заметка без `#` теперь даёт `h2`, а не `h3` (иначе Lighthouse `heading-order` и пропуск уровня).
+  Тест T-07 («заголовки начинаются с h2») остаётся зелёным — сдвиг +1 сохраняется для заметок с `#`.
+- **Диалоги:** вся механика (показ, `Esc`, возврат фокуса) — в `useModalDialog`; новые диалоги
+  подключать через него, а не дублировать `showModal`.
+- **Мобильная типографика:** `.md-input` — 14px по §2.13, но 16px на ≤640px (антизум iOS, §5.6);
+  при снижении альфы стекла или смене размеров инпутов — повторный замер контраста (DESIGN §5.1.5).
+
 
