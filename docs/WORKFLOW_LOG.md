@@ -50,6 +50,18 @@
   - Шрифт Press Start 2P — оставляем (не для продажи).
 - **Решение:** Запуск Planner для `docs/PLAN.md`, `docs/TASKS.json`, `docs/init.sh` и baseline-коммита.
 
+## 2026-10-14 — Orchestrator: Приёмка Planner
+
+- **Действие:** Получен результат Planner (subagent `ses_ec88b6799ffepAaB7Q3Dz477f1`).
+- **Результат:**
+  - `docs/PLAN.md` — архитектура (Godot 4.4+, GDScript, autoload-синглтоны, слои), 12 этапов, техрешения
+  - `docs/TASKS.json` — 37 задач (T-01…T-37): devops×2, backend×20, frontend×10, dba×4, qa×1
+  - `docs/init.sh` + `docs/init.ps1` — скрипты подъёма окружения
+  - Baseline-коммит `f14db84`
+  - Стек-скилл `godot` добавлен
+- **⚠️ Предупреждение:** Godot не установлен. Нужен Godot 4.4+ до этапа 1 (T-03+).
+- **Решение:** Начало реализации. Первые задачи — T-01/T-02 (инициализация Godot-проекта).
+
 ## 2026-10-14 — Planner: План, декомпозиция, инициализация
 
 - **Действие:** Проанализированы `docs/SPEC.md` (гейт 1), `docs/DESIGN.md` и `docs/mockups/` (гейт 2), состояние репозитория. Подготовлены артефакты инициализации.
@@ -64,3 +76,22 @@
 - **Риск для исполнения:** Godot 4.x не установлен (`C:\Program Files\Godot\Godot.exe` отсутствует) — требуется установить рантайм/задать `GODOT_PATH` до этапа 1 (T-03+).
 - **Решение:** Baseline-коммит артефактов; передача Orchestrator для запуска задач.
 - **Следующий гейт:** Реализация задач (Tasker'ы) → QA (T-37) → Гейт 3 (Merge).
+
+## 2026-10-14 — tasker-devops: T-01 Каркас Godot-проекта и настройки рендера
+
+- **Действие:** Реализована задача T-01 (`docs/TASKS.json`) по PLAN §2.1/§2.2/§2.3 и DESIGN §4.4.
+- **Артефакты:**
+  - `game/project.godot` — 480×270, stretch viewport/integer/keep, nearest-фильтр, физика 60 Гц, GL Compatibility, 10 autoload'ов в порядке PLAN §2.2 (EventBus → Config → Locale → InputManager → AudioManager → GameState → FactionManager → Journal → SaveManager → SceneRouter), InputMap (move_left/right/up/down, jump, attack, block, roll, dash, interact — клавиатура+геймпад; ui_* — навигация меню), слои 2D-физики задокументированы. Только используемые ключи (Zero Dead Config).
+  - `game/Main.tscn` + `game/Main.gd` — WorldRoot + CanvasLayer'ы HUD=10, UI=20, Toasts=30, Overlay=40.
+  - `game/autoload/*.gd` — 10 типизированных заглушек с документацией (ссылки на задачи-потребители).
+  - `game/icon.svg`, `.gitignore` (корневой) и `game/.gitignore` (`.godot/`, `*.tmp`).
+  - Полное дерево каталогов PLAN §2.1 (core/, entities/, world/, ui/, assets/, data/, tests/ — с `.gitkeep`).
+  - `game/addons/gut/` — GUT v9.4.0 вендорен (последний релиз без требования Godot 4.5; совместим с целевыми 4.4/4.5).
+  - Сгенерированы и закоммичены `.uid`/`.import` (Godot 4.4 требует их в репозитории).
+- **Проверки (Godot 4.4.1-stable, portable в temp, headless):**
+  - `--headless --import` — exit 0, без ошибок; `game/.godot/` создан; docs/ не сканируется (вне корня проекта `game/`).
+  - `--headless --quit` — exit 0, Main.tscn загружается без ошибок.
+  - Скрипт-проверка: настройки рендера/физики, порядок autoload'ов (ProjectSettings + runtime-дети root), все действия InputMap, структура Main.tscn (WorldRoot + слои 10/20/30/40) — `T01_VERIFY_OK`; временный скрипт удалён.
+  - GUT smoke: `-s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit` — exit 0 (0 тестов), команда CI (T-02) валидна.
+- **Примечания:** Godot в окружении не установлен — каркас проверен portable-сборкой 4.4.1 во временном каталоге (в систему не устанавливался); `docs/init.ps1` найдёт Godot через `GODOT_PATH`. Статус задачи остаётся `pending` — отметит QA/Guardian по гейтам.
+- **Следующий шаг:** T-02 (CI + export_presets) — разблокирована.
