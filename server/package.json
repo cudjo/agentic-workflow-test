@@ -1,0 +1,24 @@
+{
+  "name": "notes-service-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Notes Service backend (Fastify + SQLite via node:sqlite)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "migrate": "tsx src/db/migrate.ts",
+    "migrate:down": "tsx src/db/migrate.ts --down",
+    "migrate:status": "tsx src/db/migrate.ts --status",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  }
+}
