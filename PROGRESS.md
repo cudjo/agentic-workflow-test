@@ -700,3 +700,127 @@ npm run build     # tsc --noEmit && vite build
 - **Стили:** класс `.md` (glass.css) уже покрывает вёрстку markdown — отдельные стили не нужны.
   Блок `.md-raw` — демонстрационный (в продукте не используется).
 
+---
+
+## T-08 — Экран списка заметок: плитки/список, поиск, фильтр, empty-state, удаление — tasker-frontend
+
+**Дата:** 2026-10-13
+**Стек-скилл:** `react` (компоненты/состояние/a11y/тесты)
+**Статус задачи в `TASKS.json`:** не менялся (ставит конвейер по гейтам)
+
+### Что сделано
+
+- **`web/src/api/notes.ts` (новый)** — тонкие обёртки над `apiRequest` из `client.ts`
+  (CSRF/401 берутся оттуда): `notesApi.list({q, tag})` → `GET /api/notes?q=&tag=` (`{items,total}`),
+  `notesApi.remove(id)` → `DELETE /api/notes/:id` (204), `tagsApi.list()` → `GET /api/tags`
+  (`{items:[{name,count}]}`). Типы `Note` (`title: string | null`), `TagCount`.
+- **`web/src/lib/view.ts` (новый)** — предпочтение вида: `loadView()` / `saveView()`,
+  ключ `notes.view ∈ {grid,list}`, дефолт **grid**, повреждённое/отсутствующее значение → grid
+  (AC-25/AC-27). Доступ к `localStorage` защищён try/catch (приватный режим не роняет экран).
+- **`web/src/lib/note-text.ts` (новый)** — производные тексты: `toPlainText(markdown)` (plain-text
+  выжимка **без рендера** — снимает markdown-разметку, ссылки → текст, блоки кода → содержимое) и
+  `noteTitle(note)` — `title` либо первая непустая строка текста (E3).
+- **`web/src/lib/format.ts`** — добавлены `formatNoteDate(iso)` → «13 окт, 09:20» (DESIGN §2.1/§9) и
+  `formatNotesCount(n)` — склонение «N заметка/заметки/заметок» (§2.6).
+- **`web/src/components/icons.tsx`** — добавлены инлайн-SVG (все `aria-hidden`/`focusable=false`):
+  `SearchIcon, CloseIcon, GridIcon, ListIcon, PlusIcon, PencilIcon, TrashIcon, FileTextIcon, RefreshIcon`.
+- **Компоненты (новые):**
+  - `NoteItem.tsx` — **один DOM** (`li.note-item`) на плитку и строку (раскладку задаёт контейнер
+    `results--grid`/`results--list`, AC-24/AC-26): заголовок `clamp-2` (для пустого — из первой строки
+    текста), фрагмент `clamp-3` plain-text, теги как текст (или «Без тегов»), `<time dateTime=…>`,
+    действия «Редактировать»/«Удалить» — всегда видимы, с контекстными `aria-label`.
+  - `Segmented.tsx` — `role="group"` + `aria-label`, кнопки `aria-pressed`, `ArrowLeft/ArrowRight`
+    переносят фокус и выбирают вид, скрытый `role="status"` «Текущий вид: плитки/список» (NFR-16).
+  - `SearchBox.tsx` — debounce 300 ms (серверный поиск, NFR-4), sr-only label `for="q"`, `type="search"`,
+    `aria-describedby` → регион результатов, кнопка `.search__clear` (только при непустом тексте)
+    возвращает фокус в поле; внешний сброс синхронизирует поле.
+  - `TagFilter.tsx` — чипы-фильтры из `GET /api/tags` со счётчиками (`chip__count`, `aria-hidden`),
+    toggle `aria-pressed`, контейнер `role="group" aria-labelledby`; подпись «Фильтры не применены» /
+    «Активен фильтр: {tag}» / «Активен поиск» и «Сбросить».
+  - `EmptyState.tsx` — два варианта: **A** «Пока ни одной заметки» + CTA «Создать заметку» (`Link`
+    на `/notes/new` — маршрут редактора T-09), **B** «Ничего не найдено» + «Сбросить поиск и фильтры»
+    (возвращает фокус в поиск). Ровно один вариант решает страница.
+  - `Skeleton.tsx` — `NoteListSkeleton`: 3 плитки-скелетона в `results--grid` (форма будущей раскладки),
+    контейнер `aria-hidden` + скрытый `role="status"` «Загрузка заметок…» (спиннеров нет).
+  - `DeleteDialog.tsx` — нативный `<dialog>.showModal()` (fallback на `open`-атрибут), `aria-labelledby`/
+    `aria-describedby`, фокус на «Отмена», Esc/backdrop = отмена; подтверждение — через `onConfirm`.
+- **`web/src/pages/Notes.tsx` (переписан)** — полный `S3`: заголовок «Мои заметки» + «Сортировка: сначала
+  обновлённые» + CTA; панель поиска/вида/фильтров; регион результатов `role="status" aria-live="polite"`
+  («{N} … — все заметки / по фильтру»); комбинирование q+tag по «И» (сервер); при повторных запросах
+  скелетоны **не** показываются (сохраняется предыдущий результат, §4.2.1); empty-state A/B по правилу
+  «есть ли активные фильтры»; удаление — оптимистичное (заметка исчезает без перезагрузки, `DELETE` в фоне,
+  при ошибке — алерт и перечитка, E17); ошибка загрузки — `.alert--error` с «Повторить» и «Выйти и войти снова».
+- **`web/src/setupTests.ts`** — добавлен минимальный polyfill `localStorage` (jsdom под Node 26 не предоставляет
+  его без `--localstorage-file`); после каждого теста чистится localStorage. Инфраструктурная правка, кода
+  продукта не касается.
+- **Тесты:** `web/src/__tests__/notes.test.tsx` (18 тестов, `@testing-library/react`: реальный `App` +
+  `AuthProvider` + `MemoryRouter`, мок `fetch` с серверной фильтрацией по `?q=&tag=`).
+
+### Покрытие приёмки T-08 (тесты + e2e)
+
+| Критерий | Проверка |
+|---|---|
+| Список отображает свои заметки; заголовок/фрагмент/теги/дата | 2 теста + e2e `GET /api/notes` |
+| Переключение плитки↔список мгновенно, состав/порядок неизменны (AC-24/26) | тест (сравнение `textContent` всех `li` до/после) + ArrowLeft/Right |
+| Вид в `localStorage notes.view`, дефолт grid, восстановление, повреждённое → grid (AC-25/27) | 3 теста |
+| Поиск (debounce 300 ms, серверный `?q=`) (AC-39/43) | тест + e2e `?q=борщ` |
+| Чип тега фильтрует, toggle `aria-pressed` (`?tag=`) (AC-40/41) | тест + e2e `?tag=работа` |
+| q+tag по «И»; «Сбросить» возвращает все (AC-41/43) | 3 теста + e2e (совпадение и пустое пересечение) |
+| Empty-state A + CTA (AC-23/E12) / B + «Сбросить» (AC-42) | 2 теста + e2e (пустой список) |
+| Удаление: подтверждение без перезагрузки; отмена не меняет; удаление последней → empty A (AC-21/22, E14) | 3 теста + e2e `DELETE` → 204, total 3→2→0 |
+| Загрузка — скелетоны; ошибка — alert с «Повторить» (§4.2) | 2 теста |
+
+### Как проверить
+
+```powershell
+cd web
+npm install
+npm test          # vitest: 55 тестов (9 T-06 + 28 T-07 + 18 T-08)
+npm run build     # tsc --noEmit && vite build
+# e2e-data-path (S3 использует те же эндпоинты):
+cd ..\server; $env:PORT='3311'; $env:DATABASE_PATH="$env:TEMP\notes.db"; npm start
+# затем — сценарий register → 3 заметки → list/q/tag/q+tag/tags → DELETE (см. журнал T-08)
+```
+
+### Результаты проверок (13.10.2026, Node v26.11.1, Windows)
+
+- `npm test`: **Test Files 3 passed (3) · Tests 55 passed (55)** = 9 (T-06) + 28 (T-07) + 18 новых T-08.
+- `npm run build`: `tsc --noEmit` без ошибок; `vite build` → `dist/` (`index.html` 0.47 kB, CSS 33.41 kB,
+  JS 196.16 kB).
+- **E2E data-path** (`npm start`, порт 3311, tmp-БД, Node `fetch` с cookie-jar + `X-CSRF-Token`):
+  **13/13 PASS** — register 201; 3 заметки; list `total=3` (заметка без `title` → `null`, теги массивом);
+  `?q=борщ` → 1; `?tag=работа` → 1; q+tag совпадение → 1, пустое пересечение → 0; `/api/tags` со счётчиками;
+  `DELETE` → 204, `total` 3→2→0 (последняя → пустой список).
+- **UI-проверка:** реальный браузер в песочнице недоступен (как T-06/T-07) — поведение экрана проверено
+  интеграционными тестами, которые рендерят **реальный `App`** с настоящими компонентами/роутером/контекстом
+  и мок-`fetch`, отвечающим как сервер; a11y проверяется через роли/имена/aria-атрибуты, вид — по классам
+  контейнера.
+- **UI-наблюдение:** в DOM два CTA «Создать заметку» (в шапке и в empty-state A) — оба ведут на маршрут
+  редактора `/notes/new` (появится в T-09); таргеты проверены в тестах по `data-empty-*`.
+
+### Артефакты
+
+`web/src/api/notes.ts` (новый), `web/src/lib/view.ts` (новый), `web/src/lib/note-text.ts` (новый),
+`web/src/lib/format.ts`, `web/src/components/icons.tsx`, `web/src/components/{NoteItem,Segmented,SearchBox,
+TagFilter,EmptyState,Skeleton,DeleteDialog}.tsx` (новые), `web/src/pages/Notes.tsx`,
+`web/src/setupTests.ts`, `web/src/__tests__/notes.test.tsx` (новый)
+
+**Коммит:** `feat(T-08): экран списка заметок (плитки/список, поиск, теги-фильтры, empty-state, удаление)`
+(хеш — `git log --oneline -1`)
+
+### Заметки для следующих задач
+
+- **T-09 (редактор):** маршрут `/notes/new` (CTA из empty-state A и шапки S3) и `/notes/:id/edit` (кнопка
+  «Редактировать» в `NoteItem`) уже зашиты ссылками — нужно добавить их в `App.tsx`; `notesApi` расширить
+  `create/update`. `TagInput` — `datalist` из `tagsApi.list()`.
+- **T-10 (просмотр):** `NoteItem` ссылается на `/notes/:id` (заголовок и «кликабельная» карточка через
+  растянутый `::after`); `DeleteDialog` переиспользуется без изменений.
+- **T-11 (a11y):** segmented (group/aria-pressed/Arrow), поиск (sr-only label/clear), чипы (group/aria-pressed),
+  диалог (native/aria-labelledby/autofocus), регион результатов (`role=status aria-live`) уже реализованы —
+  остаётся сквозной пас (фокус-ловушка, контраст, брейкпоинты).
+- **T-12:** сборка `web/dist` (JS 196 kB) — цель прод-раздачи; маршруты `/notes/new` и `/notes/:id(/edit)`
+  добавятся в T-09/T-10, SPA-fallback обязателен.
+- **Dev-грабли:** jsdom под Node 26 не даёт `localStorage` — в `setupTests.ts` добавлен polyfill; если тесты
+  будут переноситься в другой раннер с нативным Storage, polyfill безвреден (используется только при отсутствии).
+
+
