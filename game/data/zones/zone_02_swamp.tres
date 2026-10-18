@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="ZoneData" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_7nai2"]
+[ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_db616"]
+[ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_511b0"]
+[ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_liiyl"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_vnxto"]
+
+[sub_resource type="Resource" id="Resource_t32nk"]
+script = ExtResource("1_7nai2")
+id = &"start"
+position = Vector2(80, 214)
+
+[sub_resource type="Resource" id="Resource_tipn6"]
+script = ExtResource("1_7nai2")
+id = &"west_gate"
+position = Vector2(32, 214)
+
+[sub_resource type="Resource" id="Resource_tnptq"]
+script = ExtResource("1_7nai2")
+id = &"east_gate"
+position = Vector2(448, 214)
+
+[sub_resource type="Resource" id="Resource_mf6lx"]
+script = ExtResource("2_db616")
+id = &"west_gate"
+position = Vector2(12, 214)
+size = Vector2(16, 32)
+target_zone_id = &"zone_01_village"
+target_entry_id = &"from_gate"
+
+[sub_resource type="Resource" id="Resource_1dd0c"]
+script = ExtResource("2_db616")
+id = &"east_gate"
+position = Vector2(468, 214)
+size = Vector2(16, 32)
+target_zone_id = &"zone_03_mountains"
+target_entry_id = &"north_pass"
+
+[sub_resource type="Resource" id="Resource_1paco"]
+script = ExtResource("3_511b0")
+background = Color(0.0862745, 0.117647, 0.0784314, 1)
+ground = Color(0.231373, 0.180392, 0.133333, 1)
+accent = Color(0.490196, 0.352941, 0.156863, 1)
+hazard = Color(0.184314, 0.262745, 0.313726, 1)
+
+[resource]
+script = ExtResource("4_liiyl")
+id = &"zone_02_swamp"
+display_name = "Болото"
+palette = SubResource("Resource_1paco")
+ambient_level = 0.36
+tileset = ExtResource("5_vnxto")
+entry_points = Array[ExtResource("1_7nai2")]([SubResource("Resource_t32nk"), SubResource("Resource_tipn6"), SubResource("Resource_tnptq")])
+exits = Array[ExtResource("2_db616")]([SubResource("Resource_mf6lx"), SubResource("Resource_1dd0c")])

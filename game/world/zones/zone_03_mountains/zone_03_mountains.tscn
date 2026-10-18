@@ -1,0 +1,172 @@
+[gd_scene load_steps=21 format=4]
+
+[ext_resource type="Script" path="res://world/zones/zone_03_mountains/zone_03_scene.gd" id="1_1vsv8"]
+[ext_resource type="Resource" path="res://data/zones/zone_03_mountains.tres" id="2_aawns"]
+[ext_resource type="Script" path="res://world/zones/zone_03_mountains/zone_03_parallax.gd" id="3_inklt"]
+[ext_resource type="Script" path="res://world/zones/zone_03_mountains/zone_03_backdrop.gd" id="4_h1p5p"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_3kwpg"]
+[ext_resource type="PackedScene" path="res://world/props/bonfire.tscn" id="6_ktlkf"]
+[ext_resource type="Script" path="res://world/props/bonfire.gd" id="7_rydwe"]
+[ext_resource type="PackedScene" path="res://world/props/chest.tscn" id="8_m33fe"]
+[ext_resource type="Script" path="res://world/props/chest.gd" id="9_7tsq5"]
+[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="10_2soet"]
+[ext_resource type="Script" path="res://world/props/rubble.gd" id="11_4oi3u"]
+[ext_resource type="Script" path="res://world/zones/zone_03_mountains/zone_03_foreground.gd" id="12_by0ya"]
+[ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="13_y51h0"]
+[ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="14_ymd2k"]
+
+[sub_resource type="Gradient" id="Gradient_4ly81"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_t4ycf"]
+gradient = SubResource("Gradient_4ly81")
+width = 180
+height = 180
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_md8f6"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_d51yc"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_575bw"]
+size = Vector2(480, 6)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_avkbw"]
+size = Vector2(480, 2)
+
+[node name="Zone03Mountains" type="Node2D"]
+script = ExtResource("1_1vsv8")
+zone_data = ExtResource("2_aawns")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Sky" type="ColorRect" parent="Background"]
+unique_name_in_owner = true
+offset_right = 480.0
+offset_bottom = 270.0
+mouse_filter = 2
+color = Color(0.0627451, 0.0745098, 0.109804, 1)
+
+[node name="Ambient" type="CanvasModulate" parent="."]
+unique_name_in_owner = true
+color = Color(0.36, 0.36, 0.36, 1)
+
+[node name="Parallax" type="Node2D" parent="."]
+script = ExtResource("3_inklt")
+
+[node name="Backdrop" type="Node2D" parent="."]
+script = ExtResource("4_h1p5p")
+
+[node name="Ground" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAAAA4AAAAFAAIAAAABAA4AAAAFAAIAAAACAA4AAAAFAAIAAAADAA4AAAAFAAIAAAAEAA4AAAAFAAIAAAAFAA4AAAAFAAIAAAAGAA4AAAAFAAIAAAAHAA4AAAAFAAIAAAAIAA4AAAAFAAIAAAAJAA4AAAAFAAIAAAAKAA4AAAAFAAIAAAALAA4AAAAFAAIAAAAMAA4AAAAFAAIAAAANAA4AAAAFAAIAAAAOAA4AAAAFAAIAAAAPAA4AAAAFAAIAAAAQAA4AAAAFAAIAAAARAA4AAAAFAAIAAAASAA4AAAAFAAIAAAATAA4AAAAFAAIAAAAUAA4AAAAFAAIAAAAVAA4AAAAFAAIAAAAWAA4AAAAFAAIAAAAXAA4AAAAFAAIAAAAYAA4AAAAFAAIAAAAZAA4AAAAFAAIAAAAaAA4AAAAFAAIAAAAbAA4AAAAFAAIAAAAcAA4AAAAFAAIAAAAdAA4AAAAFAAIAAAAAAA8AAAAFAAIAAAABAA8AAAAFAAIAAAACAA8AAAAFAAIAAAADAA8AAAAFAAIAAAAEAA8AAAAFAAIAAAAFAA8AAAAFAAIAAAAGAA8AAAAFAAIAAAAHAA8AAAAFAAIAAAAIAA8AAAAFAAIAAAAJAA8AAAAFAAIAAAAKAA8AAAAFAAIAAAALAA8AAAAFAAIAAAAMAA8AAAAFAAIAAAANAA8AAAAFAAIAAAAOAA8AAAAFAAIAAAAPAA8AAAAFAAIAAAAQAA8AAAAFAAIAAAARAA8AAAAFAAIAAAASAA8AAAAFAAIAAAATAA8AAAAFAAIAAAAUAA8AAAAFAAIAAAAVAA8AAAAFAAIAAAAWAA8AAAAFAAIAAAAXAA8AAAAFAAIAAAAYAA8AAAAFAAIAAAAZAA8AAAAFAAIAAAAaAA8AAAAFAAIAAAAbAA8AAAAFAAIAAAAcAA8AAAAFAAIAAAAdAA8AAAAFAAIAAAALAAQAAAAKAAIAAAAOAAQAAAAKAAIAAAALAAUAAAAKAAIAAAAOAAUAAAAKAAIAAAALAAYAAAAKAAIAAAAOAAYAAAAKAAIAAAALAAcAAAAKAAIAAAAOAAcAAAAKAAIAAAALAAgAAAAKAAIAAAAOAAgAAAAKAAIAAAALAAkAAAAKAAIAAAAOAAkAAAAKAAIAAAALAAoAAAAKAAIAAAAOAAoAAAAKAAIAAAALAAsAAAAKAAIAAAAOAAsAAAAKAAIAAAALAAwAAAAKAAIAAAAOAAwAAAAKAAIAAAALAA0AAAAKAAIAAAAOAA0AAAAKAAIAAAAKAAMAAAAFAAIAAAALAAMAAAAFAAIAAAAMAAMAAAAFAAIAAAANAAMAAAAFAAIAAAAOAAMAAAAFAAIAAAAPAAMAAAAFAAIAAAAQAAMAAAAFAAIAAAAUAAUAAAAKAAIAAAAYAAUAAAAKAAIAAAAUAAYAAAAKAAIAAAAYAAYAAAAKAAIAAAAUAAcAAAAKAAIAAAAYAAcAAAAKAAIAAAAUAAgAAAAKAAIAAAAYAAgAAAAKAAIAAAAUAAkAAAAKAAIAAAAYAAkAAAAKAAIAAAAUAAoAAAAKAAIAAAAYAAoAAAAKAAIAAAAUAAsAAAAKAAIAAAAYAAsAAAAKAAIAAAAUAAwAAAAKAAIAAAAYAAwAAAAKAAIAAAAUAA0AAAAKAAIAAAAYAA0AAAAKAAIAAAAUAAQAAAAFAAIAAAAVAAQAAAAFAAIAAAAWAAQAAAAFAAIAAAAXAAQAAAAFAAIAAAAYAAQAAAAFAAIAAAADAAcAAAAFAAIAAAAEAAcAAAAFAAIAAAAFAAcAAAAFAAIAAAAGAAcAAAAFAAIAAAA=")
+tile_set = ExtResource("5_3kwpg")
+
+[node name="Platforms" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAACAAwAAAAGAAUAAAADAAwAAAAHAAUAAAAEAAwAAAAIAAUAAAADAAoAAAAGAAUAAAAEAAoAAAAHAAUAAAAFAAoAAAAHAAUAAAAGAAoAAAAIAAUAAAA=")
+tile_set = ExtResource("5_3kwpg")
+
+[node name="Ladders" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_set = ExtResource("5_3kwpg")
+
+[node name="Hazards" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAARAA0AAAACAAcAAAASAA0AAAACAAcAAAA=")
+tile_set = ExtResource("5_3kwpg")
+
+[node name="Lights" type="Node2D" parent="."]
+
+[node name="Bonfire" type="PointLight2D" parent="Lights"]
+position = Vector2(96, 208)
+color = Color(0.878431, 0.709804, 0.415686, 1)
+energy = 0.7
+texture = SubResource("GradientTexture2D_t4ycf")
+texture_scale = 0.511111
+metadata/radius_px = 46.0
+
+[node name="Moon" type="PointLight2D" parent="Lights"]
+position = Vector2(388, 44)
+color = Color(0.498039, 0.603922, 0.658824, 1)
+energy = 0.2
+texture = SubResource("GradientTexture2D_t4ycf")
+texture_scale = 1.44444
+metadata/radius_px = 130.0
+
+[node name="IceGlow" type="PointLight2D" parent="Lights"]
+position = Vector2(192, 128)
+color = Color(0.498039, 0.603922, 0.658824, 1)
+energy = 0.3
+texture = SubResource("GradientTexture2D_t4ycf")
+texture_scale = 0.666667
+metadata/radius_px = 60.0
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="Bonfire" type="Node2D" parent="Props" instance=ExtResource("6_ktlkf")]
+position = Vector2(96, 224)
+script = ExtResource("7_rydwe")
+
+[node name="Chest" type="Node2D" parent="Props" instance=ExtResource("8_m33fe")]
+position = Vector2(192, 48)
+script = ExtResource("9_7tsq5")
+
+[node name="ChestDash" type="Node2D" parent="Props" instance=ExtResource("8_m33fe")]
+position = Vector2(96, 160)
+script = ExtResource("9_7tsq5")
+
+[node name="WallClimbGate" type="StaticBody2D" parent="Props" instance=ExtResource("10_2soet")]
+position = Vector2(192, 224)
+scale = Vector2(2, 2.5)
+collision_mask = 0
+script = ExtResource("11_4oi3u")
+metadata/ability_gate = &"wall_climb"
+metadata/future_gate = "T-09"
+
+[node name="DashGate" type="StaticBody2D" parent="Props" instance=ExtResource("10_2soet")]
+position = Vector2(64, 160)
+scale = Vector2(1, 2)
+collision_mask = 0
+script = ExtResource("11_4oi3u")
+metadata/ability_gate = &"dash"
+metadata/future_gate = "T-09"
+
+[node name="Foreground" type="Node2D" parent="."]
+script = ExtResource("12_by0ya")
+
+[node name="Entries" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="Exits" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="WorldBounds" type="StaticBody2D" parent="."]
+collision_mask = 0
+
+[node name="Left" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(2, 135)
+shape = SubResource("RectangleShape2D_md8f6")
+
+[node name="Right" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(478, 135)
+shape = SubResource("RectangleShape2D_d51yc")
+
+[node name="Floor" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 267)
+shape = SubResource("RectangleShape2D_575bw")
+
+[node name="Ceiling" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 1)
+shape = SubResource("RectangleShape2D_avkbw")
+
+[node name="ZoneBanner" type="CanvasLayer" parent="." instance=ExtResource("13_y51h0")]
+layer = 15
+script = ExtResource("14_ymd2k")
+zone_id = &"zone_03_mountains"
+subtitle = "Зона 3 · Перевал"

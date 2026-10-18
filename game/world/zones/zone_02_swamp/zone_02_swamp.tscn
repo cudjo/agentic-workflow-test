@@ -1,0 +1,161 @@
+[gd_scene load_steps=21 format=4]
+
+[ext_resource type="Script" path="res://world/zones/zone_scene.gd" id="1_v2r07"]
+[ext_resource type="Resource" path="res://data/zones/zone_02_swamp.tres" id="2_tstvb"]
+[ext_resource type="Script" path="res://world/zones/zone_02_swamp/zone_02_backdrop.gd" id="3_u1hey"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="4_xsr43"]
+[ext_resource type="PackedScene" path="res://world/props/bonfire.tscn" id="5_avb7g"]
+[ext_resource type="Script" path="res://world/props/bonfire.gd" id="6_toqc1"]
+[ext_resource type="PackedScene" path="res://world/props/chest.tscn" id="7_nxgt6"]
+[ext_resource type="Script" path="res://world/props/chest.gd" id="8_jsxle"]
+[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="9_ipidy"]
+[ext_resource type="Script" path="res://world/props/rubble.gd" id="10_5hx2t"]
+[ext_resource type="Script" path="res://world/zones/zone_02_swamp/zone_02_foreground.gd" id="11_13j5u"]
+[ext_resource type="Script" path="res://world/zones/zone_02_swamp/zone_02_fog.gd" id="12_nugqc"]
+[ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="13_pfmsh"]
+[ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="14_exuha"]
+
+[sub_resource type="Gradient" id="Gradient_bbdlu"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_he6vd"]
+gradient = SubResource("Gradient_bbdlu")
+width = 180
+height = 180
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_brnti"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mwo8x"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_47qxe"]
+size = Vector2(480, 6)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sg5rg"]
+size = Vector2(480, 2)
+
+[node name="Zone02Swamp" type="Node2D"]
+script = ExtResource("1_v2r07")
+zone_data = ExtResource("2_tstvb")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Sky" type="ColorRect" parent="Background"]
+unique_name_in_owner = true
+offset_right = 480.0
+offset_bottom = 270.0
+mouse_filter = 2
+color = Color(0.0862745, 0.117647, 0.0784314, 1)
+
+[node name="Ambient" type="CanvasModulate" parent="."]
+unique_name_in_owner = true
+color = Color(0.36, 0.36, 0.36, 1)
+
+[node name="Backdrop" type="Node2D" parent="."]
+script = ExtResource("3_u1hey")
+
+[node name="Ground" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAAAA4AAAAFAAEAAAABAA4AAAAFAAEAAAACAA4AAAAFAAEAAAADAA4AAAAFAAEAAAAEAA4AAAAFAAEAAAAFAA4AAAAFAAEAAAAGAA4AAAAFAAEAAAAHAA4AAAAFAAEAAAAIAA4AAAAFAAEAAAAJAA4AAAAFAAEAAAAKAA4AAAAFAAEAAAALAA4AAAAFAAEAAAAMAA4AAAAFAAEAAAANAA4AAAAFAAEAAAAOAA4AAAAFAAEAAAAPAA4AAAAFAAEAAAAQAA4AAAAFAAEAAAARAA4AAAAFAAEAAAASAA4AAAAFAAEAAAATAA4AAAAFAAEAAAAUAA4AAAAFAAEAAAAVAA4AAAAFAAEAAAAWAA4AAAAFAAEAAAAXAA4AAAAFAAEAAAAYAA4AAAAFAAEAAAAZAA4AAAAFAAEAAAAaAA4AAAAFAAEAAAAbAA4AAAAFAAEAAAAcAA4AAAAFAAEAAAAdAA4AAAAFAAEAAAAAAA8AAAAFAAEAAAABAA8AAAAFAAEAAAACAA8AAAAFAAEAAAADAA8AAAAFAAEAAAAEAA8AAAAFAAEAAAAFAA8AAAAFAAEAAAAGAA8AAAAFAAEAAAAHAA8AAAAFAAEAAAAIAA8AAAAFAAEAAAAJAA8AAAAFAAEAAAAKAA8AAAAFAAEAAAALAA8AAAAFAAEAAAAMAA8AAAAFAAEAAAANAA8AAAAFAAEAAAAOAA8AAAAFAAEAAAAPAA8AAAAFAAEAAAAQAA8AAAAFAAEAAAARAA8AAAAFAAEAAAASAA8AAAAFAAEAAAATAA8AAAAFAAEAAAAUAA8AAAAFAAEAAAAVAA8AAAAFAAEAAAAWAA8AAAAFAAEAAAAXAA8AAAAFAAEAAAAYAA8AAAAFAAEAAAAZAA8AAAAFAAEAAAAaAA8AAAAFAAEAAAAbAA8AAAAFAAEAAAAcAA8AAAAFAAEAAAAdAA8AAAAFAAEAAAAUAAcAAAAFAAEAAAAVAAcAAAAFAAEAAAAWAAcAAAAFAAEAAAAXAAcAAAAFAAEAAAAYAAcAAAAFAAEAAAAZAAcAAAAFAAEAAAAaAAcAAAAFAAEAAAAbAAcAAAAFAAEAAAAcAAcAAAAFAAEAAAA=")
+tile_set = ExtResource("4_xsr43")
+
+[node name="Platforms" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAARAAwAAAADAAUAAAASAAwAAAAEAAUAAAATAAwAAAAFAAUAAAAUAAoAAAADAAUAAAAVAAoAAAAEAAUAAAAWAAoAAAAEAAUAAAAXAAoAAAAEAAUAAAAYAAoAAAAEAAUAAAAZAAoAAAAEAAUAAAAaAAoAAAAEAAUAAAAbAAoAAAAEAAUAAAAcAAoAAAAFAAUAAAA=")
+tile_set = ExtResource("4_xsr43")
+
+[node name="Ladders" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_set = ExtResource("4_xsr43")
+
+[node name="Hazards" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAIAA0AAAABAAcAAAAJAA0AAAABAAcAAAAKAA0AAAABAAcAAAALAA0AAAABAAcAAAAMAA0AAAABAAcAAAAQAA0AAAABAAcAAAARAA0AAAABAAcAAAASAA0AAAABAAcAAAA=")
+tile_set = ExtResource("4_xsr43")
+
+[node name="Lights" type="Node2D" parent="."]
+
+[node name="Bonfire" type="PointLight2D" parent="Lights"]
+position = Vector2(96, 208)
+color = Color(0.490196, 0.352941, 0.156863, 1)
+energy = 0.65
+texture = SubResource("GradientTexture2D_he6vd")
+texture_scale = 0.511111
+metadata/radius_px = 46.0
+
+[node name="WispWest" type="PointLight2D" parent="Lights"]
+position = Vector2(132, 150)
+color = Color(0.490196, 0.352941, 0.156863, 1)
+energy = 0.25
+texture = SubResource("GradientTexture2D_he6vd")
+texture_scale = 0.555556
+metadata/radius_px = 50.0
+
+[node name="WispEast" type="PointLight2D" parent="Lights"]
+position = Vector2(388, 146)
+color = Color(0.490196, 0.352941, 0.156863, 1)
+energy = 0.25
+texture = SubResource("GradientTexture2D_he6vd")
+texture_scale = 0.555556
+metadata/radius_px = 50.0
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="Bonfire" type="Node2D" parent="Props" instance=ExtResource("5_avb7g")]
+position = Vector2(96, 224)
+script = ExtResource("6_toqc1")
+
+[node name="Chest" type="Node2D" parent="Props" instance=ExtResource("7_nxgt6")]
+position = Vector2(432, 160)
+script = ExtResource("8_jsxle")
+
+[node name="DashGate" type="StaticBody2D" parent="Props" instance=ExtResource("9_ipidy")]
+position = Vector2(352, 160)
+scale = Vector2(2, 2)
+collision_mask = 0
+script = ExtResource("10_5hx2t")
+metadata/ability_gate = &"dash"
+metadata/future_gate = "T-09"
+
+[node name="Foreground" type="Node2D" parent="."]
+script = ExtResource("11_13j5u")
+
+[node name="Fog" type="CanvasLayer" parent="."]
+layer = 4
+script = ExtResource("12_nugqc")
+
+[node name="Entries" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="Exits" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="WorldBounds" type="StaticBody2D" parent="."]
+collision_mask = 0
+
+[node name="Left" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(2, 135)
+shape = SubResource("RectangleShape2D_brnti")
+
+[node name="Right" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(478, 135)
+shape = SubResource("RectangleShape2D_mwo8x")
+
+[node name="Floor" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 267)
+shape = SubResource("RectangleShape2D_47qxe")
+
+[node name="Ceiling" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 1)
+shape = SubResource("RectangleShape2D_sg5rg")
+
+[node name="ZoneBanner" type="CanvasLayer" parent="." instance=ExtResource("13_pfmsh")]
+layer = 15
+script = ExtResource("14_exuha")
+zone_id = &"zone_02_swamp"
+subtitle = "Зона 2 · Болото"

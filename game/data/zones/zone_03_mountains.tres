@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="ZoneData" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_kxu3h"]
+[ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_ma6wk"]
+[ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_1oyym"]
+[ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_br644"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_6dxx8"]
+
+[sub_resource type="Resource" id="Resource_uk4nd"]
+script = ExtResource("1_kxu3h")
+id = &"start"
+position = Vector2(80, 214)
+
+[sub_resource type="Resource" id="Resource_ct731"]
+script = ExtResource("1_kxu3h")
+id = &"south_ledge"
+position = Vector2(32, 214)
+
+[sub_resource type="Resource" id="Resource_6ne7h"]
+script = ExtResource("1_kxu3h")
+id = &"north_pass"
+position = Vector2(448, 214)
+
+[sub_resource type="Resource" id="Resource_g5m1y"]
+script = ExtResource("2_ma6wk")
+id = &"south_ledge"
+position = Vector2(12, 214)
+size = Vector2(16, 32)
+target_zone_id = &"zone_01_village"
+target_entry_id = &"from_ledge"
+
+[sub_resource type="Resource" id="Resource_xgegj"]
+script = ExtResource("2_ma6wk")
+id = &"north_pass"
+position = Vector2(468, 214)
+size = Vector2(16, 32)
+target_zone_id = &"zone_02_swamp"
+target_entry_id = &"east_gate"
+
+[sub_resource type="Resource" id="Resource_l3igj"]
+script = ExtResource("3_1oyym")
+background = Color(0.0627451, 0.0745098, 0.109804, 1)
+ground = Color(0.309804, 0.419608, 0.478431, 1)
+accent = Color(0.498039, 0.603922, 0.658824, 1)
+hazard = Color(0.603922, 0.603922, 0.611765, 1)
+
+[resource]
+script = ExtResource("4_br644")
+id = &"zone_03_mountains"
+display_name = "Горный перевал"
+palette = SubResource("Resource_l3igj")
+ambient_level = 0.36
+tileset = ExtResource("5_6dxx8")
+entry_points = Array[ExtResource("1_kxu3h")]([SubResource("Resource_uk4nd"), SubResource("Resource_ct731"), SubResource("Resource_6ne7h")])
+exits = Array[ExtResource("2_ma6wk")]([SubResource("Resource_g5m1y"), SubResource("Resource_xgegj")])
