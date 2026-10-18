@@ -257,6 +257,13 @@
 - **Разблокированы:** T-26 (смерть), T-27 (фракции), T-29 (прогрессия); частично T-20/T-23 (ждут T-18).
 - **Решение:** слот освобождён (T-25) → запуск **T-12** (враги: базовый AI + 3–4 типа, backend), параллельно с продолжающейся T-18; задача на критическом пути боссов (T-12→T-30→T-31/T-32).
 
+## 2026-10-18 — Orchestrator: Приёмка T-18, запуск T-05
+
+- **T-18 принят:** тема/токены (27 цветов)/шрифт/9 UI-компонентов, коммит `ede182a`, GUT **126/126, 979 asserts** (+34 теста). Кириллица закрыта: актуальный релиз Press Start 2P содержит cyrillic (проверено `has_char`) + Tiny5-fallback. Кросс-правка `Main.gd` (тема окна) — на контроль Guardian.
+- **Отметка:** T-18 зафиксировал parse-error в незакоммиченном `tests/unit/test_enemy_combat_e2e.gd` параллельной T-12 — на чистом HEAD `ede182a` ошибок нет; рабочий момент, проверяется при приёмке T-12.
+- **Разблокированы:** T-20 (меню), T-23 (костёр), T-36 (локализация); частично T-19/T-21/T-22/T-24 (ждут T-06/T-26/T-27/T-29).
+- **Решение:** слот освобождён (T-18) → запуск **T-05** (анимации/визуал игрока, frontend) — голова серийной цепочки способностей (T-05→T-06→T-07/T-08/T-09 + T-19), параллельно с T-12 (враги).
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -308,3 +315,30 @@
 - **Кросс-файловые правки (на контроль Guardian):** `game/Main.gd` (назначение темы окну). `project.godot` не изменён (отказались от `gui/theme/custom` ради чистого import). `docs/TASKS.json` и статус не менялись (`pending` до QA/Guardian).
 - **Замечания:** в `docs/WORKFLOW_LOG.md` на момент записи были незакоммиченные строки Orchestrator (приёмка T-25) — они вошли в тот же коммит журнала как часть append-only истории; игровые файлы T-12/T-25 и untracked `opencode.jsonc` не трогал.
 - **Коммит:** «T-18: тема, токены, шрифт и UI-компоненты».
+
+## 2026-10-18 — T-12 выполнен (tasker-backend)
+
+- **Skills:** загружен `godot` (типизированный GDScript, CharacterBody2D/FSM, Area2D-боёвка, Resource-данные, GUT/headless — профильный стек задачи). Другие skills не требовались.
+- **Действие:** реализованы враги по TASKS T-12, PLAN §2.1/§3.1, SPEC US-03; переиспользовано боевое ядро T-10 (`CombatLayers`/`Hitbox`/`Hurtbox`/`Damage`).
+- **Реализовано:**
+  - `core/ai/state_machine.gd` — `EnemyStateMachine`: состояния patrol/chase/attack/hurt/death, приоритеты Death 100 > Hurt 90 > Attack 60 > Chase 50 > Patrol 0; `request_state()` только вверх по приоритету, `force_state()` — завершение атак/отшатывания; Death терминален.
+  - `data/enemies/enemy_data.gd` + 4 `.tres` — HP, урон, скорости, радиусы (detect/attack/leash/preferred), тайминги патруля/атаки, размеры тел/хитбоксов, цвет заглушки, снаряд, возрождение; `is_valid()` ловит битые данные.
+  - `entities/enemies/base/enemy.gd` + `enemy.tscn` — CharacterBody2D, ручная гравитация, FSM-тики, патруль с разворотом у стены/края (RayCast2D), погоня, telegraph/active/recovery атаки, hurt/death, отбрасывание с сопротивлением, poise, leash-зажим и watchdog против залипания. Реакция на урон — вспышка в том же physics-кадре (≤ 16.7 мс, лимит T-10 100 мс). Смерть: fade/squash `balancing.enemy_death_duration`, затем `EventBus.enemy_died`.
+  - `base/enemy_spawner.gd/.tscn` + `enemy_spawn_entry.gd` — спавн групп из данных; точка спавна становится home (центр патруля/leash), учёт `died`, `remaining_count()`, сигнал `all_defeated`; возрождённая нежить не считается побеждённой.
+  - 4 типа (сцена-наследник base + тонкий скрипт): `swift` (рывок в активной фазе), `heavy` (высокое HP/poise 8, широкий удар, супер-армор к отбрасыванию в замахе), `ranged` (держит `preferred_distance`, отступает, стреляет `enemy_projectile.tscn` через Hitbox слоя enemy_hitbox → player_hurtbox), `undead` (возрождение 1 раз с долей HP после анимации смерти).
+  - Тесты: `tests/unit/test_enemy_fsm.gd` (10 тестов: чистая FSM, данные, слои, патруль у края, chase↔patrol, leash, watchdog, сцена hurt/death) и `tests/unit/test_enemy_combat_e2e.gd` (6 тестов: урон игрок→враг с вспышкой/hurt/knockback/смертью, урон враг→игрок, ranged-снаряд, poise/супер-армор heavy, revive undead, encounter из 5 врагов через EnemySpawner до `all_defeated`).
+- **Выбор AI-подхода:** без NavigationAgent2D/navmesh. Уровни — простые прямые/платформенные пути (PLAN T-12), поэтому достаточно горизонтального движения + RayCast2D (край платформы и стена), leash от точки спавна и watchdog-разворота. Это детерминированно, дёшево для 5+ врагов и тестируется headless; навмеш добавил бы карты/перепекание без пользы для платформенных патрулей.
+- **Проверки (portable Godot 4.7.2-stable, headless; код 4.4-совместим, без API 4.5+):**
+  - `--headless --path game --import` — exit 0, ошибок/parse error нет.
+  - GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **142/142 passed, 1183 asserts**, exit 0 (126 существующих T-01…T-18 + 16 новых T-12).
+  - Smoke `--headless --path game --quit` — exit 0, без скрипт-ошибок.
+  - Чистый HEAD `e4f12cf` в отдельном worktree (без untracked-файлов): import exit 0, GUT **142/142, 1183 asserts**, smoke exit 0.
+- **Найденные/исправленные проблемы:**
+  1. `EnemyData.patrol_pause` отсутствовал, хотя использовался разворотом патруля — поле добавлено в ресурс и все 4 `.tres` (тайминг патруля остаётся данными, не константой).
+  2. `Hitbox._already_hit` жил между взмахами: второй удар того же врага не проходил. Добавлен `clear_hits()` при каждой активации; e2e проверяет второй удар heavy.
+  3. Async `Damage.flash` при наложении попаданий/смерти мог оставить спрайт белым. У врага вспышка сделана тик-таймером (≤ `hit_flash_duration`, не дольше 100 мс) и не восстанавливает цвет во время fade смерти.
+  4. Входящий урон не переводил игрока в Hurt: idle-игрока «уносило» отбросом, и враг терял цель. `Player` теперь подписан на свой Hurtbox и вызывает `apply_hurt()` (HP/блок — T-26/T-11).
+  5. Ранний черновик e2e содержал duplicate `frames` (parse error, отмечен Orchestrator/T-18) — исправлено, на коммите `e4f12cf` импорт чистый.
+- **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+`enemy_died`), `data/balance/balancing_params.gd` + `.tres` (+`enemy_death_duration`, `enemy_knockback_friction`, `enemy_stuck_timeout`), `entities/player/Player.gd` (подписка Hurtbox→Hurt), `entities/player/Player.tscn` (группа `player`). `docs/TASKS.json` и статус не менялись (`pending` до QA/Guardian).
+- **Замечания:** в рабочем дереве параллельно шли T-18/T-05; чужие `ui/`, `assets/fonts/`, `opencode.jsonc` не трогал. В `docs/WORKFLOW_LOG.md` на момент записи была незакоммиченная запись Orchestrator (приёмка T-18) — вошла в коммит журнала как часть append-only истории.
+- **Коммит:** `e4f12cf` «T-12: враги — базовый AI + swift/heavy/ranged/undead».
