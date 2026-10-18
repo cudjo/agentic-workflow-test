@@ -15,3 +15,13 @@ signal player_died
 ## Зона загружена и ZoneData применён (T-13). Потребители: баннер зоны (T-14),
 ## экран загрузки/переходы (T-17), HUD (T-19).
 signal zone_entered(zone_id: StringName, display_name: String)
+
+## Слот записан успешно (T-25). Потребитель: подтверждение сохранения у костра /
+## меню слотов (T-22/T-23), AC-05.1 (подтверждение ≤ 1 с).
+signal save_completed(slot: int)
+## Слот не записан (ошибка диска/некорректный номер, EC-14). UI показывает
+## сообщение; старый слот при этом цел.
+signal save_failed(slot: int, reason: String)
+## Слот повреждён/обрезан/несовместим по schema_version и НЕ загружен (EC-07).
+## UI предлагает выбрать другой слот; причина — `SaveManager.LOAD_*`.
+signal slot_corrupted(slot: int, reason: String)
