@@ -40,6 +40,24 @@ signal save_loaded(slot: int)
 ## HUD (T-19, слот способности больше не «закрыт»).
 signal ability_acquired(ability_id: StringName)
 
+## Репутация с фракцией изменилась (T-27, AC-06.1). Потребители: UI фракций
+## и журнал (T-24), диалоги NPC (T-28), HUD-тосты.
+signal faction_reputation_changed(faction_id: StringName, value: int)
+## Доступ к территории/торговцу фракции изменился при пересечении порога
+## (T-27, AC-06.2). `granted` — доступ открыт/закрыт.
+signal faction_access_changed(faction_id: StringName, granted: bool)
+## Квест/действие изменило репутацию (T-27, AC-06.1). `reaction` — отношение
+## NPC (`hostile`/`wary`/`neutral`/`friendly`/`trusted`) для диалога T-28.
+signal faction_quest_completed(
+	quest_id: StringName,
+	faction_id: StringName,
+	delta: int,
+	reaction: StringName
+)
+## Игрок выбрал фракцию (T-27, US-06). `faction_id` — стабильный id для
+## концовки T-32; `display_name` — имя для UI.
+signal faction_chosen(faction_id: StringName, display_name: String)
+
 ## Зона загружена и ZoneData применён (T-13). Потребители: баннер зоны (T-14),
 ## экран загрузки/переходы (T-17), HUD (T-19).
 signal zone_entered(zone_id: StringName, display_name: String)

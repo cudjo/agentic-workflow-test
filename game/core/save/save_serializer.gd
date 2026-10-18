@@ -9,17 +9,19 @@ extends RefCounted
 ## (сырое тело). Поэтому проверка не зависит от того, как JSON парсит/печатает
 ## числа и в каком порядке лежат ключи: тело сверяется байт в байт.
 ##
-## Тело (schema_version = 3):
+## Тело (schema_version = 4):
 ##   state: {stamina, weapon_id, weapon_path,
 ##           bosses_defeated, boss_rewards_pending, currency,
 ##           hp, inventory, abilities,
 ##           death_active, death_corpse_active, death_zone_id, death_position,
 ##           death_items, death_currency, death_lost,
-##           respawn_bonfire, respawn_zone_id, respawn_position}
+##           respawn_bonfire, respawn_zone_id, respawn_position,
+##           factions, chosen_faction}
 ##   meta:  {zone_id, zone_name, level, play_time, saved_at_unix} + extras
 ## `state` — только реально существующие поля `GameState`. T-26 (v3) добавил
 ## HP, инвентарь, способности, corpse-метку/флаг смерти (EC-04) и чекпоинт
-## костра. Контракт добавления полей и версии описан в `save_migrations.gd`.
+## костра; T-27 (v4) — репутацию фракций (`factions`: id -> int) и выбранную
+## фракцию. Контракт добавления полей и версии описан в `save_migrations.gd`.
 ##
 ## `meta` — данные для UI (зона, уровень, время) и задел под будущие поля:
 ## известные ключи нормализуются, незнакомые проходят через `_json_safe()`.
@@ -116,6 +118,10 @@ static func serialize_state(state: Node) -> Dictionary:
 	# Поля есть только у GameState T-26+; у старого/чужого state — дефолты.
 	data["respawn_position"] = _vector2_to_dict(state.get("respawn_position"))
 
+	# T-27 (schema v4): репутация фракций и выбранная фракция (US-06).
+	data["factions"] = _faction_reputation(state.get("factions"))
+	data["chosen_faction"] = String(state.get("chosen_faction"))
+
 	return data
 
 
@@ -195,6 +201,14 @@ static func apply_state(state: Node, state_data: Dictionary) -> bool:
 			StringName(str(respawn_zone_value)),
 			_as_vector2(state_data.get("respawn_position", {}))
 		)
+
+	# T-27 (v4): репутация фракций и выбор. Старые сейвы после миграции
+	# содержат дефолты (v3→v4), поэтому загрузка не ломается.
+	if state.has_method("restore_factions"):
+		var factions_value: Variant = state_data.get("factions", {})
+		var factions: Dictionary = factions_value if factions_value is Dictionary else {}
+		var chosen_value: Variant = state_data.get("chosen_faction", "")
+		state.call("restore_factions", factions, StringName(str(chosen_value)))
 
 	return true
 
@@ -351,6 +365,22 @@ static func _string_array(value: Variant) -> Array[String]:
 	if value is Array:
 		for item: Variant in value:
 			result.append(String(item))
+	return result
+
+
+## Репутации фракций: id (StringName/строка) -> int. Нечисловые значения и
+## пустые id пропускаются, чтобы битый сейв не ронял загрузку.
+static func _faction_reputation(value: Variant) -> Dictionary:
+	var result: Dictionary = {}
+	if not value is Dictionary:
+		return result
+	for key: Variant in value.keys():
+		var faction_id: String = String(key)
+		if faction_id.is_empty():
+			continue
+		var reputation: Variant = value[key]
+		if reputation is int or reputation is float:
+			result[faction_id] = int(reputation)
 	return result
 
 

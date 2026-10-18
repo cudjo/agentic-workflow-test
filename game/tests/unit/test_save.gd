@@ -1,7 +1,8 @@
 extends GutTest
 ## T-25 — сохранения: round-trip, checksum, миграции, атомарность
 ## (PLAN §3.4, AC-05.1, EC-07/EC-14). T-26 — schema v3: HP, инвентарь,
-## способности, смерть/corpse run и чекпоинт костра.
+## способности, смерть/corpse run и чекпоинт костра. T-27 — schema v4:
+## репутация фракций и выбранная фракция (US-06).
 ##
 ## Тесты работают в отдельном каталоге `user://test_saves_t25`, чтобы не
 ## трогать реальные слоты игрока; `SaveManager.saves_dir` переопределяется
@@ -24,6 +25,8 @@ var _original_corpse: Dictionary = {}
 var _original_respawn: Dictionary = {}
 var _original_active_slot: int = 0
 var _original_in_combat: bool = false
+var _original_factions: Dictionary = {}
+var _original_chosen_faction: StringName = &""
 
 
 func before_all() -> void:
@@ -55,6 +58,8 @@ func before_each() -> void:
 	}
 	_original_active_slot = GameState.active_slot
 	_original_in_combat = GameState.in_combat
+	_original_factions = GameState.get_all_faction_reputation()
+	_original_chosen_faction = GameState.chosen_faction
 
 	# Каждый тест начинает с чистого состояния смерти/HP, чтобы не наследовать
 	# corpse-метку предыдущего теста.
@@ -89,6 +94,7 @@ func after_each() -> void:
 	)
 	GameState.active_slot = _original_active_slot
 	GameState.set_in_combat(_original_in_combat)
+	GameState.restore_factions(_original_factions, _original_chosen_faction)
 	_cleanup_dir()
 
 
@@ -362,7 +368,7 @@ func test_round_trip_restores_hp_inventory_abilities_and_death_state() -> void:
 	assert_eq(GameState.active_slot, 1, "SaveManager remembers the active slot")
 
 
-func test_v2_save_is_migrated_to_v3_with_defaults() -> void:
+func test_v2_save_is_migrated_to_current_with_defaults() -> void:
 	var v2_body: Dictionary = {
 		"state": {
 			"stamina": 33.5,
@@ -376,7 +382,7 @@ func test_v2_save_is_migrated_to_v3_with_defaults() -> void:
 	}
 
 	var migrated: Dictionary = SaveMigrations.migrate(2, v2_body)
-	assert_true(migrated["ok"], "v2 is mappable to v3")
+	assert_true(migrated["ok"], "v2 is mappable to the current schema")
 	var state: Dictionary = migrated["body"]["state"]
 	assert_almost_eq(float(state["hp"]), GameState.hp_max, 0.001, "hp defaults to max HP")
 	assert_eq(state["inventory"], [], "inventory defaults to empty")
@@ -386,6 +392,8 @@ func test_v2_save_is_migrated_to_v3_with_defaults() -> void:
 	assert_eq(state["death_items"], [], "no corpse items")
 	assert_eq(int(state["death_currency"]), 0, "no corpse currency")
 	assert_eq(str(state["respawn_bonfire"]), "", "no checkpoint")
+	assert_eq(state["factions"], {}, "factions default to neutral (T-27, v4)")
+	assert_eq(str(state["chosen_faction"]), "", "no chosen faction in an old save")
 	assert_almost_eq(float(state["stamina"]), 33.5, 0.001, "existing fields survive")
 	assert_eq(state["currency"], 7, "v2 currency survives")
 
@@ -395,6 +403,7 @@ func test_v2_save_is_migrated_to_v3_with_defaults() -> void:
 	GameState.clear_inventory()
 	GameState.clear_abilities()
 	GameState.clear_corpse()
+	GameState.restore_factions({"order": 40}, &"order")
 	assert_true(SaveManager.load_slot(1), "v2 slot loads through migration")
 	assert_almost_eq(GameState.hp, GameState.hp_max, 0.001, "migrated save has full HP")
 	assert_eq(GameState.get_inventory(), [], "migrated save has empty inventory")
@@ -402,6 +411,82 @@ func test_v2_save_is_migrated_to_v3_with_defaults() -> void:
 	assert_false(GameState.death_active, "migrated save has no pending death")
 	assert_almost_eq(GameState.stamina, 33.5, 0.001, "v2 stamina is restored")
 	assert_eq(GameState.currency, 7, "v2 currency is restored")
+	assert_eq(
+		GameState.get_all_faction_reputation(),
+		{},
+		"migrated old save resets faction reputation to neutral"
+	)
+	assert_eq(GameState.chosen_faction, &"", "migrated old save has no faction choice")
+
+
+func test_v3_save_is_migrated_to_v4_with_faction_defaults() -> void:
+	var v3_body: Dictionary = {
+		"state": {
+			"stamina": 12.0,
+			"weapon_id": "light_dagger",
+			"weapon_path": DAGGER_PATH,
+			"bosses_defeated": [],
+			"boss_rewards_pending": {},
+			"currency": 3,
+			"hp": 41.0,
+			"inventory": ["ash_shard"],
+			"abilities": ["double_jump"],
+			"death_active": false,
+			"death_corpse_active": false,
+			"death_zone_id": "",
+			"death_position": {"x": 0.0, "y": 0.0},
+			"death_items": [],
+			"death_currency": 0,
+			"death_lost": false,
+			"respawn_bonfire": "",
+			"respawn_zone_id": "",
+			"respawn_position": {"x": 0.0, "y": 0.0},
+		},
+		"meta": {"zone_id": "zone_02_swamp", "level": 3},
+	}
+
+	var migrated: Dictionary = SaveMigrations.migrate(3, v3_body)
+	assert_true(migrated["ok"], "v3 is mappable to v4")
+	var state: Dictionary = migrated["body"]["state"]
+	assert_eq(state["factions"], {}, "factions default to empty")
+	assert_eq(str(state["chosen_faction"]), "", "chosen faction defaults to empty")
+	assert_almost_eq(float(state["hp"]), 41.0, 0.001, "v3 HP survives")
+	assert_eq(state["abilities"], ["double_jump"], "v3 abilities survive")
+	assert_eq(int(state["currency"]), 3, "v3 currency survives")
+
+	_write_text(SaveManager.get_slot_path(2), SaveSerializer.encode(v3_body, 3))
+	GameState.restore_factions({"free": 25}, &"free")
+	assert_true(SaveManager.load_slot(2), "v3 slot loads through v4 migration")
+	assert_eq(
+		GameState.get_all_faction_reputation(),
+		{},
+		"migrated v3 save has neutral faction reputation"
+	)
+	assert_eq(GameState.chosen_faction, &"", "migrated v3 save has no chosen faction")
+	assert_almost_eq(GameState.hp, 41.0, 0.001, "migrated v3 HP is restored")
+
+
+func test_round_trip_restores_faction_reputation_and_choice() -> void:
+	GameState.restore_factions({
+		&"order": 15,
+		&"free": -5,
+		&"ash": 30,
+	}, &"ash")
+
+	assert_true(SaveManager.save_slot(1, {"zone_id": "zone_04_ruins"}), "factions save")
+
+	GameState.reset_factions()
+	assert_eq(GameState.get_faction_reputation(&"order"), 0, "state is cleared before load")
+
+	assert_true(SaveManager.load_slot(1), "schema v4 slot loads")
+	assert_eq(GameState.get_faction_reputation(&"order"), 15, "order reputation is restored")
+	assert_eq(GameState.get_faction_reputation(&"free"), -5, "free reputation is restored")
+	assert_eq(GameState.get_faction_reputation(&"ash"), 30, "ash reputation is restored")
+	assert_eq(GameState.chosen_faction, &"ash", "chosen faction is restored (US-06)")
+
+	var raw: String = _read_text(SaveManager.get_slot_path(1))
+	assert_true(raw.contains("\"factions\":{"), "save body carries the factions map")
+	assert_true(raw.contains("\"chosen_faction\":\"ash\""), "save body carries chosen_faction")
 
 
 func test_newer_schema_file_is_not_loaded() -> void:

@@ -79,6 +79,12 @@ var in_combat: bool = false
 ## Зона, в которой находится игрок (обновляется по `EventBus.zone_entered`).
 var current_zone_id: StringName = &""
 
+## Репутация фракций (T-27): id -> int. Шкала и пороги — в `data/factions/`;
+## менеджер (`FactionManager`) читает и меняет значения только здесь.
+var factions: Dictionary = {}
+## Выбранная фракция (T-27). `&""` — выбор не сделан, концовка нейтральная.
+var chosen_faction: StringName = &""
+
 ## Текущий максимум HP (из balancing.tres).
 var hp_max: float:
 	get:
@@ -422,6 +428,60 @@ func update_stamina(delta: float, resting: bool) -> void:
 ## HUD flag: stamina is empty, attacks are refused (AC-03.3).
 func is_stamina_exhausted() -> bool:
 	return stamina_state != null and stamina_state.is_exhausted()
+
+
+# ------------------------------------------------------------------------------
+# Factions (T-27)
+# ------------------------------------------------------------------------------
+
+## Репутация фракции; 0 — нейтрально/неизвестно (шкала задаётся данными).
+func get_faction_reputation(faction_id: StringName) -> int:
+	if faction_id == &"":
+		return 0
+	var value: Variant = factions.get(faction_id)
+	if value is int:
+		return value
+	if value is float:
+		return int(value)
+	return 0
+
+
+## Копия всех репутаций (id -> int) для UI/сейва.
+func get_all_faction_reputation() -> Dictionary:
+	var copy: Dictionary = {}
+	for key: Variant in factions.keys():
+		var faction_id: StringName = StringName(str(key))
+		if faction_id == &"":
+			continue
+		copy[faction_id] = get_faction_reputation(faction_id)
+	return copy
+
+
+## Записывает репутацию без сигналов: сигналы эмитит FactionManager (T-27).
+func set_faction_reputation(faction_id: StringName, value: int) -> void:
+	if faction_id == &"":
+		return
+	factions[faction_id] = value
+
+
+## Восстанавливает репутации/выбор из сейва (schema v4). Пустые id и
+## нечисловые значения пропускаются — старые/ручные сейвы не ломают загрузку.
+func restore_factions(values: Dictionary, chosen: StringName) -> void:
+	factions.clear()
+	for key: Variant in values.keys():
+		var faction_id: StringName = StringName(str(key))
+		if faction_id == &"":
+			continue
+		var value: Variant = values[key]
+		if value is int or value is float:
+			factions[faction_id] = int(value)
+	chosen_faction = chosen
+
+
+## Сброс фракционного состояния (новая игра/тесты).
+func reset_factions() -> void:
+	factions.clear()
+	chosen_faction = &""
 
 
 # ------------------------------------------------------------------------------

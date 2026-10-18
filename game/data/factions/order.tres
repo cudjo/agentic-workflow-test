@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="FactionData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/factions/faction_data.gd" id="1_faction"]
+
+[resource]
+script = ExtResource("1_faction")
+id = &"order"
+display_name_key = "faction.order.name"
+display_name = "Орден Пепла"
+lore = "Последние защитники Бастиона.
+Держат стены, судят по закону
+и не прощают предательства."
+color = Color(0.75, 0.54, 0.24, 1)
+reputation_min = -100
+reputation_max = 100
+access_threshold = 10
+territory_name = "Внутренний двор Бастиона"
+territory_denied_reason = "Стража «{faction}» не пропускает чужаков в {territory}. Нужна репутация не ниже {threshold} (сейчас {reputation})."
+trade_denied_reason = "Торговец «{faction}» не станет говорить с тем, чья репутация ниже {threshold} (сейчас {reputation})."
+quest_denied_reason = "«{faction}» не доверит этот квест: репутация {reputation} ниже порога {threshold}. Помощь можно найти у союзной фракции."
+alternative_faction_id = &"free"
+reputation_events = {
+"quest_clear_swamp": 15,
+"quest_guard_patrol": 10,
+"quest_free_smuggle": -10,
+"action_desecrate_shrine": -20
+}
+quests = Array[StringName]([&"quest_clear_swamp", &"quest_guard_patrol"])

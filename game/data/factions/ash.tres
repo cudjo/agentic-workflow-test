@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="FactionData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/factions/faction_data.gd" id="1_faction"]
+
+[resource]
+script = ExtResource("1_faction")
+id = &"ash"
+display_name_key = "faction.ash.name"
+display_name = "Культ Пепла"
+lore = "Те, кто слышит шёпот пепла.
+Они верят, что Бастион должен сгореть,
+чтобы из пепла вырос новый."
+color = Color(0.72, 0.32, 0.25, 1)
+reputation_min = -100
+reputation_max = 100
+access_threshold = 5
+territory_name = "Пепельный алтарь"
+territory_denied_reason = "Пепел не пускает непосвящённых в {territory}: нужна репутация {threshold} (сейчас {reputation})."
+trade_denied_reason = "Служители «{faction}» не продают непосвящённым: нужна репутация {threshold} (сейчас {reputation})."
+quest_denied_reason = "«{faction}» не откроет ритуал тому, чья репутация {reputation} ниже {threshold}."
+alternative_faction_id = &"free"
+reputation_events = {
+"quest_ash_ritual": 20,
+"action_desecrate_shrine": 15,
+"quest_clear_swamp": -5,
+"quest_guard_patrol": -5
+}
+quests = Array[StringName]([&"quest_ash_ritual"])

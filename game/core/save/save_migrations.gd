@@ -23,8 +23,10 @@ extends RefCounted
 ## Версия 2 — T-30: прогресс боссов, отложенные награды и валюта.
 ## Версия 3 — T-26: HP, инвентарь, способности, смерть/corpse run (EC-04) и
 ## чекпоинт костра.
+## Версия 4 — T-27: репутация фракций (`factions`) и выбранная фракция
+## (`chosen_faction`).
 
-const CURRENT_VERSION: int = 3
+const CURRENT_VERSION: int = 4
 const BALANCE_PATH: String = "res://data/balance/balancing.tres"
 const FALLBACK_MAX_HP: float = 100.0
 
@@ -73,6 +75,10 @@ static func migrate(schema_version: int, body: Dictionary) -> Dictionary:
 	if version == 2:
 		migrated = _v2_to_v3(migrated)
 		version = 3
+
+	if version == 3:
+		migrated = _v3_to_v4(migrated)
+		version = 4
 
 	if version != CURRENT_VERSION:
 		return {
@@ -155,6 +161,23 @@ static func _v2_to_v3(body: Dictionary) -> Dictionary:
 		state["respawn_zone_id"] = ""
 	if not state.has("respawn_position"):
 		state["respawn_position"] = {"x": 0.0, "y": 0.0}
+
+	migrated["state"] = state
+	return migrated
+
+
+## v3 → v4: T-27 — репутация фракций и выбранный союз. Старые сейвы
+## получают нейтральные репутации (пустой словарь) и «фракция не выбрана».
+## Существующие поля не меняются.
+static func _v3_to_v4(body: Dictionary) -> Dictionary:
+	var migrated: Dictionary = body.duplicate(true)
+	var state_value: Variant = migrated.get("state", {})
+	var state: Dictionary = state_value if state_value is Dictionary else {}
+
+	if not state.has("factions"):
+		state["factions"] = {}
+	if not state.has("chosen_faction"):
+		state["chosen_faction"] = ""
 
 	migrated["state"] = state
 	return migrated

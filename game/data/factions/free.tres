@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="FactionData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/factions/faction_data.gd" id="1_faction"]
+
+[resource]
+script = ExtResource("1_faction")
+id = &"free"
+display_name_key = "faction.free.name"
+display_name = "Вольные Марки"
+lore = "Контрабандисты, охотники и те,
+кто не склонился ни перед Орденом,
+ни перед пламенем."
+color = Color(0.45, 0.62, 0.5, 1)
+reputation_min = -100
+reputation_max = 100
+access_threshold = 0
+territory_name = "Торговый ряд у моста"
+territory_denied_reason = "«{faction}» не пускает на {territory} тех, кому не доверяет: нужна репутация {threshold} (сейчас {reputation})."
+trade_denied_reason = "У «{faction}» не торгуют с чужаками: нужна репутация {threshold} (сейчас {reputation})."
+quest_denied_reason = "«{faction}» не даст этот заказ: репутация {reputation} ниже {threshold}. Спросите у союзной фракции."
+alternative_faction_id = &"order"
+reputation_events = {
+"quest_free_smuggle": 15,
+"quest_clear_swamp": 5,
+"quest_guard_patrol": -10,
+"action_desecrate_shrine": 10
+}
+quests = Array[StringName]([&"quest_free_smuggle"])
