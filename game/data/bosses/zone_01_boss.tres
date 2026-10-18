@@ -76,7 +76,6 @@ summon_count = 0
 [sub_resource type="Resource" id="Resource_reward"]
 script = ExtResource("2_reward")
 id = &"warden_ember"
-display_name = "Уголёк Стража"
 gold = 120
 
 [resource]

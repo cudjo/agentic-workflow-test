@@ -8,8 +8,6 @@ extends Resource
 ## до получения (EC-09).
 
 @export var id: StringName = &""
-## Читаемое имя награды для журнала/тостов (T-19/T-24).
-@export var display_name: String = ""
 ## Золото/валюта, добавляемая игроку.
 @export var gold: int = 0
 

@@ -78,7 +78,6 @@ summon_count = 2
 [sub_resource type="Resource" id="Resource_reward"]
 script = ExtResource("2_reward")
 id = &"witch_tide"
-display_name = "Топь-слеза"
 gold = 160
 
 [resource]
