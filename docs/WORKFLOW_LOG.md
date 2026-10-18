@@ -250,6 +250,13 @@
 - **Разблокированы:** T-14…T-16 (зоны 1–5), T-17 (после T-14).
 - **Решение:** слот освобождён (T-13) → запуск **T-25** (SaveManager, backend), параллельно с продолжающейся T-18. Следом — волна зон T-14…T-16 и ветка способностей (T-05/T-06).
 
+## 2026-10-18 — Orchestrator: Приёмка T-25, запуск T-12
+
+- **T-25 принят:** SaveManager (3 слота, SHA-256 checksum, атомарная запись, миграции v0→v1), коммит `1e95c3a`, GUT **92/92, 570 asserts** (+12 тестов). Кросс-правка `EventBus` (+`save_completed`/`save_failed`/`slot_corrupted`) — на контроль Guardian.
+- **Отметка:** Tasker T-25 зафиксировал parse-error в незакоммиченных файлах параллельной T-18 (`ui/components/slot.gd`) — на чистом HEAD ошибок нет; рабочий момент параллельной разработки, на контроль при приёмке T-18.
+- **Разблокированы:** T-26 (смерть), T-27 (фракции), T-29 (прогрессия); частично T-20/T-23 (ждут T-18).
+- **Решение:** слот освобождён (T-25) → запуск **T-12** (враги: базовый AI + 3–4 типа, backend), параллельно с продолжающейся T-18; задача на критическом пути боссов (T-12→T-30→T-31/T-32).
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -275,3 +282,29 @@
 - **Замечания:** статус T-25 — `pending` (не менял, решение QA/Guardian). HP/инвентарь/позиция/фракции/квесты появятся в T-26/T-06/T-27/T-29 по контракту миграций. В рабочем дереве параллельно T-18: import печатает parse error в untracked `ui/components/slot.gd` — чужой in-progress файл, не трогал. Чужие untracked-файлы (`ui/…`, `assets/fonts/…`, `opencode.jsonc`) не трогал.
 - **Коммит:** `1e95c3a` «T-25: SaveManager — слоты/checksum/миграции/атомарная запись».
 - **Чистый HEAD (отдельный worktree):** import exit 0 без ошибок, GUT **92/92, 570 asserts** — коммиты самодостаточны, untracked-файлы T-18 на прогон не влияют.
+
+## 2026-10-18 — T-18 выполнен (tasker-frontend)
+
+- **Skills:** загружен `godot` (тема/Theme, FontFile/FontVariation, Control/CanvasItem `_draw`, GUT/headless, a11y-фокус — профильный стек UI). Другие skills не требовались: задача не трогает БД/сеть/React.
+- **Действие:** реализованы токены, тема, шрифт и базовые UI-компоненты по DESIGN §4/§6 и a11y §9.2.
+- **Реализовано:**
+  - `ui/theme/tokens.gd` (`UITokens`) — 27 цветов DESIGN §4.1 (26 базовых + точечный `ok #8fa77c`), 4 размера/высоты строки (8/16/24/32, 12/16/24/32), отступы `sp-1…6`, safe-margin, паддинги, границы, геометрия шкал/слотов/портретов/диалога, `TYPE_SPEED=0.022`, WCAG-хелперы `contrast_ratio`/`is_readable`.
+  - `ui/theme/main_theme.tres` (генератор `tests/tools/build_ui_theme.gd`) — `FontVariation` Press Start 2P + fallback Tiny5, default 8 px, type variations `H1/H2/Title/Muted/Gold/Danger/SteelLabel`, Button/Label/RichTextLabel/Tooltip/PanelContainer стили из токенов. 9-slice панели генерируются в рантайме (`UIStyle.panel_style`, текстура 16×16, margin 6), т.к. `ImageTexture` не сериализуется в `.tres`.
+  - `ui/components/`: `AshenPanel` (9-slice: solid/glass/inset/danger, заклёпки), `AshenBar` (HP/выносливость/босс, сегменты 3+1, след урона ступенями, фазы 33/66, «НЕТ СИЛ»/«КРИТИЧНО»), `AshenSlot` (6 состояний §6.2, маркер/замок/«!», dashed empty), `AshenMenuItem` (каретка, hover=фокус, активное, disabled с причиной, toggle ползунком), `AshenTab`, `AshenToast` (success/danger, ✓/«!»), `AshenDialog` (портрет 52×52, печать 22 мс/символ, ответы 2×2, тег `[Орден+1]`, disabled-причина), `AshenKbd`/`AshenPrompt` (глиф по `InputManager.active_device`, Xbox/PS/клавиатура). Фокус: золотая рамка 2 px + внутренняя gold-9 + каретка/скобки; состояние дублируется формой/знаком/числом.
+  - `ui/components/showcase/ComponentShowcase.tscn` — dev-витрина: HUD-кластер, меню, инвентарь с вкладками, два диалога, тосты, подсказки; каждый компонент применён ≥ 2 раз (проверяется GUT-обходом дерева).
+- **Решение по шрифту RU/EN:** известная проблема «Press Start 2P без кириллицы» **не подтвердилась для актуального релиза Google Fonts**: metadata объявляет subset `cyrillic`, cmap содержит U+0410–U+044F и `Ё/ё` (проверено разбором TTF и GUT-тестом `Font.has_char`). Основной шрифт — Press Start 2P (OFL), fallback-цепочка — Tiny5 (OFL) для символов, которых в PS2P действительно нет (`✓ □ ○ △`) и как страховка от редких пропусков. Оба `.ttf` + `.import` (с UID ресурса внутри), лицензии OFL и `assets/fonts/README.md` закоммичены; `allow_system_fallback=false`, `antialiasing=0`, `hinting=0`, `subpixel_positioning=0` — пиксельный рендер без подмены системными шрифтами.
+- **Проверки (portable Godot 4.4.1-stable):**
+  - `--headless --path game --import` — exit 0, ошибок нет (на чистом worktree с удалённым `.godot` тоже).
+  - GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **126/126 passed, 979 asserts**, exit 0 (92 прежних + 34 новых: 14 `test_theme.gd`, 20 `test_ui_components.gd`).
+  - Clean worktree HEAD `21a28db` + только файлы T-18 — тот же результат 126/126; чужие изменения T-12/T-25 не влияют.
+  - Smoke `--headless --path game --quit` — exit 0; `--headless --path game res://ui/components/showcase/ComponentShowcase.tscn --quit-after 10` — без скрипт-ошибок.
+  - Визуальный smoke: окно 960×540, `ComponentShowcase` — рендер без engine-ошибок; проверены состояния Slot/Bar/Tab/Dialog/Toast/Kbd, фокус-каретка, меню с причиной disabled.
+- **Найденные/исправленные проблемы:**
+  1. `slot.gd`: `icon` конфликтовал с нативным `Button.icon` — переименовано в `item_icon`.
+  2. Сеттеры `AshenBar.value/max_value` присваивали параметр `value` вместо поля — шкалы не обновлялись; заменено на именованные параметры и прямое присваивание поля.
+  3. `AshenDialog` при `instant_text` не завершал печать (guard в `_finish_typing`) — исправлено, добавлен публичный `advance_typing`/`select_answer` для тестов.
+  4. `Main` + `gui/theme/custom` ломали первый `--import` на чистом клоне (тема грузила неимпортированные шрифты → ERROR). Тема назначается `Window.theme` в `Main._ready`; витрина ставит тему сама. Это устранило ошибки import и сохранило наследование темы всеми Control под Main.
+  5. Disabled-причина в MenuItem рисовалась поверх строки — вынесена второй строкой, высота строки 28 px; «!»/замок/маркер слота выровнены по токенам.
+- **Кросс-файловые правки (на контроль Guardian):** `game/Main.gd` (назначение темы окну). `project.godot` не изменён (отказались от `gui/theme/custom` ради чистого import). `docs/TASKS.json` и статус не менялись (`pending` до QA/Guardian).
+- **Замечания:** в `docs/WORKFLOW_LOG.md` на момент записи были незакоммиченные строки Orchestrator (приёмка T-25) — они вошли в тот же коммит журнала как часть append-only истории; игровые файлы T-12/T-25 и untracked `opencode.jsonc` не трогал.
+- **Коммит:** «T-18: тема, токены, шрифт и UI-компоненты».

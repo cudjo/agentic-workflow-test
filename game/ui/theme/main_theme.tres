@@ -1,0 +1,174 @@
+[gd_resource type="Theme" load_steps=13 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/PressStart2P-Regular.ttf" id="1_muu7h"]
+[ext_resource type="FontFile" path="res://assets/fonts/Tiny5-Variable.ttf" id="2_6dn1j"]
+
+[sub_resource type="FontVariation" id="FontVariation_dlchh"]
+fallbacks = Array[Font]([ExtResource("2_6dn1j")])
+base_font = ExtResource("1_muu7h")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l6euo"]
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ecx6u"]
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.752941, 0.541176, 0.243137, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ghabc"]
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
+content_margin_bottom = 2.0
+bg_color = Color(0.14902, 0.172549, 0.243137, 1)
+border_color = Color(0, 0, 0, 0)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_txie2"]
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nt7ns"]
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
+content_margin_bottom = 2.0
+bg_color = Color(0.752941, 0.541176, 0.243137, 1)
+border_color = Color(0, 0, 0, 0)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lfpj6"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.0627451, 0.0745098, 0.109804, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.419608, 0.419608, 0.439216, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_djomu"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.0627451, 0.0745098, 0.109804, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.419608, 0.419608, 0.439216, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fsl3e"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.0627451, 0.0745098, 0.109804, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.419608, 0.419608, 0.439216, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dyybj"]
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+bg_color = Color(0.0627451, 0.0745098, 0.109804, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.419608, 0.419608, 0.439216, 1)
+anti_aliasing = false
+
+[resource]
+default_font = SubResource("FontVariation_dlchh")
+default_font_size = 8
+Button/colors/font_color = Color(0.603922, 0.603922, 0.611765, 1)
+Button/colors/font_disabled_color = Color(0.419608, 0.419608, 0.439216, 1)
+Button/colors/font_focus_color = Color(0.839216, 0.788235, 0.658824, 1)
+Button/colors/font_hover_color = Color(0.839216, 0.788235, 0.658824, 1)
+Button/colors/font_pressed_color = Color(0.0431373, 0.0470588, 0.0627451, 1)
+Button/font_sizes/font_size = 8
+Button/fonts/font = SubResource("FontVariation_dlchh")
+Button/styles/disabled = SubResource("StyleBoxFlat_l6euo")
+Button/styles/focus = SubResource("StyleBoxFlat_ecx6u")
+Button/styles/hover = SubResource("StyleBoxFlat_ghabc")
+Button/styles/normal = SubResource("StyleBoxFlat_txie2")
+Button/styles/pressed = SubResource("StyleBoxFlat_nt7ns")
+DangerLabel/base_type = &"Label"
+DangerLabel/colors/font_color = Color(0.811765, 0.415686, 0.360784, 1)
+DangerLabel/font_sizes/font_size = 8
+DangerLabel/fonts/font = SubResource("FontVariation_dlchh")
+GoldLabel/base_type = &"Label"
+GoldLabel/colors/font_color = Color(0.878431, 0.709804, 0.415686, 1)
+GoldLabel/font_sizes/font_size = 8
+GoldLabel/fonts/font = SubResource("FontVariation_dlchh")
+H1Label/base_type = &"Label"
+H1Label/colors/font_color = Color(0.878431, 0.709804, 0.415686, 1)
+H1Label/font_sizes/font_size = 24
+H1Label/fonts/font = SubResource("FontVariation_dlchh")
+H2Label/base_type = &"Label"
+H2Label/colors/font_color = Color(0.878431, 0.709804, 0.415686, 1)
+H2Label/font_sizes/font_size = 16
+H2Label/fonts/font = SubResource("FontVariation_dlchh")
+Label/colors/font_color = Color(0.839216, 0.788235, 0.658824, 1)
+Label/colors/font_shadow_color = Color(0.0431373, 0.0470588, 0.0627451, 1)
+Label/constants/shadow_offset_x = 1
+Label/constants/shadow_offset_y = 1
+Label/font_sizes/font_size = 8
+Label/fonts/font = SubResource("FontVariation_dlchh")
+MutedLabel/base_type = &"Label"
+MutedLabel/colors/font_color = Color(0.603922, 0.603922, 0.611765, 1)
+MutedLabel/font_sizes/font_size = 8
+MutedLabel/fonts/font = SubResource("FontVariation_dlchh")
+Panel/styles/panel = SubResource("StyleBoxFlat_lfpj6")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_djomu")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_fsl3e")
+RichTextLabel/colors/default_color = Color(0.839216, 0.788235, 0.658824, 1)
+RichTextLabel/font_sizes/bold_font_size = 8
+RichTextLabel/font_sizes/italics_font_size = 8
+RichTextLabel/font_sizes/mono_font_size = 8
+RichTextLabel/font_sizes/normal_font_size = 8
+RichTextLabel/fonts/bold_font = SubResource("FontVariation_dlchh")
+RichTextLabel/fonts/italics_font = SubResource("FontVariation_dlchh")
+RichTextLabel/fonts/mono_font = SubResource("FontVariation_dlchh")
+RichTextLabel/fonts/normal_font = SubResource("FontVariation_dlchh")
+SteelLabel/base_type = &"Label"
+SteelLabel/colors/font_color = Color(0.498039, 0.603922, 0.658824, 1)
+SteelLabel/font_sizes/font_size = 8
+SteelLabel/fonts/font = SubResource("FontVariation_dlchh")
+TitleLabel/base_type = &"Label"
+TitleLabel/colors/font_color = Color(0.878431, 0.709804, 0.415686, 1)
+TitleLabel/font_sizes/font_size = 32
+TitleLabel/fonts/font = SubResource("FontVariation_dlchh")
+TooltipLabel/colors/font_color = Color(0.839216, 0.788235, 0.658824, 1)
+TooltipLabel/font_sizes/font_size = 8
+TooltipPanel/styles/panel = SubResource("StyleBoxFlat_dyybj")
