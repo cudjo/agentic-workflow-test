@@ -9,8 +9,9 @@ extends RefCounted
 ## (сырое тело). Поэтому проверка не зависит от того, как JSON парсит/печатает
 ## числа и в каком порядке лежат ключи: тело сверяется байт в байт.
 ##
-## Тело (schema_version = 4):
-##   state: {stamina, weapon_id, weapon_path,
+## Тело (schema_version = 5):
+##   state: {stats, learning_points, level, xp,
+##           stamina, weapon_id, weapon_path,
 ##           bosses_defeated, boss_rewards_pending, currency,
 ##           hp, inventory, abilities,
 ##           death_active, death_corpse_active, death_zone_id, death_position,
@@ -21,7 +22,9 @@ extends RefCounted
 ## `state` — только реально существующие поля `GameState`. T-26 (v3) добавил
 ## HP, инвентарь, способности, corpse-метку/флаг смерти (EC-04) и чекпоинт
 ## костра; T-27 (v4) — репутацию фракций (`factions`: id -> int) и выбранную
-## фракцию. Контракт добавления полей и версии описан в `save_migrations.gd`.
+## фракцию; T-29 (v5) — характеристики (`stats`: id -> int), очки обучения,
+## уровень и опыт. Контракт добавления полей и версии описан в
+## `save_migrations.gd`.
 ##
 ## `meta` — данные для UI (зона, уровень, время) и задел под будущие поля:
 ## известные ключи нормализуются, незнакомые проходят через `_json_safe()`.
@@ -53,12 +56,19 @@ static func build_body(state: Node, metadata: Dictionary = {}) -> Dictionary:
 	}
 
 
-## Сериализует существующие поля GameState: выносливость и текущее оружие.
-## Отсутствующий/неинициализированный state даёт пустой `state` без вылета.
+## Сериализует существующие поля GameState: прогрессию, выносливость и
+## текущее оружие. Отсутствующий/неинициализированный state даёт пустой
+## `state` без вылета.
 static func serialize_state(state: Node) -> Dictionary:
 	var data: Dictionary = {}
 	if state == null:
 		return data
+
+	# T-29 (schema v5): характеристики, очки обучения, уровень и опыт.
+	data["stats"] = _stat_map(state.get("stats"))
+	data["learning_points"] = _as_int(state.get("learning_points"), 0)
+	data["level"] = maxi(_as_int(state.get("level"), 1), 1)
+	data["xp"] = maxi(_as_int(state.get("xp"), 0), 0)
 
 	var stamina_value: Variant = state.get("stamina")
 	if stamina_value is int or stamina_value is float:
@@ -130,6 +140,20 @@ static func serialize_state(state: Node) -> Dictionary:
 static func apply_state(state: Node, state_data: Dictionary) -> bool:
 	if state == null:
 		return false
+
+	# T-29 (v5): прогрессия применяется до HP/выносливости — бонусы здоровья
+	# и выносливости уже учтены при восстановлении максимумов. Старые сейвы
+	# после миграции содержат дефолты (v4→v5), поэтому загрузка не ломается.
+	if state.has_method("restore_progression"):
+		var stats_value: Variant = state_data.get("stats", {})
+		var stats_data: Dictionary = stats_value if stats_value is Dictionary else {}
+		state.call(
+			"restore_progression",
+			stats_data,
+			_as_int(state_data.get("learning_points", 0), 0),
+			_as_int(state_data.get("level", 1), 1),
+			_as_int(state_data.get("xp", 0), 0)
+		)
 
 	if state_data.has("stamina"):
 		state.set("stamina", float(state_data["stamina"]))
@@ -365,6 +389,22 @@ static func _string_array(value: Variant) -> Array[String]:
 	if value is Array:
 		for item: Variant in value:
 			result.append(String(item))
+	return result
+
+
+## Характеристики: stat_id (StringName/строка) -> int. Нечисловые значения
+## и пустые id пропускаются — битый сейв не роняет загрузку.
+static func _stat_map(value: Variant) -> Dictionary:
+	var result: Dictionary = {}
+	if not value is Dictionary:
+		return result
+	for key: Variant in (value as Dictionary).keys():
+		var stat_id: String = String(key)
+		if stat_id.is_empty():
+			continue
+		var stat_value: Variant = (value as Dictionary)[key]
+		if stat_value is int or stat_value is float:
+			result[stat_id] = int(stat_value)
 	return result
 
 

@@ -60,6 +60,21 @@ func set_current(value: float) -> void:
 	changed.emit(current, maximum)
 
 
+## Прямая установка максимума (бонус характеристики «выносливость», T-29).
+## `grant_delta` — прибавка к текущему значению на тот же размер (повышение
+## характеристики не «съедает» текущую выносливость); иначе текущее
+## зажимается под новый максимум (загрузка сейва).
+func set_maximum(value: float, grant_delta: bool = false) -> void:
+	var previous: float = maximum
+	maximum = maxf(value, 0.0)
+	if grant_delta and maximum > previous:
+		current = minf(current + (maximum - previous), maximum)
+	else:
+		current = minf(current, maximum)
+	_refresh_exhausted()
+	changed.emit(current, maximum)
+
+
 func reset() -> void:
 	current = maximum
 	_time_since_spend = 0.0

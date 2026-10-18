@@ -61,7 +61,15 @@ func save_slot(slot: int, metadata: Dictionary = {}) -> bool:
 		_emit_save_failed(slot, LOAD_IO_ERROR)
 		return false
 
-	var body: Dictionary = SaveSerializer.build_body(state, metadata)
+	# T-29: уровень теперь живёт в GameState — слот-метаданные получают его,
+	# если вызывающий (костёр/UI) не передал level явно.
+	var slot_metadata: Dictionary = metadata.duplicate(true)
+	if not slot_metadata.has("level"):
+		var level_value: Variant = state.get("level")
+		if level_value is int:
+			slot_metadata["level"] = level_value
+
+	var body: Dictionary = SaveSerializer.build_body(state, slot_metadata)
 	var text: String = SaveSerializer.encode(body)
 	if not _write_atomic(get_slot_path(slot), text):
 		_emit_save_failed(slot, LOAD_IO_ERROR)

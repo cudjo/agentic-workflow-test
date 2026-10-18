@@ -7,7 +7,7 @@ extends RefCounted
 ## (`schema_too_new`), чтобы старый билд не потерял незнакомые поля молча.
 ##
 ## Контракт расширения для будущих задач (T-26 HP/corpse, T-27 фракции,
-## T-29 квесты и т.д.):
+## T-29 прогрессия и т.д.):
 ## 1. Новое поле добавляется в `SaveSerializer.serialize_state()` и
 ##    `SaveSerializer.apply_state()` (только реально существующие поля
 ##    `GameState`; отсутствующие в сейве ключи не должны ломать загрузку).
@@ -25,10 +25,21 @@ extends RefCounted
 ## чекпоинт костра.
 ## Версия 4 — T-27: репутация фракций (`factions`) и выбранная фракция
 ## (`chosen_faction`).
+## Версия 5 — T-29: характеристики (`stats`), очки обучения
+## (`learning_points`), уровень (`level`) и опыт (`xp`).
 
-const CURRENT_VERSION: int = 4
+const CURRENT_VERSION: int = 5
 const BALANCE_PATH: String = "res://data/balance/balancing.tres"
+const PROGRESSION_PATH: String = "res://data/balance/progression.tres"
 const FALLBACK_MAX_HP: float = 100.0
+## Стартовые характеристики, если `progression.tres` недоступен (совпадают
+## с данными игры; нужны только для чтения совсем старого сейва).
+const FALLBACK_STATS: Dictionary = {
+	"strength": 5,
+	"dexterity": 5,
+	"endurance": 5,
+	"health": 5,
+}
 
 const REASON_OK: String = "ok"
 const REASON_SCHEMA_TOO_NEW: String = "schema_too_new"
@@ -79,6 +90,10 @@ static func migrate(schema_version: int, body: Dictionary) -> Dictionary:
 	if version == 3:
 		migrated = _v3_to_v4(migrated)
 		version = 4
+
+	if version == 4:
+		migrated = _v4_to_v5(migrated)
+		version = 5
 
 	if version != CURRENT_VERSION:
 		return {
@@ -181,6 +196,43 @@ static func _v3_to_v4(body: Dictionary) -> Dictionary:
 
 	migrated["state"] = state
 	return migrated
+
+
+## v4 → v5: T-29 — характеристики, очки обучения, уровень и опыт.
+## Старые сейвы получают стартовые характеристики из `progression.tres`
+## (fallback — совпадающие константы), 0 очков, уровень 1 и 0 XP.
+## Существующие поля не меняются.
+static func _v4_to_v5(body: Dictionary) -> Dictionary:
+	var migrated: Dictionary = body.duplicate(true)
+	var state_value: Variant = migrated.get("state", {})
+	var state: Dictionary = state_value if state_value is Dictionary else {}
+
+	if not state.has("stats"):
+		state["stats"] = _default_progression_stats()
+	if not state.has("learning_points"):
+		state["learning_points"] = 0
+	if not state.has("level"):
+		state["level"] = 1
+	if not state.has("xp"):
+		state["xp"] = 0
+
+	migrated["state"] = state
+	return migrated
+
+
+## Стартовые характеристики для старых сейвов — из того же
+## `progression.tres`, что и игра. Недоступный ресурс → безопасный fallback.
+static func _default_progression_stats() -> Dictionary:
+	var result: Dictionary = FALLBACK_STATS.duplicate(true)
+	if not ResourceLoader.exists(PROGRESSION_PATH):
+		return result
+	var data: ProgressionData = load(PROGRESSION_PATH) as ProgressionData
+	if data == null or not data.is_valid():
+		return result
+	var stats: Dictionary = {}
+	for stat_id: StringName in data.stat_ids:
+		stats[String(stat_id)] = data.get_start_value(stat_id)
+	return stats
 
 
 ## Дефолтное HP для старых сейвов — из того же `balancing.tres`, что и игра

@@ -22,13 +22,36 @@ extends Node
 ##   * `active_slot` — слот последнего сохранения/загрузки, цель death-автосейва
 ##     для EC-04 (ставится SaveManager'ом).
 ## Смерть и corpse run обрабатывает `core/death/death_handler.gd`.
+##
+## T-29 добавил прогрессию (US-08):
+##   * `stats` — характеристики (сила/ловкость/выносливость/здоровье);
+##   * `learning_points` — очки обучения у учителей (AC-08.1);
+##   * `level`/`xp` — уровень и накопленный опыт (опыт за врагов/квесты);
+##   * `progression_data`/`progression_rules` — таблицы из
+##     `data/balance/progression.tres` и чистая логика шагов/требований.
+## Сейв пишет их как `state.stats`, `state.learning_points`, `state.level`,
+## `state.xp` (schema v5). Требования экипировки для T-21 проверяются
+## `get_equipment_info(item_id)`.
 
 const BALANCE_PATH: String = "res://data/balance/balancing.tres"
+const PROGRESSION_PATH: String = "res://data/balance/progression.tres"
 const DEFAULT_WEAPON_PATH: String = "res://data/weapons/one_handed_sword.tres"
 
 var balance: BalancingParams
 var weapon: WeaponData
 var stamina_state: Stamina
+
+## Таблицы прогрессии и чистая логика шагов/уровней (T-29).
+var progression_data: ProgressionData
+var progression_rules: ProgressionRules
+
+## Характеристики забега: stat_id → int (T-29, AC-08.1).
+var stats: Dictionary = {}
+## Очки обучения (тратятся у учителей, AC-08.1).
+var learning_points: int = 0
+## Уровень и накопленный опыт (опыт за врагов/квесты).
+var level: int = 1
+var xp: int = 0
 
 ## Полученные способности (id из AbilityRegistry), в порядке получения.
 ## Типизированный набор; дубликаты невозможны (см. `add_ability`).
@@ -85,15 +108,24 @@ var factions: Dictionary = {}
 ## Выбранная фракция (T-27). `&""` — выбор не сделан, концовка нейтральная.
 var chosen_faction: StringName = &""
 
-## Текущий максимум HP (из balancing.tres).
+## Текущий максимум HP (из balancing.tres + бонус характеристики «здоровье»).
 var hp_max: float:
 	get:
-		return balance.max_hp if balance != null else 0.0
+		var base: float = balance.max_hp if balance != null else 0.0
+		return base + _health_bonus()
 
-## Текущий максимум выносливости (из balancing.tres).
+## Текущий максимум выносливости (база + бонус характеристики «выносливость»).
 var stamina_max: float:
 	get:
 		return stamina_state.maximum if stamina_state != null else 0.0
+
+## Алиас для HUD T-19/T-21: «очки обучения» = learning_points.
+## Каноническое имя поля и сейва — `learning_points`.
+var training_points: int:
+	get:
+		return learning_points
+	set(value):
+		set_learning_points(value)
 
 ## Текущая выносливость; setter нужен загрузке сейва/T-04-тестам.
 var stamina: float:
@@ -108,11 +140,12 @@ func _ready() -> void:
 	balance = load(BALANCE_PATH) as BalancingParams
 	if balance == null:
 		push_error("GameState: balancing resource is missing at %s" % BALANCE_PATH)
-	else:
+	_load_progression()
+	if balance != null:
 		stamina_state = Stamina.new()
 		stamina_state.changed.connect(_on_stamina_changed)
 		stamina_state.setup(
-			balance.stamina_max,
+			_stamina_max_for_stats(),
 			balance.stamina_regen_delay,
 			balance.stamina_regen_rate
 		)
@@ -120,6 +153,8 @@ func _ready() -> void:
 	hp = hp_max
 	if not EventBus.zone_entered.is_connected(_on_zone_entered):
 		EventBus.zone_entered.connect(_on_zone_entered)
+	if not EventBus.enemy_died.is_connected(_on_enemy_died):
+		EventBus.enemy_died.connect(_on_enemy_died)
 
 
 # ------------------------------------------------------------------------------
@@ -400,6 +435,16 @@ func _on_zone_entered(zone_id: StringName, _display_name: String) -> void:
 	current_zone_id = zone_id
 
 
+## Опыт за побеждённого врага (T-29): таблица `enemy_xp` из данных.
+## `EventBus.enemy_died` эмитится только окончательной смертью (T-12).
+func _on_enemy_died(enemy_id: StringName, _at_position: Vector2) -> void:
+	if progression_data == null:
+		return
+	var amount: int = progression_data.get_enemy_xp(enemy_id)
+	if amount > 0:
+		add_xp(amount)
+
+
 ## Spend `amount` stamina. Returns false (and spends nothing) when it is not enough.
 func try_spend_stamina(amount: float) -> bool:
 	if stamina_state == null:
@@ -532,6 +577,290 @@ func restore_abilities(values: Array) -> void:
 
 
 # ------------------------------------------------------------------------------
+# Progression: stats, learning points, experience (T-29, US-08)
+# ------------------------------------------------------------------------------
+
+func get_stat(stat_id: StringName) -> int:
+	var value: Variant = stats.get(stat_id)
+	if value is int:
+		return value
+	if value is float:
+		return int(value)
+	return 0
+
+
+## Копия характеристик (stat_id → int) для UI/сейва.
+func get_stats() -> Dictionary:
+	var copy: Dictionary = {}
+	for key: Variant in stats.keys():
+		copy[StringName(str(key))] = get_stat(StringName(str(key)))
+	return copy
+
+
+func get_stat_name(stat_id: StringName) -> String:
+	if progression_rules != null:
+		return progression_rules.get_stat_name(stat_id)
+	return String(stat_id)
+
+
+func get_stat_ids() -> Array[StringName]:
+	if progression_rules != null:
+		return progression_rules.get_stat_ids()
+	var result: Array[StringName] = []
+	return result
+
+
+## Цена следующего повышения; -1 — максимум/неизвестная характеристика.
+## `value_override` позволяет спросить цену шага после повышения (UI).
+func get_training_cost(stat_id: StringName, value_override: int = -1) -> int:
+	if progression_rules == null:
+		return -1
+	var current: int = get_stat(stat_id) if value_override < 0 else value_override
+	return progression_rules.get_step_cost(stat_id, current)
+
+
+func can_train_stat(stat_id: StringName) -> bool:
+	var cost: int = get_training_cost(stat_id)
+	return cost > 0 and learning_points >= cost
+
+
+## Тратит очки обучения и повышает характеристику на 1 (AC-08.1).
+## Возвращает `{ok, reason, stat_id, value, cost_paid, next_cost,
+## learning_points}`; при отказе состояние не меняется.
+func train_stat(stat_id: StringName) -> Dictionary:
+	var result: Dictionary = {
+		"ok": false,
+		"reason": "",
+		"stat_id": stat_id,
+		"value": get_stat(stat_id),
+		"cost_paid": 0,
+		"next_cost": -1,
+		"learning_points": learning_points,
+	}
+	if progression_rules == null:
+		result["reason"] = "no_data"
+		return result
+	if not progression_rules.has_stat(stat_id):
+		result["reason"] = "unknown_stat"
+		return result
+
+	var current: int = get_stat(stat_id)
+	var cost: int = progression_rules.get_step_cost(stat_id, current)
+	if cost < 0:
+		result["reason"] = "max"
+		result["next_cost"] = -1
+		return result
+	if learning_points < cost:
+		result["reason"] = "not_enough_points"
+		result["cost_paid"] = 0
+		result["next_cost"] = cost
+		return result
+
+	learning_points -= cost
+	stats[stat_id] = current + 1
+	_apply_stat_gain(stat_id, 1)
+
+	var next_cost: int = progression_rules.get_step_cost(stat_id, current + 1)
+	EventBus.stat_changed.emit(stat_id, current + 1, next_cost)
+	EventBus.learning_points_changed.emit(learning_points)
+
+	result["ok"] = true
+	result["value"] = current + 1
+	result["cost_paid"] = cost
+	result["next_cost"] = next_cost
+	result["learning_points"] = learning_points
+	return result
+
+
+func set_learning_points(value: int) -> void:
+	var clamped: int = maxi(value, 0)
+	if clamped == learning_points:
+		return
+	learning_points = clamped
+	EventBus.learning_points_changed.emit(learning_points)
+
+
+func add_learning_points(amount: int) -> int:
+	if amount > 0:
+		set_learning_points(learning_points + amount)
+	return learning_points
+
+
+## Списывает очки (навыки учителя). false — недостаточно, ничего не списано.
+func spend_learning_points(amount: int) -> bool:
+	if amount < 0 or learning_points < amount:
+		return false
+	if amount > 0:
+		set_learning_points(learning_points - amount)
+	return true
+
+
+## Начисляет опыт (враги/квесты) и повышает уровень по таблице.
+## Возвращает `{ok, xp, level, levels_gained, points_awarded,
+## xp_to_next, max_level}`.
+func add_xp(amount: int) -> Dictionary:
+	var result: Dictionary = {
+		"ok": false,
+		"xp": xp,
+		"level": level,
+		"levels_gained": 0,
+		"points_awarded": 0,
+		"xp_to_next": get_xp_to_next_level(),
+		"max_level": progression_rules.get_max_level() if progression_rules != null else 1,
+	}
+	if amount <= 0 or progression_rules == null:
+		return result
+
+	xp = maxi(xp + amount, 0)
+	var previous_level: int = level
+	var new_level: int = progression_rules.get_level_for_xp(xp)
+	if new_level > level:
+		level = new_level
+		var awarded: int = progression_rules.get_learning_points_awarded(
+			previous_level,
+			new_level
+		)
+		learning_points += awarded
+		result["levels_gained"] = new_level - previous_level
+		result["points_awarded"] = awarded
+		EventBus.level_changed.emit(level, awarded)
+		EventBus.learning_points_changed.emit(learning_points)
+
+	result["ok"] = true
+	result["xp"] = xp
+	result["level"] = level
+	result["xp_to_next"] = get_xp_to_next_level()
+	EventBus.xp_changed.emit(xp, result["xp_to_next"])
+	return result
+
+
+## Опыт за квест по таблице `quest_xp` (T-28 вызывает после завершения).
+## Неизвестный квест ничего не начисляет: `{ok:false, reason:"unknown_quest"}`.
+func award_quest_xp(quest_id: StringName) -> Dictionary:
+	if progression_data == null:
+		return {
+			"ok": false,
+			"reason": "no_data",
+			"xp": xp,
+			"level": level,
+			"levels_gained": 0,
+			"points_awarded": 0,
+			"xp_to_next": get_xp_to_next_level(),
+			"amount": 0,
+		}
+	var amount: int = progression_data.get_quest_xp(quest_id)
+	if amount <= 0:
+		return {
+			"ok": false,
+			"reason": "unknown_quest",
+			"xp": xp,
+			"level": level,
+			"levels_gained": 0,
+			"points_awarded": 0,
+			"xp_to_next": get_xp_to_next_level(),
+			"amount": 0,
+		}
+	var result: Dictionary = add_xp(amount)
+	result["amount"] = amount
+	result["quest_id"] = quest_id
+	return result
+
+
+## Сколько XP осталось до следующего уровня (0 — максимум).
+func get_xp_to_next_level() -> int:
+	if progression_rules == null:
+		return 0
+	return progression_rules.get_xp_to_next_level(level, xp)
+
+
+## Проверка предусловий навыка/требований экипировки (AC-08.2, T-21):
+## `{requirements, met, missing, reason}`.
+func check_requirements(requirements: Dictionary) -> Dictionary:
+	if progression_rules == null:
+		return EquipmentRequirements.describe(requirements, stats)
+	return progression_rules.check_requirements(requirements, stats)
+
+
+## Требования предмета из данных (пусто — требований нет).
+func get_equipment_requirements(item_id: StringName) -> Dictionary:
+	if progression_rules == null:
+		return {}
+	return progression_rules.get_equipment_requirements(item_id)
+
+
+## Состояние экипировки для слота инвентаря T-21:
+## `{item_id, requirements, met, missing, reason}`. При невыполненных
+## требованиях `met = false`, а `reason` содержит требуемое значение.
+func get_equipment_info(item_id: StringName) -> Dictionary:
+	if progression_rules == null:
+		return {
+			"item_id": item_id,
+			"requirements": {},
+			"met": true,
+			"missing": [],
+			"reason": "",
+		}
+	return progression_rules.get_equipment_info(item_id, stats)
+
+
+func meets_equipment_requirements(item_id: StringName) -> bool:
+	return bool(get_equipment_info(item_id).get("met", true))
+
+
+## Восстанавливает прогрессию из сейва (schema v5). Значения валидируются
+## таблицами: неизвестные id отбрасываются, характеристики зажимаются в
+## [start, max], LP/XP неотрицательны, уровень — в [1, max_level].
+## Эмитит change-сигналы, чтобы живой UI (T-19/T-21) обновился после загрузки.
+func restore_progression(
+	stats_data: Dictionary,
+	learning_points_value: int,
+	level_value: int,
+	xp_value: int
+) -> void:
+	if progression_rules == null:
+		return
+	stats = progression_rules.normalize_stats(stats_data)
+	learning_points = maxi(learning_points_value, 0)
+	xp = maxi(xp_value, 0)
+	var safe_level: int = level_value
+	if safe_level <= 0:
+		safe_level = progression_rules.get_level_for_xp(xp)
+	level = progression_rules.clamp_level(safe_level)
+
+	if stamina_state != null:
+		stamina_state.set_maximum(_stamina_max_for_stats(), false)
+	hp = minf(hp, hp_max)
+
+	for stat_id: StringName in progression_rules.get_stat_ids():
+		EventBus.stat_changed.emit(stat_id, get_stat(stat_id), get_training_cost(stat_id))
+	EventBus.learning_points_changed.emit(learning_points)
+	EventBus.level_changed.emit(level, 0)
+	EventBus.xp_changed.emit(xp, get_xp_to_next_level())
+
+
+## Сброс прогрессии для новой игры/тестов. Сигналы эмитятся для UI.
+func reset_progression() -> void:
+	if progression_rules == null:
+		stats = {}
+		learning_points = 0
+		level = 1
+		xp = 0
+		return
+	stats = progression_rules.get_start_stats()
+	learning_points = 0
+	level = 1
+	xp = 0
+	if stamina_state != null:
+		stamina_state.set_maximum(_stamina_max_for_stats(), false)
+	hp = minf(hp, hp_max)
+	for stat_id: StringName in progression_rules.get_stat_ids():
+		EventBus.stat_changed.emit(stat_id, get_stat(stat_id), get_training_cost(stat_id))
+	EventBus.learning_points_changed.emit(learning_points)
+	EventBus.level_changed.emit(level, 0)
+	EventBus.xp_changed.emit(xp, get_xp_to_next_level())
+
+
+# ------------------------------------------------------------------------------
 # Boss progress and rewards (T-30, EC-09)
 # ------------------------------------------------------------------------------
 
@@ -638,6 +967,51 @@ func restore_boss_progress(
 
 func set_weapon(new_weapon: WeaponData) -> void:
 	weapon = new_weapon
+
+
+func _load_progression() -> void:
+	progression_data = load(PROGRESSION_PATH) as ProgressionData
+	if progression_data == null:
+		push_error("GameState: progression resource is missing at %s" % PROGRESSION_PATH)
+		return
+	if not progression_data.is_valid():
+		push_error("GameState: invalid progression data at %s" % PROGRESSION_PATH)
+		return
+	progression_rules = ProgressionRules.new(progression_data)
+	stats = progression_rules.get_start_stats()
+	learning_points = 0
+	level = 1
+	xp = 0
+
+
+## Бонус максимального HP от характеристики «здоровье» (T-29).
+func _health_bonus() -> float:
+	if progression_data == null:
+		return 0.0
+	var gained: int = get_stat(&"health") - progression_data.get_start_value(&"health")
+	return float(maxi(gained, 0)) * progression_data.health_per_point
+
+
+## Максимум выносливости с бонусом характеристики «выносливость».
+func _stamina_max_for_stats() -> float:
+	var base: float = balance.stamina_max if balance != null else 0.0
+	if progression_data == null:
+		return base
+	var gained: int = get_stat(&"endurance") - progression_data.get_start_value(&"endurance")
+	return base + float(maxi(gained, 0)) * progression_data.stamina_per_point
+
+
+## Применяет производные эффекты повышения характеристики.
+func _apply_stat_gain(stat_id: StringName, delta: int) -> void:
+	if progression_data == null or delta <= 0:
+		return
+	if stat_id == &"health":
+		set_hp(hp + float(delta) * progression_data.health_per_point)
+	elif stat_id == &"endurance" and stamina_state != null:
+		stamina_state.set_maximum(
+			stamina_state.maximum + float(delta) * progression_data.stamina_per_point,
+			true
+		)
 
 
 func _on_stamina_changed(current: float, maximum: float) -> void:

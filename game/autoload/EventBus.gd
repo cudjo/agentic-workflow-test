@@ -9,6 +9,19 @@ extends Node
 signal player_state_changed(state_name: StringName)
 ## Выносливость игрока изменилась (HUD, AC-03.3).
 signal stamina_changed(current: float, maximum: float)
+## Характеристика изменилась (T-29, AC-08.1). `value` — новое значение,
+## `next_cost` — цена следующего шага (−1 — максимум). Потребители: HUD (T-19),
+## экран инвентаря/характеристик (T-21), диалог учителя (T-28).
+signal stat_changed(stat_id: StringName, value: int, next_cost: int)
+## Баланс очков обучения изменился (T-29). Потребители: HUD (T-19),
+## инвентарь (T-21), диалог учителя (T-28).
+signal learning_points_changed(points: int)
+## Уровень вырос при начислении опыта (T-29). `points_awarded` — сколько
+## очков обучения получено за повышение.
+signal level_changed(level: int, points_awarded: int)
+## Накопленный опыт изменился (T-29). `xp_to_next` — сколько осталось до
+## следующего уровня (0 — максимум). Потребитель: HUD/инвентарь.
+signal xp_changed(current_xp: int, xp_to_next: int)
 ## HP игрока достиг HP = 0; смерть обрабатывается T-26.
 signal player_died
 ## Текущее HP игрока изменилось (T-26). Потребитель: HUD (T-19).

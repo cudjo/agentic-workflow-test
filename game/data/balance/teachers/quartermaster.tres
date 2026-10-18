@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="TeacherData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/balance/teacher_data.gd" id="1_teacher"]
+
+[resource]
+script = ExtResource("1_teacher")
+id = &"quartermaster"
+display_name_key = "teacher.quartermaster.name"
+display_name = "ОРУЖЕЙНИК БРАН"
+stat_id = &"strength"
+skills = {
+"power_strike": {
+"display_name": "СИЛЬНЫЙ УДАР",
+"ability_id": "power_strike",
+"cost": 2,
+"requires": {
+"strength": 8
+}
+},
+"iron_guard": {
+"display_name": "ЖЕЛЕЗНАЯ СТОЙКА",
+"ability_id": "iron_guard",
+"cost": 3,
+"requires": {
+"strength": 10,
+"endurance": 7
+}
+}
+}

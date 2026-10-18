@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="ProgressionData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/balance/progression_data.gd" id="1_progression"]
+
+[resource]
+script = ExtResource("1_progression")
+stat_ids = Array[StringName]([&"strength", &"dexterity", &"endurance", &"health"])
+stat_names = {
+"strength": "СИЛА",
+"dexterity": "ЛОВКОСТЬ",
+"endurance": "ВЫНОСЛИВОСТЬ",
+"health": "ЗДОРОВЬЕ"
+}
+start_values = {
+"strength": 5,
+"dexterity": 5,
+"endurance": 5,
+"health": 5
+}
+max_values = {
+"strength": 20,
+"dexterity": 20,
+"endurance": 20,
+"health": 20
+}
+step_costs = {
+"strength": PackedInt32Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20),
+"dexterity": PackedInt32Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20),
+"endurance": PackedInt32Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20),
+"health": PackedInt32Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20)
+}
+health_per_point = 5.0
+stamina_per_point = 5.0
+xp_thresholds = PackedInt32Array(100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250)
+learning_points_per_level = 2
+enemy_xp = {
+"swift_fiend": 25,
+"heavy_brute": 60,
+"ranged_cultist": 40,
+"undead_thrall": 35
+}
+quest_xp = {
+"quest_clear_swamp": 100,
+"quest_guard_patrol": 80,
+"quest_free_smuggle": 80,
+"quest_ash_ritual": 120
+}
+equipment_requirements = {
+"light_dagger": {
+"dexterity": 8
+},
+"two_handed_axe": {
+"strength": 9
+}
+}

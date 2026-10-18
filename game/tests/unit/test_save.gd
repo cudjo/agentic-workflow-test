@@ -2,7 +2,8 @@ extends GutTest
 ## T-25 — сохранения: round-trip, checksum, миграции, атомарность
 ## (PLAN §3.4, AC-05.1, EC-07/EC-14). T-26 — schema v3: HP, инвентарь,
 ## способности, смерть/corpse run и чекпоинт костра. T-27 — schema v4:
-## репутация фракций и выбранная фракция (US-06).
+## репутация фракций и выбранная фракция (US-06). T-29 — schema v5:
+## характеристики, очки обучения, уровень и опыт (US-08).
 ##
 ## Тесты работают в отдельном каталоге `user://test_saves_t25`, чтобы не
 ## трогать реальные слоты игрока; `SaveManager.saves_dir` переопределяется
@@ -27,6 +28,10 @@ var _original_active_slot: int = 0
 var _original_in_combat: bool = false
 var _original_factions: Dictionary = {}
 var _original_chosen_faction: StringName = &""
+var _original_stats: Dictionary = {}
+var _original_learning_points: int = 0
+var _original_level: int = 1
+var _original_xp: int = 0
 
 
 func before_all() -> void:
@@ -60,6 +65,10 @@ func before_each() -> void:
 	_original_in_combat = GameState.in_combat
 	_original_factions = GameState.get_all_faction_reputation()
 	_original_chosen_faction = GameState.chosen_faction
+	_original_stats = GameState.get_stats()
+	_original_learning_points = GameState.learning_points
+	_original_level = GameState.level
+	_original_xp = GameState.xp
 
 	# Каждый тест начинает с чистого состояния смерти/HP, чтобы не наследовать
 	# corpse-метку предыдущего теста.
@@ -71,6 +80,12 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	GameState.restore_progression(
+		_original_stats,
+		_original_learning_points,
+		_original_level,
+		_original_xp
+	)
 	GameState.stamina = _original_stamina
 	if _original_weapon != null:
 		GameState.set_weapon(_original_weapon)
@@ -394,6 +409,10 @@ func test_v2_save_is_migrated_to_current_with_defaults() -> void:
 	assert_eq(str(state["respawn_bonfire"]), "", "no checkpoint")
 	assert_eq(state["factions"], {}, "factions default to neutral (T-27, v4)")
 	assert_eq(str(state["chosen_faction"]), "", "no chosen faction in an old save")
+	assert_eq(int(state["stats"]["strength"]), 5, "stats default to start values (T-29, v5)")
+	assert_eq(int(state["learning_points"]), 0, "learning points default to 0")
+	assert_eq(int(state["level"]), 1, "level defaults to 1")
+	assert_eq(int(state["xp"]), 0, "XP defaults to 0")
 	assert_almost_eq(float(state["stamina"]), 33.5, 0.001, "existing fields survive")
 	assert_eq(state["currency"], 7, "v2 currency survives")
 
@@ -417,9 +436,13 @@ func test_v2_save_is_migrated_to_current_with_defaults() -> void:
 		"migrated old save resets faction reputation to neutral"
 	)
 	assert_eq(GameState.chosen_faction, &"", "migrated old save has no faction choice")
+	assert_eq(GameState.get_stat(&"strength"), 5, "migrated old save has start stats")
+	assert_eq(GameState.learning_points, 0, "migrated old save has no learning points")
+	assert_eq(GameState.level, 1, "migrated old save starts at level 1")
+	assert_eq(GameState.xp, 0, "migrated old save has no XP")
 
 
-func test_v3_save_is_migrated_to_v4_with_faction_defaults() -> void:
+func test_v3_save_is_migrated_to_current_with_faction_defaults() -> void:
 	var v3_body: Dictionary = {
 		"state": {
 			"stamina": 12.0,
@@ -446,10 +469,14 @@ func test_v3_save_is_migrated_to_v4_with_faction_defaults() -> void:
 	}
 
 	var migrated: Dictionary = SaveMigrations.migrate(3, v3_body)
-	assert_true(migrated["ok"], "v3 is mappable to v4")
+	assert_true(migrated["ok"], "v3 is mappable to the current schema")
 	var state: Dictionary = migrated["body"]["state"]
 	assert_eq(state["factions"], {}, "factions default to empty")
 	assert_eq(str(state["chosen_faction"]), "", "chosen faction defaults to empty")
+	assert_eq(int(state["stats"]["endurance"]), 5, "stats default to start values (v5)")
+	assert_eq(int(state["learning_points"]), 0, "learning points default to 0")
+	assert_eq(int(state["level"]), 1, "level defaults to 1")
+	assert_eq(int(state["xp"]), 0, "XP defaults to 0")
 	assert_almost_eq(float(state["hp"]), 41.0, 0.001, "v3 HP survives")
 	assert_eq(state["abilities"], ["double_jump"], "v3 abilities survive")
 	assert_eq(int(state["currency"]), 3, "v3 currency survives")
@@ -487,6 +514,96 @@ func test_round_trip_restores_faction_reputation_and_choice() -> void:
 	var raw: String = _read_text(SaveManager.get_slot_path(1))
 	assert_true(raw.contains("\"factions\":{"), "save body carries the factions map")
 	assert_true(raw.contains("\"chosen_faction\":\"ash\""), "save body carries chosen_faction")
+
+
+func test_v4_save_is_migrated_to_v5_with_progression_defaults() -> void:
+	var v4_body: Dictionary = {
+		"state": {
+			"stamina": 21.0,
+			"weapon_id": "one_handed_sword",
+			"weapon_path": SWORD_PATH,
+			"bosses_defeated": [],
+			"boss_rewards_pending": {},
+			"currency": 4,
+			"hp": 55.0,
+			"inventory": [],
+			"abilities": [],
+			"death_active": false,
+			"death_corpse_active": false,
+			"death_zone_id": "",
+			"death_position": {"x": 0.0, "y": 0.0},
+			"death_items": [],
+			"death_currency": 0,
+			"death_lost": false,
+			"respawn_bonfire": "",
+			"respawn_zone_id": "",
+			"respawn_position": {"x": 0.0, "y": 0.0},
+			"factions": {},
+			"chosen_faction": "",
+		},
+		"meta": {"zone_id": "zone_01_village", "level": 2},
+	}
+
+	var migrated: Dictionary = SaveMigrations.migrate(4, v4_body)
+	assert_true(migrated["ok"], "v4 is mappable to v5")
+	var state: Dictionary = migrated["body"]["state"]
+	assert_almost_eq(float(state["stats"]["strength"]), 5.0, 0.001, "strength default")
+	assert_almost_eq(float(state["stats"]["dexterity"]), 5.0, 0.001, "dexterity default")
+	assert_almost_eq(float(state["stats"]["endurance"]), 5.0, 0.001, "endurance default")
+	assert_almost_eq(float(state["stats"]["health"]), 5.0, 0.001, "health default")
+	assert_eq(int(state["learning_points"]), 0, "learning points default to 0")
+	assert_eq(int(state["level"]), 1, "level defaults to 1")
+	assert_eq(int(state["xp"]), 0, "XP defaults to 0")
+	assert_almost_eq(float(state["hp"]), 55.0, 0.001, "v4 HP survives")
+	assert_eq(int(state["currency"]), 4, "v4 currency survives")
+
+	# Реальный файл v4 загружается и даёт стартовую прогрессию.
+	_write_text(SaveManager.get_slot_path(1), SaveSerializer.encode(v4_body, 4))
+	GameState.restore_progression({"strength": 12, "health": 9}, 9, 5, 900)
+	assert_true(SaveManager.load_slot(1), "v4 slot loads through v5 migration")
+	assert_eq(GameState.get_stat(&"strength"), 5, "migrated save resets to start stats")
+	assert_eq(GameState.get_stat(&"health"), 5, "all stats are at their start values")
+	assert_eq(GameState.learning_points, 0, "migrated save has no learning points")
+	assert_eq(GameState.level, 1, "migrated save starts at level 1")
+	assert_eq(GameState.xp, 0, "migrated save has no XP")
+	assert_almost_eq(GameState.hp, 55.0, 0.001, "v4 HP is restored")
+
+
+func test_round_trip_restores_progression() -> void:
+	GameState.restore_progression(
+		{"strength": 9, "dexterity": 7, "endurance": 6, "health": 8},
+		5,
+		3,
+		300
+	)
+
+	assert_true(SaveManager.save_slot(1, {"zone_id": "zone_03_mountains"}), "progression saves")
+	assert_eq(
+		int(SaveManager.get_slot_metadata(1)["level"]),
+		3,
+		"slot metadata picks the level from GameState"
+	)
+
+	GameState.reset_progression()
+	assert_eq(GameState.get_stat(&"strength"), 5, "state is cleared before load")
+	assert_eq(GameState.learning_points, 0, "learning points are cleared")
+	assert_eq(GameState.level, 1, "level is cleared")
+
+	assert_true(SaveManager.load_slot(1), "schema v5 slot loads")
+	assert_eq(GameState.get_stat(&"strength"), 9, "strength is restored (US-08)")
+	assert_eq(GameState.get_stat(&"dexterity"), 7, "dexterity is restored")
+	assert_eq(GameState.get_stat(&"endurance"), 6, "endurance is restored")
+	assert_eq(GameState.get_stat(&"health"), 8, "health is restored")
+	assert_eq(GameState.learning_points, 5, "learning points are restored")
+	assert_eq(GameState.level, 3, "level is restored")
+	assert_eq(GameState.xp, 300, "XP is restored")
+	assert_almost_eq(GameState.hp_max, 115.0, 0.001, "health bonus applies after load")
+
+	var raw: String = _read_text(SaveManager.get_slot_path(1))
+	assert_true(raw.contains("\"stats\":{"), "save body carries stats")
+	assert_true(raw.contains("\"learning_points\":5"), "save body carries learning points")
+	assert_true(raw.contains("\"level\":3"), "save body carries level")
+	assert_true(raw.contains("\"xp\":300"), "save body carries XP")
 
 
 func test_newer_schema_file_is_not_loaded() -> void:

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="TeacherData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/balance/teacher_data.gd" id="1_teacher"]
+
+[resource]
+script = ExtResource("1_teacher")
+id = &"elder"
+display_name_key = "teacher.elder.name"
+display_name = "СТАРЕЦ КАЙЛ"
+stat_id = &"health"
+skills = {
+"second_wind": {
+"display_name": "ВТОРОЕ ДЫХАНИЕ",
+"ability_id": "second_wind",
+"cost": 3,
+"requires": {
+"endurance": 8,
+"health": 8
+}
+},
+"ash_ward": {
+"display_name": "ПЕПЕЛЬНЫЙ ОБЕРЕГ",
+"ability_id": "ash_ward",
+"cost": 4,
+"requires": {
+"health": 10
+}
+}
+}
