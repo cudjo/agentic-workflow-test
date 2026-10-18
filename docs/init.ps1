@@ -85,7 +85,7 @@ if ($GodotBin -and $projectReady) {
     $gutCmd = Join-Path $GameDir 'addons/gut/gut_cmdln.gd'
     if ((Test-Path (Join-Path $GameDir 'tests')) -and (Test-Path $gutCmd)) {
         Step "Прогон тестов (GUT, headless)"
-        & $GodotBin --headless --path $GameDir -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
+        & $GodotBin --headless --path $GameDir -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
         if ($LASTEXITCODE -ne 0) { throw "Тесты завершились с кодом $LASTEXITCODE" }
         Ok "тесты выполнены"
     } else {

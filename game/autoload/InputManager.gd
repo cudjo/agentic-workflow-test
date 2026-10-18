@@ -74,6 +74,14 @@ func press_buffered(action: StringName) -> void:
 	_input_buffer.press(action)
 
 
+## Arms the input buffer if the physical action was pressed this frame.
+## Gameplay code calls this once per physics tick so that a press made just
+## before a state change (e.g. before landing) survives into the next state.
+func capture_buffer(action: StringName) -> void:
+	if Input.is_action_just_pressed(action):
+		_input_buffer.press(action)
+
+
 ## Starts the coyote-time window for an action. Call when the entity leaves an
 ## edge where the action would have been valid (e.g. ground for a jump).
 func start_coyote_time(action: StringName) -> void:

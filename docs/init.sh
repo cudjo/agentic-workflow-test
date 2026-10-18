@@ -89,7 +89,7 @@ if [ -n "$GODOT_BIN" ] && [ "$PROJECT_READY" -eq 1 ]; then
   if [ -d "$GAME_DIR/tests" ] && [ -f "$GAME_DIR/addons/gut/gut_cmdln.gd" ]; then
     step "Прогон тестов (GUT, headless)"
     "$GODOT_BIN" --headless --path "$GAME_DIR" \
-      -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
+      -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
     ok "тесты выполнены"
   else
     warn "тесты GUT не найдены (game/tests или addons/gut) — шаг пропущен"
