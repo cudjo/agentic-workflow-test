@@ -95,6 +95,14 @@ extends Resource
 ## Конец активной фазы хитбокса как доля длительности удара.
 @export var combo_hit_end_ratio: float = 0.66
 
+@export_group("Block and parry")
+## Доля урона, поглощаемая обычным блоком, % (T-11, AC-03.2).
+@export var p_block: float = 80.0
+## Ширина передней дуги блока, градусы (T-11). Попадания вне дуги не блокируются.
+@export var block_arc_degrees: float = 120.0
+## Окно контратаки после успешного парирования, s (T-11).
+@export var t_counter: float = 0.4
+
 @export_group("Enemies")
 ## Длительность анимации смерти врага (fade/squash), s (T-12).
 @export var enemy_death_duration: float = 0.7

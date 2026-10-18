@@ -36,6 +36,10 @@ var state_machine
 ## Melee combo state for the current weapon (T-10).
 var combo: ComboTracker
 var attack_hitbox: Hitbox
+## Блок/парирование (T-11): снижение урона, окно T_parry и передняя дуга.
+var block: Block
+## Остаток окна контратаки после успешного парирования, s (t_counter).
+var parry_counter_left: float = 0.0
 var facing: int = 1
 var is_dead: bool = false
 
@@ -65,6 +69,14 @@ func _ready() -> void:
 		balance = load(BALANCE_PATH) as BalancingParams
 	if balance == null:
 		push_error("Player: balancing resource is missing at %s" % BALANCE_PATH)
+	else:
+		block = Block.new()
+		block.setup(
+			balance.t_parry,
+			balance.p_block,
+			balance.block_arc_degrees,
+			balance.e_block
+		)
 	attack_hitbox = get_node_or_null("Hitbox") as Hitbox
 	_configure_combo()
 	var hurtbox: Hurtbox = get_node_or_null("Hurtbox") as Hurtbox
@@ -85,6 +97,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_update_dash_cooldown(delta)
+	_update_block_state(delta)
 	_capture_input_buffers()
 	_update_facing()
 
@@ -215,14 +228,127 @@ func advance_combo(delta: float) -> bool:
 	return combo.advance(delta)
 
 
+## Вход в блок: удержание действия, стоимость E_block (AC-03.2).
+## При нулевой выносливости `try_spend_stamina()` возвращает false —
+## блок недоступен (AC-03.3).
 func try_block() -> bool:
 	if not state_machine.can_request(&"block"):
 		return false
 	if not is_block_held():
 		return false
+	if block != null and not block.can_activate(GameState.stamina):
+		return false
 	if not GameState.try_spend_stamina(balance.e_block):
 		return false
 	return state_machine.request_state(&"block")
+
+
+# ------------------------------------------------------------------------------
+# Block and parry (T-11, AC-03.2/AC-03.3)
+# ------------------------------------------------------------------------------
+
+## Вход в блок: с этого кадра открыто окно парирования T_parry.
+## Вызывается из `states/block.gd` после успешного списания E_block.
+func begin_block() -> void:
+	if block != null:
+		block.begin()
+
+
+## Выход из блока: окно парирования закрывается, удержание снимается.
+func end_block() -> void:
+	if block != null:
+		block.end()
+
+
+func is_blocking() -> bool:
+	return block != null and block.is_active()
+
+
+## Окно парирования T_parry открыто (удар в этот момент — парирование).
+func is_parry_window_open() -> bool:
+	return block != null and block.is_parry_window_open()
+
+
+## После успешного парирования доступна контратака (нажатие attack).
+func is_parry_counter_open() -> bool:
+	return parry_counter_left > 0.0
+
+
+func get_parry_counter_left() -> float:
+	return parry_counter_left
+
+
+## Успешное парирование: урон не проходит, открывается окно контратаки
+## `t_counter`, показывается искра и играет SFX `parry` (T-34).
+func on_parry_success() -> void:
+	parry_counter_left = balance.t_counter if balance != null else 0.0
+	if block != null:
+		block.consume_parry()
+	play_parry_spark()
+	if AudioManager.has_method(&"play_sfx"):
+		AudioManager.play_sfx(&"parry")
+
+
+## Контратака после парирования: attack в окне `t_counter` бесплатен
+## (без E_attack) и прерывает блок того же тира приоритета.
+func try_parry_counter() -> bool:
+	if not is_parry_counter_open():
+		return false
+	if not InputManager.just_pressed(&"attack"):
+		return false
+	parry_counter_left = 0.0
+	if combo == null or get_weapon() == null or get_weapon().id != _combo_weapon_id:
+		_configure_combo()
+	if combo != null:
+		combo.start()
+	return state_machine.force_state(&"attack")
+
+
+## Искра-вспышка парирования (2 кадра, DESIGN §7) — визуальный слой T-05.
+func play_parry_spark() -> void:
+	if animation != null and animation.has_method(&"play_parry_spark"):
+		animation.call(&"play_parry_spark")
+
+
+## Входящее попадание с учётом блока/парирования (T-11).
+## Возвращает `{blocked, parried, amount}` — `amount` уже снижен.
+## Вызывается из `_on_hurtbox_damaged`; публичен для врагов/T-12 и тестов.
+func receive_hit(damage: Damage) -> Dictionary:
+	var result: Dictionary = {
+		"blocked": false,
+		"parried": false,
+		"amount": damage.amount if damage != null else 0.0,
+	}
+	if damage == null or damage.amount <= 0.0:
+		return result
+
+	if block != null and block.is_active():
+		var outcome: Dictionary = block.resolve_incoming(
+			damage.amount,
+			_damage_source_position(damage),
+			global_position,
+			facing
+		)
+		if bool(outcome.get("blocked", false)):
+			result["blocked"] = true
+			damage.knockback = Vector2.ZERO
+			if bool(outcome.get("parried", false)):
+				result["parried"] = true
+				result["amount"] = 0.0
+				damage.amount = 0.0
+				on_parry_success()
+				return result
+
+			var reduced: float = float(outcome.get("amount", damage.amount))
+			result["amount"] = reduced
+			damage.amount = reduced
+			# Блок удерживается: урон проходит сниженным, но Hurt не запускается.
+			if GameState.damage_hp(reduced) <= 0.0:
+				kill()
+			return result
+
+	apply_damage(damage.amount)
+	return result
 
 
 func begin_coyote_time() -> void:
@@ -452,10 +578,10 @@ func set_fall_limit_y(value: float) -> void:
 
 
 ## Входящий урон врага (T-12) уменьшает HP и переводит в Hurt (T-26).
-## Блок/парирование (T-11) могут отменить урон до этого вызова.
+## Блок/парирование (T-11) обрабатываются в `receive_hit()` до Hurt.
 func _on_hurtbox_damaged(damage: Damage) -> void:
 	if damage != null:
-		apply_damage(damage.amount)
+		receive_hit(damage)
 
 
 ## Terminal death: interrupts any action immediately (EC-01).
@@ -466,6 +592,8 @@ func kill() -> void:
 	is_dead = true
 	GameState.set_hp(0.0)
 	stop_attack_hitbox()
+	end_block()
+	parry_counter_left = 0.0
 	state_machine.force_state(&"death")
 
 
@@ -476,6 +604,8 @@ func reset_player() -> void:
 	wall_kick_dir = 0
 	on_landed()
 	reset_dash_cooldown()
+	end_block()
+	parry_counter_left = 0.0
 	stop_attack_hitbox()
 	InputManager.consume_coyote_time(&"jump")
 	state_machine.force_state(&"idle")
@@ -568,6 +698,25 @@ func is_invulnerable() -> bool:
 # ------------------------------------------------------------------------------
 # Internals
 # ------------------------------------------------------------------------------
+
+## Тик окна парирования T_parry и окна контратаки t_counter (T-11).
+func _update_block_state(delta: float) -> void:
+	if block != null and block.is_active():
+		block.update(delta)
+	if parry_counter_left > 0.0:
+		parry_counter_left = maxf(parry_counter_left - delta, 0.0)
+
+
+## Позиция источника попадания для проверки передней дуги блока.
+## Приоритет: `Damage.source` (Hitbox), затем направление отбрасывания,
+## затем «перед игроком» — неизвестное направление считается фронтальным.
+func _damage_source_position(damage: Damage) -> Vector2:
+	if damage != null and damage.source is Node2D:
+		return (damage.source as Node2D).global_position
+	if damage != null and not damage.knockback.is_zero_approx():
+		return global_position - damage.knockback
+	return global_position + Vector2(float(facing), 0.0)
+
 
 func _capture_input_buffers() -> void:
 	for action: StringName in BUFFERED_ACTIONS:

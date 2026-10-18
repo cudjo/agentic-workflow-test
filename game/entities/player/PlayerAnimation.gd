@@ -46,6 +46,8 @@ const DASH_GHOST_COUNT: int = 2
 const DASH_GHOST_LIFETIME: float = 0.12
 ## Вспышка double jump: 2–3 кадра steel-3 (DESIGN §7).
 const DOUBLE_JUMP_FLASH_FRAMES: int = 3
+## Искра парирования: 3 частицы на 2 кадра блока (DESIGN §7, T-11).
+const PARRY_SPARK_COUNT: int = 3
 ## Вспышка урона без «без мигания»: один короткий кадр ≤ 100 мс (AC-03.1).
 const HURT_FLASH_TIME: float = 0.06
 const DUST_LIFETIME: float = 0.25
@@ -60,6 +62,8 @@ var current_animation: StringName = &""
 ## Счётчики для тестов/отладки визуальных признаков.
 var dash_ghost_count: int = 0
 var dust_spawn_count: int = 0
+## Сколько раз показана искра парирования (T-11, для тестов/QA).
+var parry_spark_count: int = 0
 
 var _player: Player
 var _state: StringName = &""
@@ -184,6 +188,17 @@ func play_double_jump() -> void:
 	_on_player_state_changed(&"double_jump")
 
 
+## Искра парирования (T-11, DESIGN §7): короткая вспышка steel-3 перед
+## щитом на 2 кадра блока. Одиночное событие, поэтому не зависит от no_flash.
+func play_parry_spark() -> void:
+	if _player == null:
+		return
+	var lifetime: float = 2.0 * _get_balance().anim_block_frame
+	for index: int in PARRY_SPARK_COUNT:
+		_spawn_parry_spark(index, lifetime)
+	parry_spark_count += 1
+
+
 # ------------------------------------------------------------------------------
 # State -> animation
 # ------------------------------------------------------------------------------
@@ -306,6 +321,26 @@ func _start_dash() -> void:
 	_dash_ghosts.clear()
 	for index: int in DASH_GHOST_COUNT:
 		_spawn_dash_ghost(index)
+
+
+## Частица искры парирования: 2×2 px steel-3, разлетается от щита.
+func _spawn_parry_spark(index: int, lifetime: float) -> void:
+	var spark := Sprite2D.new()
+	spark.top_level = true
+	spark.texture = PlayerSpriteFrames.make_particle_texture(UITokens.STEEL_3)
+	spark.z_index = 2
+	add_child(spark)
+	var forward: float = float(_player.facing)
+	var spread := Vector2(-4.0 + 4.0 * float(index), -6.0 + 6.0 * float(index))
+	spark.global_position = _player.global_position + Vector2(forward * 12.0, 0.0) + spread
+	var tween: Tween = spark.create_tween()
+	tween.tween_property(spark, "modulate:a", 0.0, lifetime)
+	tween.parallel().tween_property(
+		spark, "global_position",
+		spark.global_position + Vector2(forward * 6.0, -4.0),
+		lifetime
+	)
+	tween.tween_callback(spark.queue_free)
 
 
 func _spawn_dash_ghost(index: int) -> void:
