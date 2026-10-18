@@ -237,3 +237,41 @@
 - **Кросс-файловые правки (на контроль Guardian):** `autoload/GameState.gd` (Stamina-делегат, текущее оружие, `is_stamina_exhausted()`, `update_stamina()`), `data/balance/balancing_params.gd` + `.tres`, `entities/player/Player.gd`/`Player.tscn`/`states/attack.gd`. `EventBus.gd` не менялся (его правка `zone_entered` пришла из T-13): флаг HUD доступен через GameState, существующего `stamina_changed` достаточно для полосы выносливости.
 - **Замечания:** `e_dash` добавлен в баланс (потребитель — T-07); `defense` в формуле — параметр под броню/врагов (T-12/T-29), пока 0; `docs/TASKS.json` и статус не менялись (`pending` до QA/Guardian). Чужие файлы (`_probe.gd`, `opencode.jsonc`, T-13-артефакты) не трогал.
 - **Коммит:** `1941388` «T-10: боевое ядро — урон/выносливость/комбо».
+
+## 2026-10-18 — Orchestrator: Приёмка T-10, запуск T-18
+
+- **T-10 принят:** боевое ядро (урон/выносливость/комбо), GUT **80/80, 491 asserts**, коммит `1941388`. Кросс-правки `GameState`/`balancing`/`Player`/`states/attack` — на контроль Guardian.
+- **T-13:** запись в журнале и коммит `d1e46b9` присутствуют, GUT 80/80; финального уведомления сессии пока не получено. По коду/тестам зависимые зоны T-14…T-16 фактически разблокированы.
+- **Решение:** слот освобождён (T-10) → запуск **T-18** (тема/токены/шрифт/UI-компоненты, frontend), независима от текущих world/combat-треков. После завершения T-13 — волна зон (T-14…T-16) + T-25.
+
+## 2026-10-18 — Orchestrator: Приёмка T-13, запуск T-25
+
+- **T-13 принят:** тайлсеты/ZoneData/props/шаблон зоны, коммиты `d1e46b9` + `77ac4bb`, GUT 80/80 (29 тестов T-13; самодостаточность подтверждена в worktree 53/53). Кросс-правки `EventBus` (+`zone_entered`) и `SceneRouter` (+`instantiate_zone()`) — на контроль Guardian.
+- **Разблокированы:** T-14…T-16 (зоны 1–5), T-17 (после T-14).
+- **Решение:** слот освобождён (T-13) → запуск **T-25** (SaveManager, backend), параллельно с продолжающейся T-18. Следом — волна зон T-14…T-16 и ветка способностей (T-05/T-06).
+
+## 2026-10-18 — T-25 выполнен (tasker-backend)
+
+- **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
+- **Действие:** реализован SaveManager по PLAN §2.1/§3.4, AC-05.1, EC-07/EC-14.
+- **Реализовано:**
+  - `autoload/SaveManager.gd` — 3 слота `user://saves/slot_{1..3}.json`; API `save_slot`/`load_slot`/`read_slot`/`get_slot_metadata`/`has_slot`/`delete_slot`; ошибки диска и повреждение возвращают `false` + сигнал, без вылета; `saves_dir` переопределяется только тестами.
+  - `core/save/save_serializer.gd` — заголовок `{schema_version, checksum}`, SHA-256 через `HashingContext` по сырым байтам тела; сериализуются только реально существующие поля GameState: текущая выносливость и оружие (`WeaponData.id`/`resource_path`); загрузка оружия по пути, затем по id, затем дефолт; meta `zone_id`/`zone_name`/`level`/`play_time`/`saved_at_unix` + extras для UI.
+  - `core/save/save_migrations.gd` — `CURRENT_VERSION = 1`, `migrate(version, body) -> {ok, reason, body}`; v0 (плоское тело) → v1 (`state`/`meta`); сейв новее билда → `schema_too_new`; v1-тело, помеченное v0, отклоняется; в шапке файла — контракт добавления полей T-26/T-27/T-29 (сериализатор + bump версии + шаг миграции + тест).
+  - `autoload/EventBus.gd` — `save_completed(slot)`, `save_failed(slot, reason)`, `slot_corrupted(slot, reason)` для подтверждения/ошибок UI (T-22/T-23).
+  - `tests/unit/test_save.gd` — 12 GUT-тестов: round-trip (stamina/weapon/meta), изоляция слотов и пустой слот, подмена checksum, подмена тела, обрезанный файл, перезапись, сбой записи при сохранном старом слоте (EC-14), миграция v0, отказ для новой/неверно помеченной схемы, SHA-256 vector, невалидный номер слота.
+- **Проверки (portable Godot 4.4.1-stable, headless):**
+  - `--headless --path game --import` — exit 0; `SaveSerializer`/`SaveMigrations` зарегистрированы, в наших файлах ошибок нет.
+  - GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **92/92 passed, 570 asserts** (80 прежних + 12 новых), exit 0.
+  - Smoke `--headless --path game --quit` — exit 0, без скрипт-ошибок/варнингов.
+  - `docs/init.ps1` с `GODOT_PATH` — exit 0 (import + smoke + GUT).
+  - Функциональный smoke в GUT: реальная запись/чтение `user://.../slot_N.json`, проверка заголовка, восстановления, метаданных и отказа при порче; тестовый каталог изолирован и очищается.
+- **Найденные/исправленные проблемы:**
+  1. `JSON.parse_string` печатал engine ERROR на обрезанном файле — заменён на `JSON.parse()` (возвращает Error без выброса), EC-07 без шума в логе.
+  2. Checksum считается по сырому телу, а не по повторной сериализации: `JSON.stringify` сортирует ключи, а parse/stringify чисел не гарантирует байтовое равенство — проверка не зависит от форматирования.
+  3. Перезапись существующего слота через `DirAccess.rename` проверена отдельным тестом (Windows); tmp удаляется и при успехе, и при ошибке.
+  4. Повреждённый `schema_version` (v1-тело как v0) больше не приводит к молчаливой потере `state` — слот отклоняется.
+- **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+3 сигнала). `GameState.gd` не менялся — сериализуются только существующие поля.
+- **Замечания:** статус T-25 — `pending` (не менял, решение QA/Guardian). HP/инвентарь/позиция/фракции/квесты появятся в T-26/T-06/T-27/T-29 по контракту миграций. В рабочем дереве параллельно T-18: import печатает parse error в untracked `ui/components/slot.gd` — чужой in-progress файл, не трогал. Чужие untracked-файлы (`ui/…`, `assets/fonts/…`, `opencode.jsonc`) не трогал.
+- **Коммит:** `1e95c3a` «T-25: SaveManager — слоты/checksum/миграции/атомарная запись».
+- **Чистый HEAD (отдельный worktree):** import exit 0 без ошибок, GUT **92/92, 570 asserts** — коммиты самодостаточны, untracked-файлы T-18 на прогон не влияют.
