@@ -32,13 +32,36 @@ var sound_subtitles: bool = true
 ## Значение любой из аудионастроек изменилось (T-34 → AudioManager).
 signal audio_settings_changed
 
+## Изменилась визуальная a11y-настройка (T-35): контур силуэтов/виньетка,
+## режим «Без мигания». Потребители: LightingRig, PlayerAnimation.
+signal visual_accessibility_changed
+
 ## Режим «Без мигания»: отключает вспышки/мерцание (a11y, DESIGN §9.3).
-var no_flash: bool = false
+var no_flash: bool = false:
+	set(value):
+		if no_flash == value:
+			return
+		no_flash = value
+		visual_accessibility_changed.emit()
+
+## Режим «Читаемость силуэтов» (DESIGN §9.1): 1-px контур героя/врагов,
+## усиленный rim-light и отключённая виньетка.
+var silhouette_readability: bool = false:
+	set(value):
+		if silhouette_readability == value:
+			return
+		silhouette_readability = value
+		visual_accessibility_changed.emit()
 
 
 ## Переключатель режима «Без мигания» (T-20 вызывает из настроек).
 func set_no_flash(enabled: bool) -> void:
 	no_flash = enabled
+
+
+## Переключатель режима «Читаемость силуэтов» (T-20 вызывает из настроек).
+func set_silhouette_readability(enabled: bool) -> void:
+	silhouette_readability = enabled
 
 
 ## Громкость Master (T-20). Значение вне 0…1 обрезается.

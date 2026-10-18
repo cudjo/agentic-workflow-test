@@ -68,6 +68,9 @@ var _is_double_jump_flash: bool = false
 var _dash_ghosts: Array[Sprite2D] = []
 var _dust_timer: float = 0.0
 var _death_marker: Sprite2D
+## T-35: материал контура силуэта (AC-07.1). Всегда назначен, контур
+## включается только режимом «Читаемость силуэтов» (Config).
+var _outline_material: ShaderMaterial
 
 
 func _ready() -> void:
@@ -84,8 +87,21 @@ func _ready() -> void:
 		else PlayerSpriteFrames.build(_get_balance(), _get_attack_speed())
 	)
 	sprite.offset = Vector2(0.0, -2.0)
+	_setup_silhouette_outline()
 	EventBus.player_state_changed.connect(_on_player_state_changed)
+	Config.visual_accessibility_changed.connect(_apply_silhouette_outline)
 	_play(PlayerSpriteFrames.ANIM_IDLE)
+
+
+## T-35: контур силуэта по shader'у, материал общий для всех кадров.
+func _setup_silhouette_outline() -> void:
+	_outline_material = SilhouetteOutline.create_material()
+	sprite.material = _outline_material
+	_apply_silhouette_outline()
+
+
+func _apply_silhouette_outline() -> void:
+	SilhouetteOutline.set_enabled(_outline_material, Config.silhouette_readability)
 
 
 func _process(delta: float) -> void:
@@ -119,6 +135,16 @@ func is_double_jump_flash_active() -> bool:
 ## Активна ли вспышка урона. В режиме «без мигания» всегда false.
 func is_flash_active() -> bool:
 	return _tint_left > 0.0 and not Config.no_flash
+
+
+## Материал контура силуэта (T-35, AC-07.1) — для тестов/отладки.
+func get_outline_material() -> ShaderMaterial:
+	return _outline_material
+
+
+## Включён ли 1-px контур (режим «Читаемость силуэтов»).
+func is_silhouette_outline_enabled() -> bool:
+	return SilhouetteOutline.is_enabled(_outline_material)
 
 
 ## Живые «призрачные» кадры шлейфа dash.

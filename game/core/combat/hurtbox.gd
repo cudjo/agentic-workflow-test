@@ -21,9 +21,12 @@ signal damaged(damage: Damage)
 
 var hit_count: int = 0
 var last_damage: Damage = null
+## Сколько вспышек реально показано (T-35: не более 3/с, DESIGN §4.5).
+var flash_applied_count: int = 0
 
 var _knockback_target: Node = null
 var _flash_target: CanvasItem = null
+var _flash_governor := FlashGovernor.new()
 
 
 func _ready() -> void:
@@ -42,7 +45,11 @@ func receive_damage(damage: Damage) -> bool:
 	hit_count += 1
 	damaged.emit(damage)
 	if apply_reactions:
-		damage.apply_reaction(_knockback_target, _flash_target)
+		damage.apply_knockback(_knockback_target)
+		# T-35/DESIGN §9.3: до 3 вспышек/с; в режиме «Без мигания» — ни одной.
+		if not _is_no_flash() and _flash_governor.try_flash(_now_sec()):
+			flash_applied_count += 1
+			damage.flash(_flash_target)
 	return true
 
 
@@ -59,6 +66,15 @@ func _resolve_reaction_targets() -> void:
 		_flash_target = _find_visual()
 	else:
 		_flash_target = get_node_or_null(flash_target_path) as CanvasItem
+
+
+func _now_sec() -> float:
+	return float(Time.get_ticks_msec()) / 1000.0
+
+
+func _is_no_flash() -> bool:
+	var config := get_node_or_null("/root/Config")
+	return config != null and bool(config.get("no_flash"))
 
 
 func _find_visual() -> CanvasItem:

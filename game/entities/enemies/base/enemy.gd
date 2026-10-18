@@ -44,6 +44,9 @@ var _death_elapsed: float = 0.0
 var _stuck_time: float = 0.0
 var _last_position: Vector2 = Vector2.ZERO
 var _flash_time_left: float = 0.0
+## T-35: не более 3 вспышек урона/с на врага; в режиме «Без мигания» — 0.
+var _flash_governor := FlashGovernor.new()
+var flash_applied_count: int = 0
 
 @onready var visual: Sprite2D = $Visual
 @onready var hurtbox: Hurtbox = $Hurtbox
@@ -485,6 +488,13 @@ func _update_stuck(delta: float) -> void:
 func _start_hit_flash(damage: Damage) -> void:
 	if visual == null:
 		return
+	# T-35/DESIGN §9.3: «Без мигания» и лимит 3/с — вспышка пропускается,
+	# тело остаётся в обычном цвете (урон при этом применяется).
+	if _is_no_flash() or not _flash_governor.try_flash(_now_sec()):
+		_flash_time_left = 0.0
+		visual.modulate = data.get_body_color()
+		return
+	flash_applied_count += 1
 	_flash_time_left = clampf(damage.hit_flash_duration, 0.0, Damage.HIT_FLASH_MAX_SEC)
 	visual.modulate = Damage.FLASH_COLOR
 
@@ -495,6 +505,15 @@ func _tick_hit_flash(delta: float) -> void:
 	_flash_time_left = maxf(_flash_time_left - delta, 0.0)
 	if _flash_time_left <= 0.0 and not is_dead and visual != null:
 		visual.modulate = data.get_body_color()
+
+
+func _now_sec() -> float:
+	return float(Time.get_ticks_msec()) / 1000.0
+
+
+func _is_no_flash() -> bool:
+	var config := get_node_or_null("/root/Config")
+	return config != null and bool(config.get("no_flash"))
 
 
 func _apply_data() -> void:

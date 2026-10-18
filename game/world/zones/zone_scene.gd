@@ -13,6 +13,8 @@ const WORLD_ZONE_GROUP := &"world_zone"
 const PLAYER_GROUP := &"player"
 ## Слой 2 физики проекта — player (project.godot, [layer_names]).
 const PLAYER_COLLISION_LAYER_BIT := 1 << 1
+## T-35: пост-обработка/эмиссивный слой освещения. Профиль берётся из ZoneData.
+const LIGHTING_RIG_SCENE: PackedScene = preload("res://world/lighting/lighting_rig.tscn")
 
 @export var zone_data: ZoneData
 
@@ -37,6 +39,7 @@ func _ready() -> void:
 
 	name = String(zone_data.id)
 	_apply_zone_data()
+	_ensure_lighting()
 	_spawn_entry_markers()
 	_spawn_exit_areas()
 
@@ -72,6 +75,21 @@ func _apply_zone_data() -> void:
 		var bonfire := get_node_or_null("Props/Bonfire") as Bonfire
 		if bonfire != null:
 			bonfire.flame_color = palette.accent
+
+
+## T-35: слой освещения зоны (дизеринг/виньетка/эмиссивные ядра + мерцание).
+## Ambient остаётся на CanvasModulate T-13/T-16 — rig его не перезаписывает,
+## чтобы не сломать тёплый ambient руин (T-16).
+func _ensure_lighting() -> void:
+	if get_node_or_null("LightingRig") != null:
+		return
+	var rig := LIGHTING_RIG_SCENE.instantiate() as LightingRig
+	if rig == null:
+		push_error("ZoneScene: LightingRig scene has no LightingRig root")
+		return
+	rig.name = "LightingRig"
+	rig.profile = LightingProfile.from_zone(zone_data)
+	add_child(rig)
 
 
 func _spawn_entry_markers() -> void:

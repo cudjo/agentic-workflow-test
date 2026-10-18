@@ -70,8 +70,12 @@ func apply_knockback(body: Node) -> void:
 
 ## Вспышка попадания на CanvasItem; длительность всегда ≤ 0.1 s (AC-03.1).
 ## Вызывается без `await` — корутина сама вернёт исходный modulate.
+## T-35/DESIGN §9.3: в режиме «Без мигания» вспышка не показывается вовсе.
 func flash(visual: CanvasItem) -> void:
 	if visual == null or not is_instance_valid(visual) or not visual.is_inside_tree():
+		return
+	var config := visual.get_node_or_null("/root/Config")
+	if config != null and bool(config.get("no_flash")):
 		return
 	var base_color: Color = visual.modulate
 	visual.modulate = FLASH_COLOR
