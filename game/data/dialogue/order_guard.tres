@@ -1,0 +1,101 @@
+[gd_resource type="Resource" script_class="DialogueData" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://data/dialogue/dialogue_condition.gd" id="1_condition"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_answer.gd" id="2_answer"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_node.gd" id="3_node"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_data.gd" id="4_data"]
+
+[sub_resource type="Resource" id="Resource_condition_gate"]
+script = ExtResource("1_condition")
+faction_id = &"order"
+min_reputation = 10
+
+[sub_resource type="Resource" id="Resource_answer_oath"]
+script = ExtResource("2_answer")
+id = &"oath"
+text = "Почтить"
+text_en = "Honor"
+next_node_id = &"oath"
+reputation_event = &"action_campfire_oath"
+journal_event = &"action_campfire_oath"
+journal_text = "Почтил костёр Ордена"
+
+[sub_resource type="Resource" id="Resource_answer_gate"]
+script = ExtResource("2_answer")
+id = &"to_gate"
+text = "К воротам"
+text_en = "To the gate"
+next_node_id = &"gate"
+
+[sub_resource type="Resource" id="Resource_answer_lore"]
+script = ExtResource("2_answer")
+id = &"ask_lore"
+text = "Что за ворота?"
+text_en = "What's beyond?"
+next_node_id = &"lore"
+
+[sub_resource type="Resource" id="Resource_answer_leave_start"]
+script = ExtResource("2_answer")
+id = &"leave"
+text = "Уйти"
+text_en = "Leave"
+
+[sub_resource type="Resource" id="Resource_answer_back_start"]
+script = ExtResource("2_answer")
+id = &"back_start"
+text = "Назад"
+text_en = "Back"
+next_node_id = &"start"
+
+[sub_resource type="Resource" id="Resource_answer_leave_short"]
+script = ExtResource("2_answer")
+id = &"leave_short"
+text = "Уйти"
+text_en = "Leave"
+
+[sub_resource type="Resource" id="Resource_node_start"]
+script = ExtResource("3_node")
+id = &"start"
+text = "Стой. У ворот Ордена не рады тем, кто путается с Вольными."
+text_en = "Halt. The Order's gate has no love for those who run with the Free."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_oath"), SubResource("Resource_answer_gate"), SubResource("Resource_answer_lore"), SubResource("Resource_answer_leave_start")])
+
+[sub_resource type="Resource" id="Resource_node_oath"]
+script = ExtResource("3_node")
+id = &"oath"
+text = "Огонь принял слово. Стража запомнит."
+text_en = "The fire accepted your word. The guard will remember."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_leave_short")])
+
+[sub_resource type="Resource" id="Resource_node_gate"]
+script = ExtResource("3_node")
+id = &"gate"
+text = "Проходи. Орден видит, что ты не пустой."
+text_en = "Pass. The Order sees that you are not empty."
+condition = SubResource("Resource_condition_gate")
+fallback_node_id = &"gate_denied"
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_leave_short")])
+
+[sub_resource type="Resource" id="Resource_node_gate_denied"]
+script = ExtResource("3_node")
+id = &"gate_denied"
+text = "Стража качает головой: ворота не для тех, кто ещё не заслужил."
+text_en = "The guard shakes his head: the gate is not for those who have not earned it."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_back_start"), SubResource("Resource_answer_leave_short")])
+
+[sub_resource type="Resource" id="Resource_node_lore"]
+script = ExtResource("3_node")
+id = &"lore"
+text = "За воротами — двор, за двором — Пепел. Туда пускают только тех, кому верят."
+text_en = "Beyond the gate lies the yard, beyond the yard lies Ash. Only the trusted are let in."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_back_start"), SubResource("Resource_answer_leave_short")])
+
+[resource]
+script = ExtResource("4_data")
+id = &"order_guard"
+npc_id = &"order_guard"
+display_name = "Стражник Ордена"
+display_name_en = "Order Guard"
+faction_id = &"order"
+start_node_id = &"start"
+nodes = Array[ExtResource("3_node")]([SubResource("Resource_node_start"), SubResource("Resource_node_oath"), SubResource("Resource_node_gate"), SubResource("Resource_node_gate_denied"), SubResource("Resource_node_lore")])

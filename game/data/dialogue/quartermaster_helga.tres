@@ -1,0 +1,90 @@
+[gd_resource type="Resource" script_class="DialogueData" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://data/dialogue/dialogue_condition.gd" id="1_condition"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_answer.gd" id="2_answer"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_node.gd" id="3_node"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_data.gd" id="4_data"]
+
+[sub_resource type="Resource" id="Resource_condition_trade"]
+script = ExtResource("1_condition")
+faction_id = &"order"
+require_trade_access = true
+
+[sub_resource type="Resource" id="Resource_answer_shop"]
+script = ExtResource("2_answer")
+id = &"show_goods"
+text = "Показать товар"
+text_en = "Show goods"
+condition = SubResource("Resource_condition_trade")
+next_node_id = &"shop"
+
+[sub_resource type="Resource" id="Resource_answer_about"]
+script = ExtResource("2_answer")
+id = &"ask_about"
+text = "Кто ты?"
+text_en = "Who are you?"
+next_node_id = &"about"
+
+[sub_resource type="Resource" id="Resource_answer_rumor"]
+script = ExtResource("2_answer")
+id = &"ask_rumor"
+text = "Что слышно?"
+text_en = "What's new?"
+next_node_id = &"rumor"
+
+[sub_resource type="Resource" id="Resource_answer_leave_start"]
+script = ExtResource("2_answer")
+id = &"leave"
+text = "Уйти"
+text_en = "Leave"
+
+[sub_resource type="Resource" id="Resource_answer_back_start"]
+script = ExtResource("2_answer")
+id = &"back_start"
+text = "Назад"
+text_en = "Back"
+next_node_id = &"start"
+
+[sub_resource type="Resource" id="Resource_answer_leave_short"]
+script = ExtResource("2_answer")
+id = &"leave_short"
+text = "Уйти"
+text_en = "Leave"
+
+[sub_resource type="Resource" id="Resource_node_start"]
+script = ExtResource("3_node")
+id = &"start"
+text = "Товар не для всякого. Сначала докажи, что ты не пустое место."
+text_en = "My goods are not for everyone. First prove that you are not an empty name."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_shop"), SubResource("Resource_answer_about"), SubResource("Resource_answer_rumor"), SubResource("Resource_answer_leave_start")])
+
+[sub_resource type="Resource" id="Resource_node_shop"]
+script = ExtResource("3_node")
+id = &"shop"
+text = "Выбирай. Цены честные: без слёз и без скидок."
+text_en = "Pick your poison. Fair prices: no tears, no discounts."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_back_start"), SubResource("Resource_answer_leave_short")])
+
+[sub_resource type="Resource" id="Resource_node_about"]
+script = ExtResource("3_node")
+id = &"about"
+text = "Я держу счёт Ордена. Монета любит порядок, а порядок любит тишину."
+text_en = "I keep the Order's ledger. Coin loves order, and order loves silence."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_back_start"), SubResource("Resource_answer_leave_short")])
+
+[sub_resource type="Resource" id="Resource_node_rumor"]
+script = ExtResource("3_node")
+id = &"rumor"
+text = "На болоте пропадают люди. Орден платит за тропы, Вольные — за молчание."
+text_en = "People vanish in the swamp. The Order pays for roads, the Free pay for silence."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_back_start"), SubResource("Resource_answer_leave_short")])
+
+[resource]
+script = ExtResource("4_data")
+id = &"quartermaster_helga"
+npc_id = &"quartermaster_helga"
+display_name = "Квартирмейстер Хельга"
+display_name_en = "Quartermaster Helga"
+faction_id = &"order"
+start_node_id = &"start"
+nodes = Array[ExtResource("3_node")]([SubResource("Resource_node_start"), SubResource("Resource_node_shop"), SubResource("Resource_node_about"), SubResource("Resource_node_rumor")])

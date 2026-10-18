@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quests/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = &"quest_free_smuggle"
+title = "Провести груз через болото"
+title_en = "Smuggle the cargo through the swamp"
+description = "Вольные просят провести тюк с припасами мимо затопленных камней. Орден не должен узнать о грузе."
+description_en = "The Free ask you to carry a bundle of supplies past the flooded stones. The Order must not learn about it."
+faction_id = &"free"

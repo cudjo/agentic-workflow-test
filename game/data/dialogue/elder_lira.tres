@@ -1,0 +1,111 @@
+[gd_resource type="Resource" script_class="DialogueData" load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://data/dialogue/dialogue_condition.gd" id="1_condition"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_answer.gd" id="2_answer"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_node.gd" id="3_node"]
+[ext_resource type="Script" path="res://data/dialogue/dialogue_data.gd" id="4_data"]
+
+[sub_resource type="Resource" id="Resource_condition_active_quest"]
+script = ExtResource("1_condition")
+active_quests = Array[StringName]([&"quest_free_smuggle"])
+
+[sub_resource type="Resource" id="Resource_answer_take"]
+script = ExtResource("2_answer")
+id = &"take_job"
+text = "Взять заказ"
+text_en = "Take the job"
+next_node_id = &"accepted"
+start_quest = &"quest_free_smuggle"
+
+[sub_resource type="Resource" id="Resource_answer_report"]
+script = ExtResource("2_answer")
+id = &"report_job"
+text = "Доложить"
+text_en = "Report"
+condition = SubResource("Resource_condition_active_quest")
+next_node_id = &"thanks"
+complete_quest = &"quest_free_smuggle"
+
+[sub_resource type="Resource" id="Resource_answer_lore"]
+script = ExtResource("2_answer")
+id = &"ask_lore"
+text = "О Бастионе"
+text_en = "About the Bastion"
+next_node_id = &"lore"
+
+[sub_resource type="Resource" id="Resource_answer_leave_start"]
+script = ExtResource("2_answer")
+id = &"leave"
+text = "Уйти"
+text_en = "Leave"
+
+[sub_resource type="Resource" id="Resource_answer_pay"]
+script = ExtResource("2_answer")
+id = &"ask_pay"
+text = "Про оплату"
+text_en = "About pay"
+next_node_id = &"pay"
+
+[sub_resource type="Resource" id="Resource_answer_leave_short"]
+script = ExtResource("2_answer")
+id = &"leave_short"
+text = "Уйти"
+text_en = "Leave"
+
+[sub_resource type="Resource" id="Resource_answer_understood"]
+script = ExtResource("2_answer")
+id = &"understood"
+text = "Ясно"
+text_en = "Understood"
+
+[sub_resource type="Resource" id="Resource_answer_back_start"]
+script = ExtResource("2_answer")
+id = &"back_start"
+text = "Назад к делам"
+text_en = "Back to business"
+next_node_id = &"start"
+
+[sub_resource type="Resource" id="Resource_node_start"]
+script = ExtResource("3_node")
+id = &"start"
+text = "Проведи мой груз через болото — и я расскажу, где Орден прячет старые ключи."
+text_en = "Carry my cargo through the swamp, and I will tell you where the Order hides the old keys."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_take"), SubResource("Resource_answer_report"), SubResource("Resource_answer_lore"), SubResource("Resource_answer_leave_start")])
+
+[sub_resource type="Resource" id="Resource_node_accepted"]
+script = ExtResource("3_node")
+id = &"accepted"
+text = "Тропа идёт мимо затопленных камней. Не задерживайся: болото любит тех, кто стоит."
+text_en = "The path runs past the flooded stones. Do not linger: the swamp loves those who stand still."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_pay"), SubResource("Resource_answer_leave_short")])
+
+[sub_resource type="Resource" id="Resource_node_pay"]
+script = ExtResource("3_node")
+id = &"pay"
+text = "Плата — не монета. Плата — право войти. Вольные запомнят твой шаг."
+text_en = "The payment is not coin. It is the right to enter. The Free will remember your step."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_understood")])
+
+[sub_resource type="Resource" id="Resource_node_thanks"]
+script = ExtResource("3_node")
+id = &"thanks"
+text = "Значит, ты не пустое место. Держи плату и помни: Вольные не забывают ни долгов, ни лиц."
+text_en = "So you are not an empty name. Take your pay and remember: the Free forget neither debts nor faces."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_leave_short")])
+
+[sub_resource type="Resource" id="Resource_node_lore"]
+script = ExtResource("3_node")
+id = &"lore"
+text = "Пепельный Бастион стоит на костях тех, кто не успел уйти. Орден называет это порядком, Вольные — клеткой. Под стенами есть старый ход: его заложили, когда Пепел ещё был жив. Если найдёшь три ключа, дверь откроется сама. Но не говори об этом страже: они верят, что стены слышат."
+text_en = "The Ashen Bastion stands on the bones of those who did not leave in time. The Order calls it order; the Free call it a cage. Beneath the walls there is an old passage: it was sealed when Ash was still alive. Find three keys and the door will open by itself. Do not speak of it to the guard: they believe the walls are listening."
+answers = Array[ExtResource("2_answer")]([SubResource("Resource_answer_back_start"), SubResource("Resource_answer_leave_short")])
+
+[resource]
+script = ExtResource("4_data")
+id = &"elder_lira"
+npc_id = &"elder_lira"
+display_name = "Лира, проводница"
+display_name_en = "Lira the Guide"
+faction_id = &"free"
+start_node_id = &"start"
+nodes = Array[ExtResource("3_node")]([SubResource("Resource_node_start"), SubResource("Resource_node_accepted"), SubResource("Resource_node_pay"), SubResource("Resource_node_thanks"), SubResource("Resource_node_lore")])

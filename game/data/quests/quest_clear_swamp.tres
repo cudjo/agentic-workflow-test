@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quests/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = &"quest_clear_swamp"
+title = "Очистить болото"
+title_en = "Clear the swamp"
+description = "Орден платит за тропу: нежить на болоте должна исчезнуть, а вода снова стать тихой."
+description_en = "The Order pays for a road: the undead in the swamp must be gone and the water still again."
+faction_id = &"order"

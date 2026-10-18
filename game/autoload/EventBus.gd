@@ -120,3 +120,14 @@ signal boss_defeated(boss_id: StringName, zone_id: StringName, at_position: Vect
 ## Награда за босса выдана игроку (T-30, EC-09). Потребители: тост/журнал,
 ## прогрессия (T-29).
 signal boss_reward_granted(boss_id: StringName, reward_id: StringName, gold: int)
+
+## NPC начал диалог (T-28). `npc_id` — стабильный id NPC, `dialogue_id` —
+## ресурс диалога. Потребители: HUD/мир (пауза ввода), журнал.
+signal dialogue_started(dialogue_id: StringName, npc_id: StringName)
+## Диалог закрыт (T-28); последствия уже применены (репутация/квесты/журнал).
+signal dialogue_finished(dialogue_id: StringName, npc_id: StringName)
+## Квест выдан игроку (T-28). Потребители: журнал (T-24), HUD-тост.
+signal quest_started(quest_id: StringName, title: String)
+## Квест завершён (T-28, AC-06.1). Репутация и опыт уже начислены; потребители:
+## журнал (T-24), HUD-тост, достижения.
+signal quest_completed(quest_id: StringName, title: String)

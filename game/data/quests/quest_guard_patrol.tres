@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quests/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = &"quest_guard_patrol"
+title = "Патруль у ворот"
+title_en = "Gate patrol"
+description = "Орден ищет крепкие руки для ночного патруля у ворот Бастиона."
+description_en = "The Order needs steady hands for a night patrol at the Bastion gates."
+faction_id = &"order"

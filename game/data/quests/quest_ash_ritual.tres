@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quests/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = &"quest_ash_ritual"
+title = "Обряд Пепла"
+title_en = "Rite of Ash"
+description = "Пепельные жрецы просят провести обряд у разрушенного алтаря. Орден считает это святотатством."
+description_en = "The Ash priests ask you to perform a rite at the ruined altar. The Order calls it sacrilege."
+faction_id = &"ash"
