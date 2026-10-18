@@ -13,6 +13,24 @@ extends Node
 ## T-05: минимальный флаг «Без мигания» нужен визуалу игрока уже сейчас
 ## (вспышка урона, DESIGN §7/§9.3). Загрузка/сохранение значения из
 ## `user://settings.cfg` и UI-тумблер — T-20.
+##
+## T-34: громкости шин и «субтитры звуков». AudioManager читает значения при
+## старте и переприменяет их по сигналу `audio_settings_changed`; сами
+## значения 0…1 (0 — тишина), UI-слайдеры T-20 вызывают сеттеры.
+
+## Громкость Master-шины, 0…1.
+var master_volume: float = 1.0
+## Громкость Music-шины, 0…1.
+var music_volume: float = 0.8
+## Громкость SFX-шины, 0…1.
+var sfx_volume: float = 0.8
+## «Субтитры звуков» (DESIGN §9.4): тосты ключевых звуков (босс рядом, удар,
+## смена фазы). Включены по умолчанию — ключевые события не должны зависеть
+## только от слуха (a11y).
+var sound_subtitles: bool = true
+
+## Значение любой из аудионастроек изменилось (T-34 → AudioManager).
+signal audio_settings_changed
 
 ## Режим «Без мигания»: отключает вспышки/мерцание (a11y, DESIGN §9.3).
 var no_flash: bool = false
@@ -21,3 +39,38 @@ var no_flash: bool = false
 ## Переключатель режима «Без мигания» (T-20 вызывает из настроек).
 func set_no_flash(enabled: bool) -> void:
 	no_flash = enabled
+
+
+## Громкость Master (T-20). Значение вне 0…1 обрезается.
+func set_master_volume(value: float) -> void:
+	var clamped: float = clampf(value, 0.0, 1.0)
+	if is_equal_approx(master_volume, clamped):
+		return
+	master_volume = clamped
+	audio_settings_changed.emit()
+
+
+## Громкость музыки (T-20).
+func set_music_volume(value: float) -> void:
+	var clamped: float = clampf(value, 0.0, 1.0)
+	if is_equal_approx(music_volume, clamped):
+		return
+	music_volume = clamped
+	audio_settings_changed.emit()
+
+
+## Громкость SFX (T-20).
+func set_sfx_volume(value: float) -> void:
+	var clamped: float = clampf(value, 0.0, 1.0)
+	if is_equal_approx(sfx_volume, clamped):
+		return
+	sfx_volume = clamped
+	audio_settings_changed.emit()
+
+
+## «Субтитры звуков» (T-20).
+func set_sound_subtitles(enabled: bool) -> void:
+	if sound_subtitles == enabled:
+		return
+	sound_subtitles = enabled
+	audio_settings_changed.emit()

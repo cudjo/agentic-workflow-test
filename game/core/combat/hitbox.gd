@@ -66,3 +66,6 @@ func _physics_process(_delta: float) -> void:
 		payload.source = self
 		if hurtbox.receive_damage(payload):
 			hit_landed.emit(hurtbox, payload)
+			# T-34: удар — значимый звук (SFX + субтитр «УДАР», DESIGN §9.4).
+			if AudioManager.has_method(&"play_sfx"):
+				AudioManager.play_sfx(&"hit")
