@@ -264,6 +264,18 @@
 - **Разблокированы:** T-20 (меню), T-23 (костёр), T-36 (локализация); частично T-19/T-21/T-22/T-24 (ждут T-06/T-26/T-27/T-29).
 - **Решение:** слот освобождён (T-18) → запуск **T-05** (анимации/визуал игрока, frontend) — голова серийной цепочки способностей (T-05→T-06→T-07/T-08/T-09 + T-19), параллельно с T-12 (враги).
 
+## 2026-10-18 — Orchestrator: Приёмка T-12, запуск T-14
+
+- **T-12 принят:** враги (AI FSM + swift/heavy/ranged/undead + спавнер), коммит `e4f12cf`, GUT **142/142, 1183 asserts** (+16 тестов). AI без navmesh — обосновано платформенными патрулями (RayCast2D + leash + watchdog). Кросс-правки `EventBus` (+`enemy_died`), `balancing` (+тайминги врагов), `Player.gd`/`Player.tscn` (Hurtbox→Hurt, группа `player`) — на контроль Guardian.
+- **Разблокированы:** T-30 (боссы) — частично, ждёт T-14.
+- **Решение:** слот освобождён (T-12) → запуск **T-14** (зона 1 «Деревня-бастион», dba) — параллельно с T-05 (фронт); T-14 — бутылочное горлышко для T-30 (боссы) и T-17 (переходы).
+
+## 2026-10-18 — Orchestrator: Приёмка T-05, запуск T-06
+
+- **T-05 принят:** анимации/визуал игрока (AnimatedSprite2D + SpriteFrames, 18 анимаций, программные заглушки 16×24 ≤16 цветов), коммит `67ae3b0`, GUT **156/156, 1648 asserts** (+14 тестов). Кросс-правки `Config.gd` (+`no_flash`), `balancing` (+`anim_*`) — на контроль Guardian.
+- **Разблокированы:** T-06 (способности) — ключ к T-07/T-08/T-09 и T-19 (HUD).
+- **Решение:** слот освобождён (T-05) → запуск **T-06** (AbilitySystem + двойной прыжок, backend) — параллельно с T-14 (зона 1).
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -342,3 +354,34 @@
 - **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+`enemy_died`), `data/balance/balancing_params.gd` + `.tres` (+`enemy_death_duration`, `enemy_knockback_friction`, `enemy_stuck_timeout`), `entities/player/Player.gd` (подписка Hurtbox→Hurt), `entities/player/Player.tscn` (группа `player`). `docs/TASKS.json` и статус не менялись (`pending` до QA/Guardian).
 - **Замечания:** в рабочем дереве параллельно шли T-18/T-05; чужие `ui/`, `assets/fonts/`, `opencode.jsonc` не трогал. В `docs/WORKFLOW_LOG.md` на момент записи была незакоммиченная запись Orchestrator (приёмка T-18) — вошла в коммит журнала как часть append-only истории.
 - **Коммит:** `e4f12cf` «T-12: враги — базовый AI + swift/heavy/ranged/undead».
+
+## 2026-10-18 — T-05 выполнен (tasker-frontend)
+
+- **Skills:** загружен `godot` (GDScript, AnimatedSprite2D/SpriteFrames, Node2D, GUT/headless — профильный стек визуала игрока). Другие skills не требовались.
+- **Задача:** анимации и визуал игрока (DESIGN §7, AC-02.1/02.2, AC-03.3).
+- **Подход:** `AnimatedSprite2D` + кадровые анимации (DESIGN задаёт кадры/тайминги), а не `AnimationPlayer`: нет интерполяции, кадры 16×24 остаются пиксельными; замена арта — через `PlayerAnimation.frames_override` без правок логики.
+- **Сделано:**
+  - `entities/player/sprites/player_sprite_frames.gd` — контракт 18 анимаций (idle/run/jump_rise/jump_apex/fall/land/double_jump/dash/wall_slide/attack_1..3/block/roll/hurt/death/out_of_stamina/sit), программные заглушки 16×24 из 9 токенов `UITokens` (≤16 цветов), тайминги из `balancing.tres`.
+  - `entities/player/PlayerAnimation.gd` — привязка `EventBus.player_state_changed` → анимация; апекс по `vy`, attack_1..3 по шагу комбо, idle-вариант при 0 выносливости; double jump flash steel-3 на 3 кадра; dash — 2 призрачных кадра steel-9 + холодный i-frames-вид; пыль бега; метка «Твои вещи» (gold-9) на death; hurt-вспышка отключается `Config.no_flash` (смена тона без мерцания).
+  - `Player.tscn`: добавлены `Animation` + `AnimatedSprite2D`, старый программный `Visual` скрыт.
+  - `tests/unit/test_player_animation.gd` — 14 GUT-тестов.
+- **Кросс-правки (на контроль Guardian):** `autoload/Config.gd` (+`no_flash`/`set_no_flash`; загрузка/тумблер — T-20), `data/balance/balancing_params.gd` + `balancing.tres` (+10 `anim_*` таймингов из DESIGN §7).
+- **Проверка:** Godot 4.4.1 portable. Чистый worktree `67ae3b0`: `--headless --import` exit 0; GUT **156/156 passed, 1648 asserts** (+14 новых; 142 прежних не сломаны); smoke `--headless --path game --quit` exit 0. Пользовательский smoke: Player.tscn инстанцирован, все состояния FSM → корректные анимации 16×24; PNG-лист кадров собран для визуальной проверки (вне репо).
+- **Ограничения:** wall_slide/double_jump/sit — контракт/API готовы, состояния FSM появятся в T-06/T-08/T-23; арт — заглушки. Статус T-05 в `TASKS.json` — `pending` (QA/Guardian).
+- **Коммит:** `67ae3b0` «T-05: анимации и визуал игрока». Untracked-файлы других сессий (`opencode.jsonc`, `world/zones/zone_banner*`, `zone_01_backdrop.gd`) не тронуты.
+
+## 2026-10-18 — T-14 выполнен (tasker-dba)
+
+- **Skills:** загружен `godot` (типизированный GDScript, ZoneScene/ZoneData, TileMapLayer, PointLight2D/CanvasModulate, ResourceSaver/PackedScene для генерации сцены, GUT/headless — профильный стек зоны и уровня). Другие skills не требовались.
+- **Задача:** зона 1 «Деревня-бастион» (хаб) по макету `zone-village.html`, DESIGN §8.6, SPEC §5.
+- **Подход:** сцена и ZoneData генерируются скриптом `tests/tools/build_zone_01.gd` на пайплайне T-13 (тот же тайлсет/пропсы/контракт ZoneScene). Арт — программные заглушки: `Backdrop` (стена-бастион с мхом, стяг, ворота с поднятой решёткой, хижина с тёплым окном, дальний замок/луна) и `Foreground` (влажная земля, лужи, мох, бочки, кромка уступа, груда завала). Цвета — токены зоны 1 из `UITokens` (`night`, `stone`, `gold`, `brown`, `green-3`, `blood`).
+- **Сделано:**
+  - `world/zones/zone_01_village/zone_01_village.tscn` + `data/zones/zone_01_village.tres`: корень `ZoneScene`, палитра зоны 1, ambient 0.42, тайлсет зоны 1; 3 точки входа (`start`, `from_gate`, `from_ledge`) и 2 выхода (`gate` → zone_02_swamp, `ledge` → zone_03_mountains).
+  - Раскладка: пол 30×2 тайла, one-way уступ 7 тайлов на y=176 (48 px над полом), сундук-секрет на уступе, дверь-выход на уступе, завал-заглушка T-09 (`Rubble`, meta `ability_gate=double_jump`, коллизия совпадает с видимой грудой), костёр-чекпоинт `Props/Bonfire` (112, 224), маркеры `NPC_Keeper` и `Trader`, границы мира (`WorldBounds`: пол/стены/потолок).
+  - Освещение: 2 факела `PointLight2D` с радиальным градиентом 180 px (радиус ≈90 px), окно хижины, костёр и холодная луна; ambient через `CanvasModulate` из ZoneData.
+  - Баннер: `world/zones/zone_banner.tscn/.gd` (CanvasLayer 15, h2 16 px + «Зона 1 · Хаб», ступенчатый fade 4 шага). Подписан на `EventBus.zone_entered`, показывается один раз за вход в сцену зоны.
+  - `tests/integration/test_zone_01.gd` — 11 GUT-тестов: загрузка `SceneRouter.instantiate_zone`, палитра/ambient/тайлсет, 2 факела ≈90 px, пропсы/маркеры/сундук, баннер первого входа, входы/выходы, недостижимость уступа без двойного прыжка (геометрия + физика), границы мира, триггер перехода `gate`.
+- **Проверка:** Godot 4.4.1 portable. Чистый worktree `7ac547f`: `--headless --import` exit 0; GUT **167/167 passed, 1760 asserts** (156 прежних + 11 новых, 0 падений); smoke `--headless --path game --quit-after 60` exit 0; отдельный запуск сцены зоны `--headless --path . res://world/zones/zone_01_village/zone_01_village.tscn --quit-after 120` exit 0. Пользовательский smoke: рендер зоны 480×270 в OpenGL-совместимом режиме (PNG вне репо) — макет читается: стена/мох, ворота, факелы, хижина, уступ с сундуком и дверью, завал, влажный пол, баннер.
+- **Ограничения:** ability gate и подсказка «Нужно: Двойной прыжок» — T-09 (здесь только физическая заглушка завала и высокий уступ); логика чекпоинта/сохранения — T-26 (здесь только prop `Bonfire` и его позиция); состояние FSM/способность двойного прыжка — T-06 (тест физики эмулирует импульсы из `balancing.tres`, порог уступа 48 px: 32 < 48 ≤ 57.6). Палитра `Platforms` = accent (gold) задаётся контрактом T-13, поэтому уступ тёплый, а не серый, как в макете. Статус T-14 в `docs/TASKS.json` не менялся (`pending` до QA/Guardian).
+- **Кросс-файловые правки:** нет — только новые файлы в `world/zones/`, `data/zones/`, `tests/`. Untracked-файлы других сессий (`opencode.jsonc`, `entities/player/*` T-05) не тронуты.
+- **Коммит:** `7ac547f` «T-14: зона 1 «Деревня-бастион» (хаб)». Запись журнала закоммичена отдельным коммитом `docs(WORKFLOW_LOG)` вместе с накопившимися append-only записями Orchestrator/T-05 других сессий.
