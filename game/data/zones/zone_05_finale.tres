@@ -30,6 +30,7 @@ hazard = Color(0.709804, 0.282353, 0.235294, 1)
 script = ExtResource("4_evtq2")
 id = &"zone_05_finale"
 display_name = "Финал"
+epigraph = "Последний огонь горит для последнего стража."
 palette = SubResource("Resource_qqr6v")
 ambient_level = 0.38
 tileset = ExtResource("5_g6np5")

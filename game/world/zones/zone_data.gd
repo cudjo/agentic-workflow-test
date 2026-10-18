@@ -13,6 +13,9 @@ extends Resource
 
 @export var id: StringName = &"zone_template"
 @export var display_name: String = ""
+## Атмосферная строка для экрана загрузки (T-17, DESIGN §5). Пустая — экран
+## показывает только название зоны.
+@export var epigraph: String = ""
 @export var palette: ZonePalette
 @export_range(0.0, 1.0, 0.01) var ambient_level: float = 0.42
 @export var tileset: TileSet

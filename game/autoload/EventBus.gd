@@ -61,6 +61,10 @@ signal faction_chosen(faction_id: StringName, display_name: String)
 ## Зона загружена и ZoneData применён (T-13). Потребители: баннер зоны (T-14),
 ## экран загрузки/переходы (T-17), HUD (T-19).
 signal zone_entered(zone_id: StringName, display_name: String)
+## Переход завершён: новая зона активна, игрок стоит на точке входа, экран
+## загрузки скрыт (T-17, AC-04.1). Потребитель — AudioManager (T-34): запускает
+## кроссфейд музыки зоны ≤ 1 с (AC-07.2). Эмитится после `zone_entered`.
+signal zone_loaded(zone_id: StringName, display_name: String)
 
 ## Слот записан успешно (T-25). Потребитель: подтверждение сохранения у костра /
 ## меню слотов (T-22/T-23), AC-05.1 (подтверждение ≤ 1 с).

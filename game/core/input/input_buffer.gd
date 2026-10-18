@@ -60,3 +60,11 @@ func just_pressed(action: StringName) -> bool:
 ## Remaining buffered time for the action, in seconds.
 func get_buffer_time(action: StringName) -> float:
 	return _buffers.get(action, 0.0)
+
+
+## Clears every buffered press. T-17 uses it so an attack pressed just before
+## a zone transition cannot fire after loading (EC-12).
+func clear() -> void:
+	for action in _buffers.keys():
+		_buffers[action] = 0.0
+		_pressed_flags[action] = false

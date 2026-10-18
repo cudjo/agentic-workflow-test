@@ -61,6 +61,7 @@ hazard = Color(0.603922, 0.603922, 0.611765, 1)
 script = ExtResource("4_br644")
 id = &"zone_03_mountains"
 display_name = "Горный перевал"
+epigraph = "Выше только ветер и молчание богов."
 palette = SubResource("Resource_l3igj")
 ambient_level = 0.36
 tileset = ExtResource("5_6dxx8")

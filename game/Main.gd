@@ -12,8 +12,12 @@ const THEME_PATH := "res://ui/theme/main_theme.tres"
 
 func _ready() -> void:
 	var window := get_window()
-	if window == null:
-		return
-	var ui_theme := load(THEME_PATH) as Theme
-	if ui_theme != null:
-		window.theme = ui_theme
+	if window != null:
+		var ui_theme := load(THEME_PATH) as Theme
+		if ui_theme != null:
+			window.theme = ui_theme
+
+	# T-17: первый вход в зону. Синхронно — это инициализация мира, дальше все
+	# переходы идут фоновым потоком через SceneRouter.change_zone().
+	if SceneRouter.has_method(&"bootstrap"):
+		SceneRouter.bootstrap()

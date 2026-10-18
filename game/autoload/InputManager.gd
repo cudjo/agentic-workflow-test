@@ -45,6 +45,18 @@ func _input(event: InputEvent) -> void:
 
 
 # ------------------------------------------------------------------------------
+# Input buffers (T-17: EC-12 input lock across zone transitions)
+# ------------------------------------------------------------------------------
+
+## Clears all buffered presses (virtual 150 ms buffer). Used when gameplay
+## must not receive input made before/during a zone transition (EC-12).
+func clear_buffered_input() -> void:
+	if _input_buffer == null:
+		return
+	_input_buffer.clear()
+
+
+# ------------------------------------------------------------------------------
 # Public API
 # ------------------------------------------------------------------------------
 

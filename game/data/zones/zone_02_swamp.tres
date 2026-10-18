@@ -61,6 +61,7 @@ hazard = Color(0.184314, 0.262745, 0.313726, 1)
 script = ExtResource("4_liiyl")
 id = &"zone_02_swamp"
 display_name = "Болото"
+epigraph = "Трясина не отпускает ни героев, ни грехов."
 palette = SubResource("Resource_1paco")
 ambient_level = 0.36
 tileset = ExtResource("5_vnxto")
