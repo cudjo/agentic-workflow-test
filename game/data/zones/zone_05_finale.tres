@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="ZoneData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_6hxa8"]
+[ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_mcbbc"]
+[ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_oimi3"]
+[ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_evtq2"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_g6np5"]
+
+[sub_resource type="Resource" id="Resource_ipn3x"]
+script = ExtResource("1_6hxa8")
+id = &"from_ruins"
+position = Vector2(32, 214)
+
+[sub_resource type="Resource" id="Resource_tlbse"]
+script = ExtResource("2_mcbbc")
+id = &"to_ruins"
+position = Vector2(12, 214)
+size = Vector2(16, 32)
+target_zone_id = &"zone_04_ruins"
+target_entry_id = &"from_finale"
+
+[sub_resource type="Resource" id="Resource_qqr6v"]
+script = ExtResource("3_oimi3")
+background = Color(0.0431373, 0.0470588, 0.0627451, 1)
+ground = Color(0.188235, 0.188235, 0.207843, 1)
+accent = Color(0.603922, 0.603922, 0.611765, 1)
+hazard = Color(0.709804, 0.282353, 0.235294, 1)
+
+[resource]
+script = ExtResource("4_evtq2")
+id = &"zone_05_finale"
+display_name = "Финал"
+palette = SubResource("Resource_qqr6v")
+ambient_level = 0.38
+tileset = ExtResource("5_g6np5")
+entry_points = Array[ExtResource("1_6hxa8")]([SubResource("Resource_ipn3x")])
+exits = Array[ExtResource("2_mcbbc")]([SubResource("Resource_tlbse")])

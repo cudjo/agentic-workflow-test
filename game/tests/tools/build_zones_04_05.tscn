@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=4]
+
+[ext_resource type="Script" path="res://tests/tools/build_zones_04_05_runner.gd" id="1_runner"]
+
+[node name="BuildZones0405" type="Node"]
+script = ExtResource("1_runner")

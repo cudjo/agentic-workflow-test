@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ZoneData" load_steps=12 format=3]
+[gd_resource type="Resource" script_class="ZoneData" load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_kxu3h"]
 [ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_ma6wk"]
@@ -21,6 +21,11 @@ script = ExtResource("1_kxu3h")
 id = &"north_pass"
 position = Vector2(448, 214)
 
+[sub_resource type="Resource" id="Resource_ruins_entry"]
+script = ExtResource("1_kxu3h")
+id = &"from_ruins"
+position = Vector2(376, 54)
+
 [sub_resource type="Resource" id="Resource_g5m1y"]
 script = ExtResource("2_ma6wk")
 id = &"south_ledge"
@@ -37,6 +42,14 @@ size = Vector2(16, 32)
 target_zone_id = &"zone_02_swamp"
 target_entry_id = &"east_gate"
 
+[sub_resource type="Resource" id="Resource_ruins_exit"]
+script = ExtResource("2_ma6wk")
+id = &"to_ruins"
+position = Vector2(392, 48)
+size = Vector2(16, 32)
+target_zone_id = &"zone_04_ruins"
+target_entry_id = &"from_mountains"
+
 [sub_resource type="Resource" id="Resource_l3igj"]
 script = ExtResource("3_1oyym")
 background = Color(0.0627451, 0.0745098, 0.109804, 1)
@@ -51,5 +64,5 @@ display_name = "Горный перевал"
 palette = SubResource("Resource_l3igj")
 ambient_level = 0.36
 tileset = ExtResource("5_6dxx8")
-entry_points = Array[ExtResource("1_kxu3h")]([SubResource("Resource_uk4nd"), SubResource("Resource_ct731"), SubResource("Resource_6ne7h")])
-exits = Array[ExtResource("2_ma6wk")]([SubResource("Resource_g5m1y"), SubResource("Resource_xgegj")])
+entry_points = Array[ExtResource("1_kxu3h")]([SubResource("Resource_uk4nd"), SubResource("Resource_ct731"), SubResource("Resource_6ne7h"), SubResource("Resource_ruins_entry")])
+exits = Array[ExtResource("2_ma6wk")]([SubResource("Resource_g5m1y"), SubResource("Resource_xgegj"), SubResource("Resource_ruins_exit")])

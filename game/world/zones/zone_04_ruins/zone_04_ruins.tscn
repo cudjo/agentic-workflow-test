@@ -1,0 +1,184 @@
+[gd_scene load_steps=24 format=4]
+
+[ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_scene.gd" id="1_yywuo"]
+[ext_resource type="Resource" path="res://data/zones/zone_04_ruins.tres" id="2_v7hlj"]
+[ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_backdrop.gd" id="3_rq132"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="4_1saup"]
+[ext_resource type="PackedScene" path="res://world/props/bonfire.tscn" id="5_xqdi1"]
+[ext_resource type="Script" path="res://world/props/bonfire.gd" id="6_c7gfi"]
+[ext_resource type="PackedScene" path="res://world/props/chest.tscn" id="7_5cfel"]
+[ext_resource type="Script" path="res://world/props/chest.gd" id="8_wwarx"]
+[ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_puzzle.gd" id="9_0i7g2"]
+[ext_resource type="PackedScene" path="res://world/props/sealed_gate.tscn" id="10_myi74"]
+[ext_resource type="Script" path="res://world/props/sealed_gate.gd" id="11_aq3vo"]
+[ext_resource type="PackedScene" path="res://world/props/lever.tscn" id="12_y3vo3"]
+[ext_resource type="Script" path="res://world/props/lever.gd" id="13_ts47d"]
+[ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_foreground.gd" id="14_7mjg6"]
+[ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_glow.gd" id="15_ksx2k"]
+[ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="16_ciisd"]
+[ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="17_2wfwk"]
+
+[sub_resource type="Gradient" id="Gradient_4o48h"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_uhqhg"]
+gradient = SubResource("Gradient_4o48h")
+width = 180
+height = 180
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_22cmv"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ds6eb"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0d6om"]
+size = Vector2(480, 6)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_uodgm"]
+size = Vector2(480, 2)
+
+[node name="Zone04Ruins" type="Node2D"]
+script = ExtResource("1_yywuo")
+zone_data = ExtResource("2_v7hlj")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Sky" type="ColorRect" parent="Background"]
+unique_name_in_owner = true
+offset_right = 480.0
+offset_bottom = 270.0
+mouse_filter = 2
+color = Color(0.329412, 0.25098, 0.184314, 1)
+
+[node name="Ambient" type="CanvasModulate" parent="."]
+unique_name_in_owner = true
+color = Color(0.26, 0.26, 0.26, 1)
+
+[node name="Backdrop" type="Node2D" parent="."]
+script = ExtResource("3_rq132")
+
+[node name="Ground" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAAAA4AAAAFAAMAAAABAA4AAAAFAAMAAAACAA4AAAAFAAMAAAADAA4AAAAFAAMAAAAEAA4AAAAFAAMAAAAFAA4AAAAFAAMAAAAGAA4AAAAFAAMAAAAHAA4AAAAFAAMAAAAIAA4AAAAFAAMAAAAJAA4AAAAFAAMAAAAKAA4AAAAFAAMAAAALAA4AAAAFAAMAAAAMAA4AAAAFAAMAAAANAA4AAAAFAAMAAAAOAA4AAAAFAAMAAAAPAA4AAAAFAAMAAAAQAA4AAAAFAAMAAAARAA4AAAAFAAMAAAASAA4AAAAFAAMAAAATAA4AAAAFAAMAAAAUAA4AAAAFAAMAAAAVAA4AAAAFAAMAAAAWAA4AAAAFAAMAAAAXAA4AAAAFAAMAAAAYAA4AAAAFAAMAAAAZAA4AAAAFAAMAAAAaAA4AAAAFAAMAAAAbAA4AAAAFAAMAAAAcAA4AAAAFAAMAAAAdAA4AAAAFAAMAAAAAAA8AAAAFAAMAAAABAA8AAAAFAAMAAAACAA8AAAAFAAMAAAADAA8AAAAFAAMAAAAEAA8AAAAFAAMAAAAFAA8AAAAFAAMAAAAGAA8AAAAFAAMAAAAHAA8AAAAFAAMAAAAIAA8AAAAFAAMAAAAJAA8AAAAFAAMAAAAKAA8AAAAFAAMAAAALAA8AAAAFAAMAAAAMAA8AAAAFAAMAAAANAA8AAAAFAAMAAAAOAA8AAAAFAAMAAAAPAA8AAAAFAAMAAAAQAA8AAAAFAAMAAAARAA8AAAAFAAMAAAASAA8AAAAFAAMAAAATAA8AAAAFAAMAAAAUAA8AAAAFAAMAAAAVAA8AAAAFAAMAAAAWAA8AAAAFAAMAAAAXAA8AAAAFAAMAAAAYAA8AAAAFAAMAAAAZAA8AAAAFAAMAAAAaAA8AAAAFAAMAAAAbAA8AAAAFAAMAAAAcAA8AAAAFAAMAAAAdAA8AAAAFAAMAAAACAAIAAAAFAAMAAAADAAIAAAAFAAMAAAAEAAIAAAAFAAMAAAAFAAIAAAAFAAMAAAAGAAIAAAAFAAMAAAAHAAIAAAAFAAMAAAAIAAIAAAAFAAMAAAAJAAIAAAAFAAMAAAAKAAIAAAAFAAMAAAALAAIAAAAFAAMAAAAMAAIAAAAFAAMAAAANAAIAAAAFAAMAAAAOAAIAAAAFAAMAAAAPAAIAAAAFAAMAAAAQAAIAAAAFAAMAAAARAAIAAAAFAAMAAAASAAIAAAAFAAMAAAATAAIAAAAFAAMAAAAUAAIAAAAFAAMAAAAVAAIAAAAFAAMAAAAWAAIAAAAFAAMAAAAXAAIAAAAFAAMAAAAYAAIAAAAFAAMAAAAZAAIAAAAFAAMAAAAaAAIAAAAFAAMAAAAbAAIAAAAFAAMAAAAEAAMAAAAKAAMAAAAEAAQAAAAKAAMAAAAEAAUAAAAKAAMAAAAEAAYAAAAKAAMAAAAEAAcAAAAKAAMAAAAJAAMAAAAKAAMAAAAJAAQAAAAKAAMAAAAJAAUAAAAKAAMAAAAJAAYAAAAKAAMAAAAJAAcAAAAKAAMAAAAPAAMAAAAKAAMAAAAPAAQAAAAKAAMAAAAPAAUAAAAKAAMAAAAPAAYAAAAKAAMAAAAPAAcAAAAKAAMAAAAVAAMAAAAKAAMAAAAVAAQAAAAKAAMAAAAVAAUAAAAKAAMAAAAVAAYAAAAKAAMAAAAVAAcAAAAKAAMAAAAXAAMAAAAKAAMAAAAXAAQAAAAKAAMAAAAXAAUAAAAKAAMAAAAXAAYAAAAKAAMAAAAXAAcAAAAKAAMAAAAXAAgAAAAKAAMAAAAXAAkAAAAKAAMAAAAXAAoAAAAKAAMAAAAXAAsAAAAKAAMAAAA=")
+tile_set = ExtResource("4_1saup")
+
+[node name="Platforms" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAABAA0AAAAJAAUAAAACAA0AAAAKAAUAAAADAA0AAAAKAAUAAAAEAA0AAAALAAUAAAABAAwAAAAJAAUAAAACAAwAAAAKAAUAAAADAAwAAAAKAAUAAAAEAAwAAAAKAAUAAAAFAAwAAAALAAUAAAABAAsAAAAJAAUAAAACAAsAAAAKAAUAAAADAAsAAAAKAAUAAAAEAAsAAAAKAAUAAAAFAAsAAAALAAUAAAABAAoAAAAJAAUAAAACAAoAAAAKAAUAAAADAAoAAAAKAAUAAAAEAAoAAAAKAAUAAAAFAAoAAAALAAUAAAA=")
+tile_set = ExtResource("4_1saup")
+
+[node name="Ladders" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_set = ExtResource("4_1saup")
+
+[node name="Hazards" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAaAA0AAAADAAcAAAAbAA0AAAADAAcAAAA=")
+tile_set = ExtResource("4_1saup")
+
+[node name="Lights" type="Node2D" parent="."]
+
+[node name="Bonfire" type="PointLight2D" parent="Lights"]
+position = Vector2(288, 206)
+color = Color(0.490196, 0.352941, 0.156863, 1)
+energy = 1.35
+texture = SubResource("GradientTexture2D_uhqhg")
+texture_scale = 0.866667
+metadata/radius_px = 78.0
+
+[node name="AltarGlow" type="PointLight2D" parent="Lights"]
+position = Vector2(424, 198)
+color = Color(0.709804, 0.282353, 0.235294, 1)
+energy = 1.2
+texture = SubResource("GradientTexture2D_uhqhg")
+texture_scale = 0.644444
+metadata/radius_px = 58.0
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="Bonfire" type="Node2D" parent="Props" instance=ExtResource("5_xqdi1")]
+position = Vector2(288, 224)
+script = ExtResource("6_c7gfi")
+
+[node name="Chest" type="Node2D" parent="Props" instance=ExtResource("7_5cfel")]
+position = Vector2(432, 224)
+script = ExtResource("8_wwarx")
+
+[node name="Puzzle" type="Node2D" parent="."]
+script = ExtResource("9_0i7g2")
+
+[node name="Gate" type="StaticBody2D" parent="Puzzle" instance=ExtResource("10_myi74")]
+position = Vector2(376, 224)
+collision_mask = 0
+script = ExtResource("11_aq3vo")
+
+[node name="Levers" type="Node2D" parent="Puzzle"]
+
+[node name="Lever_left" type="Area2D" parent="Puzzle/Levers" instance=ExtResource("12_y3vo3")]
+position = Vector2(120, 224)
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+script = ExtResource("13_ts47d")
+lever_id = &"left"
+
+[node name="Lever_middle" type="Area2D" parent="Puzzle/Levers" instance=ExtResource("12_y3vo3")]
+position = Vector2(168, 224)
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+script = ExtResource("13_ts47d")
+lever_id = &"middle"
+solution_state = false
+
+[node name="Lever_right" type="Area2D" parent="Puzzle/Levers" instance=ExtResource("12_y3vo3")]
+position = Vector2(216, 224)
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+script = ExtResource("13_ts47d")
+lever_id = &"right"
+
+[node name="Foreground" type="Node2D" parent="."]
+script = ExtResource("14_7mjg6")
+
+[node name="Glow" type="CanvasLayer" parent="."]
+
+[node name="Shafts" type="Node2D" parent="Glow"]
+script = ExtResource("15_ksx2k")
+
+[node name="Entries" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="Exits" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="WorldBounds" type="StaticBody2D" parent="."]
+collision_mask = 0
+
+[node name="Left" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(2, 135)
+shape = SubResource("RectangleShape2D_22cmv")
+
+[node name="Right" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(478, 135)
+shape = SubResource("RectangleShape2D_ds6eb")
+
+[node name="Floor" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 267)
+shape = SubResource("RectangleShape2D_0d6om")
+
+[node name="Ceiling" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 1)
+shape = SubResource("RectangleShape2D_uodgm")
+
+[node name="ZoneBanner" type="CanvasLayer" parent="." instance=ExtResource("16_ciisd")]
+layer = 15
+script = ExtResource("17_2wfwk")
+zone_id = &"zone_04_ruins"
+subtitle = "Зона 4 · Руины-храм"

@@ -12,6 +12,8 @@ const ZONE_02_SCENE := "res://world/zones/zone_02_swamp/zone_02_swamp.tscn"
 const ZONE_02_DATA := "res://data/zones/zone_02_swamp.tres"
 const ZONE_03_SCENE := "res://world/zones/zone_03_mountains/zone_03_mountains.tscn"
 const ZONE_03_DATA := "res://data/zones/zone_03_mountains.tres"
+const ZONE_04_DATA := "res://data/zones/zone_04_ruins.tres"
+const ZONE_05_DATA := "res://data/zones/zone_05_finale.tres"
 const ZONE_01_DATA := "res://data/zones/zone_01_village.tres"
 
 const FLOOR_TOP := 224.0
@@ -140,16 +142,22 @@ func test_zone_links_are_consistent_with_zone_01() -> void:
 	var village := load(ZONE_01_DATA) as ZoneData
 	var swamp := load(ZONE_02_DATA) as ZoneData
 	var mountains := load(ZONE_03_DATA) as ZoneData
+	var ruins := load(ZONE_04_DATA) as ZoneData
+	var finale := load(ZONE_05_DATA) as ZoneData
 	assert_not_null(village)
 	assert_not_null(swamp)
 	assert_not_null(mountains)
-	if village == null or swamp == null or mountains == null:
+	assert_not_null(ruins, "zones 4–5 (T-16) are part of the world graph")
+	assert_not_null(finale, "zones 4–5 (T-16) are part of the world graph")
+	if village == null or swamp == null or mountains == null or ruins == null or finale == null:
 		return
 
 	var zones := {
 		&"zone_01_village": village,
 		&"zone_02_swamp": swamp,
 		&"zone_03_mountains": mountains,
+		&"zone_04_ruins": ruins,
+		&"zone_05_finale": finale,
 	}
 	# Каждый выход ведёт в существующую зону и существующую точку входа.
 	for data: ZoneData in [village, swamp, mountains]:

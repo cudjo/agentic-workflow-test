@@ -1,0 +1,165 @@
+[gd_scene load_steps=19 format=4]
+
+[ext_resource type="Script" path="res://world/zones/zone_scene.gd" id="1_b2k28"]
+[ext_resource type="Resource" path="res://data/zones/zone_05_finale.tres" id="2_i4ic7"]
+[ext_resource type="Script" path="res://world/zones/zone_05_finale/zone_05_backdrop.gd" id="3_ncbvu"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="4_2cuxj"]
+[ext_resource type="Script" path="res://world/zones/zone_05_finale/zone_05_arena.gd" id="5_pptnx"]
+[ext_resource type="Script" path="res://world/zones/zone_05_finale/zone_05_ending_hook.gd" id="6_b1ovx"]
+[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="7_eh753"]
+[ext_resource type="Script" path="res://world/props/rubble.gd" id="8_kgpp2"]
+[ext_resource type="Script" path="res://world/zones/zone_05_finale/zone_05_foreground.gd" id="9_d6r1h"]
+[ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="10_3wssx"]
+[ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="11_cjwc5"]
+
+[sub_resource type="Gradient" id="Gradient_is8b3"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ic1ob"]
+gradient = SubResource("Gradient_is8b3")
+width = 180
+height = 180
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7yj0n"]
+size = Vector2(24, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vabam"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_5e050"]
+size = Vector2(4, 270)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_i767m"]
+size = Vector2(480, 6)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_67eyy"]
+size = Vector2(480, 2)
+
+[node name="Zone05Finale" type="Node2D"]
+script = ExtResource("1_b2k28")
+zone_data = ExtResource("2_i4ic7")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Sky" type="ColorRect" parent="Background"]
+unique_name_in_owner = true
+offset_right = 480.0
+offset_bottom = 270.0
+mouse_filter = 2
+color = Color(0.0431373, 0.0470588, 0.0627451, 1)
+
+[node name="Ambient" type="CanvasModulate" parent="."]
+unique_name_in_owner = true
+color = Color(0.38, 0.38, 0.38, 1)
+
+[node name="Backdrop" type="Node2D" parent="."]
+script = ExtResource("3_ncbvu")
+
+[node name="Ground" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAAAA4AAAAFAAQAAAABAA4AAAAFAAQAAAACAA4AAAAFAAQAAAADAA4AAAAFAAQAAAAEAA4AAAAFAAQAAAAFAA4AAAAFAAQAAAAGAA4AAAAFAAQAAAAHAA4AAAAFAAQAAAAIAA4AAAAFAAQAAAAJAA4AAAAFAAQAAAAKAA4AAAAFAAQAAAALAA4AAAAFAAQAAAAMAA4AAAAFAAQAAAANAA4AAAAFAAQAAAAOAA4AAAAFAAQAAAAPAA4AAAAFAAQAAAAQAA4AAAAFAAQAAAARAA4AAAAFAAQAAAASAA4AAAAFAAQAAAATAA4AAAAFAAQAAAAUAA4AAAAFAAQAAAAVAA4AAAAFAAQAAAAWAA4AAAAFAAQAAAAXAA4AAAAFAAQAAAAYAA4AAAAFAAQAAAAZAA4AAAAFAAQAAAAaAA4AAAAFAAQAAAAbAA4AAAAFAAQAAAAcAA4AAAAFAAQAAAAdAA4AAAAFAAQAAAAAAA8AAAAFAAQAAAABAA8AAAAFAAQAAAACAA8AAAAFAAQAAAADAA8AAAAFAAQAAAAEAA8AAAAFAAQAAAAFAA8AAAAFAAQAAAAGAA8AAAAFAAQAAAAHAA8AAAAFAAQAAAAIAA8AAAAFAAQAAAAJAA8AAAAFAAQAAAAKAA8AAAAFAAQAAAALAA8AAAAFAAQAAAAMAA8AAAAFAAQAAAANAA8AAAAFAAQAAAAOAA8AAAAFAAQAAAAPAA8AAAAFAAQAAAAQAA8AAAAFAAQAAAARAA8AAAAFAAQAAAASAA8AAAAFAAQAAAATAA8AAAAFAAQAAAAUAA8AAAAFAAQAAAAVAA8AAAAFAAQAAAAWAA8AAAAFAAQAAAAXAA8AAAAFAAQAAAAYAA8AAAAFAAQAAAAZAA8AAAAFAAQAAAAaAA8AAAAFAAQAAAAbAA8AAAAFAAQAAAAcAA8AAAAFAAQAAAAdAA8AAAAFAAQAAAAFAAMAAAAKAAQAAAAFAAQAAAAKAAQAAAAFAAUAAAAKAAQAAAAFAAYAAAAKAAQAAAALAAMAAAAKAAQAAAALAAQAAAAKAAQAAAALAAUAAAAKAAQAAAALAAYAAAAKAAQAAAATAAMAAAAKAAQAAAATAAQAAAAKAAQAAAATAAUAAAAKAAQAAAATAAYAAAAKAAQAAAAZAAMAAAAKAAQAAAAZAAQAAAAKAAQAAAAZAAUAAAAKAAQAAAAZAAYAAAAKAAQAAAA=")
+tile_set = ExtResource("4_2cuxj")
+
+[node name="Platforms" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_set = ExtResource("4_2cuxj")
+
+[node name="Ladders" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_set = ExtResource("4_2cuxj")
+
+[node name="Hazards" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_set = ExtResource("4_2cuxj")
+
+[node name="Lights" type="Node2D" parent="."]
+
+[node name="Moon" type="PointLight2D" parent="Lights"]
+position = Vector2(240, 40)
+color = Color(0.603922, 0.603922, 0.611765, 1)
+energy = 0.3
+texture = SubResource("GradientTexture2D_ic1ob")
+texture_scale = 1.66667
+metadata/radius_px = 150.0
+
+[node name="BloodRune" type="PointLight2D" parent="Lights"]
+position = Vector2(360, 208)
+color = Color(0.709804, 0.282353, 0.235294, 1)
+energy = 0.25
+texture = SubResource("GradientTexture2D_ic1ob")
+texture_scale = 0.377778
+metadata/radius_px = 34.0
+
+[node name="Arena" type="Node2D" parent="."]
+script = ExtResource("5_pptnx")
+
+[node name="BossSpawn" type="Marker2D" parent="Arena"]
+position = Vector2(360, 224)
+
+[node name="EndingExit" type="Area2D" parent="."]
+position = Vector2(452, 214)
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+script = ExtResource("6_b1ovx")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EndingExit"]
+shape = SubResource("RectangleShape2D_7yj0n")
+
+[node name="ending_exit" type="Marker2D" parent="EndingExit"]
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="FallenMonolithWest" type="StaticBody2D" parent="Props" instance=ExtResource("7_eh753")]
+modulate = Color(0.72, 0.72, 0.75, 1)
+position = Vector2(80, 224)
+scale = Vector2(1.5, 1.5)
+collision_mask = 0
+script = ExtResource("8_kgpp2")
+blocking = false
+
+[node name="FallenMonolithEast" type="StaticBody2D" parent="Props" instance=ExtResource("7_eh753")]
+modulate = Color(0.72, 0.72, 0.75, 1)
+position = Vector2(424, 224)
+scale = Vector2(1.5, 1.5)
+collision_mask = 0
+script = ExtResource("8_kgpp2")
+blocking = false
+
+[node name="Foreground" type="Node2D" parent="."]
+script = ExtResource("9_d6r1h")
+
+[node name="Entries" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="Exits" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="WorldBounds" type="StaticBody2D" parent="."]
+collision_mask = 0
+
+[node name="Left" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(2, 135)
+shape = SubResource("RectangleShape2D_vabam")
+
+[node name="Right" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(478, 135)
+shape = SubResource("RectangleShape2D_5e050")
+
+[node name="Floor" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 267)
+shape = SubResource("RectangleShape2D_i767m")
+
+[node name="Ceiling" type="CollisionShape2D" parent="WorldBounds"]
+position = Vector2(240, 1)
+shape = SubResource("RectangleShape2D_67eyy")
+
+[node name="ZoneBanner" type="CanvasLayer" parent="." instance=ExtResource("10_3wssx")]
+layer = 15
+script = ExtResource("11_cjwc5")
+zone_id = &"zone_05_finale"
+subtitle = "Зона 5 · Финал"
