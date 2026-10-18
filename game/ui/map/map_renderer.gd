@@ -238,32 +238,34 @@ func _draw_bonfire(bonfire: Dictionary) -> void:
 
 
 func _draw_gate(gate: Dictionary) -> void:
-	var marker := Vector2(7, 5) if not show_labels else Vector2(12, 12)
+	var marker := Vector2(5, 4) if not show_labels else Vector2(12, 12)
 	var pos: Vector2 = _marker_position(
 		gate.get("cell", Vector2i(-1, -1)),
 		gate.get("local", Vector2(0.5, 0.5)),
 		marker
 	)
 	var locked: bool = bool(gate.get("locked", false))
+	var ability: StringName = StringName(str(gate.get("required_ability", "")))
+	var color: Color = ABILITY_COLORS.get(ability, UITokens.STONE_5)
+
+	if not show_labels:
+		# Миникарта: маленький замок в углу комнаты, без плашки на всю клетку —
+		# заливка/рамка комнаты и метка игрока остаются читаемыми.
+		_draw_lock(Rect2(pos, Vector2(3, 3)), UITokens.GOLD_3)
+		if ability != &"":
+			draw_rect(Rect2(pos + Vector2(4, 0), Vector2(1, 3)), color)
+		return
+
 	var border: Color = UITokens.BLOOD_3 if locked else UITokens.STONE_3
 	draw_rect(Rect2(pos, marker), Color(UITokens.VOID, 0.86))
 	UIStyle.draw_frame(self, Rect2(pos, marker), 1, border)
-
-	var ability: StringName = StringName(str(gate.get("required_ability", "")))
-	var color: Color = ABILITY_COLORS.get(ability, UITokens.STONE_5)
-	if show_labels:
-		_draw_lock(Rect2(pos + Vector2(1, 3), Vector2(5, 5)), UITokens.GOLD_3)
-		if ability != &"":
-			_draw_pattern(
-				Rect2(pos + Vector2(6, 3), Vector2(5, 5)),
-				ABILITY_PATTERNS.get(ability, []),
-				color
-			)
-	else:
-		_draw_lock(Rect2(pos + Vector2(1, 1), Vector2(3, 3)), UITokens.GOLD_3)
-		if ability != &"":
-			# Миникарта: цветовая метка способности рядом с замком.
-			draw_rect(Rect2(pos + Vector2(5, 1), Vector2(1, 3)), color)
+	_draw_lock(Rect2(pos + Vector2(1, 3), Vector2(5, 5)), UITokens.GOLD_3)
+	if ability != &"":
+		_draw_pattern(
+			Rect2(pos + Vector2(6, 3), Vector2(5, 5)),
+			ABILITY_PATTERNS.get(ability, []),
+			color
+		)
 
 
 func _draw_player() -> void:
@@ -298,8 +300,11 @@ func _draw_lock(rect: Rect2, color: Color) -> void:
 		draw_rect(Rect2(p + Vector2(w - 1, 1), Vector2(1, 2)), color)
 		draw_rect(Rect2(p + Vector2(0, 3), Vector2(w, h - 3)), color)
 	else:
-		draw_rect(Rect2(p + Vector2(1, 0), Vector2(maxi(w - 2, 1), 1)), color)
-		draw_rect(Rect2(p + Vector2(0, 1), Vector2(w, maxi(h - 1, 1))), color)
+		# 3x3 замок: дужка, корпус и скважина (форма читается без цвета).
+		draw_rect(Rect2(p + Vector2(1, 0), Vector2(1, 1)), color)
+		draw_rect(Rect2(p + Vector2(0, 1), Vector2(w, 1)), color)
+		draw_rect(Rect2(p + Vector2(0, 2), Vector2(1, maxi(h - 2, 1))), color)
+		draw_rect(Rect2(p + Vector2(w - 1, 2), Vector2(1, maxi(h - 2, 1))), color)
 
 
 func _draw_pattern(rect: Rect2, pattern: Array, color: Color) -> void:
