@@ -276,6 +276,12 @@
 - **Разблокированы:** T-06 (способности) — ключ к T-07/T-08/T-09 и T-19 (HUD).
 - **Решение:** слот освобождён (T-05) → запуск **T-06** (AbilitySystem + двойной прыжок, backend) — параллельно с T-14 (зона 1).
 
+## 2026-10-18 — Orchestrator: Приёмка T-14, запуск T-30
+
+- **T-14 принят:** зона 1 «Деревня-бастион» (хаб), коммит `7ac547f`, GUT **167/167, 1760 asserts** (+11 тестов). Палитра/макет соответствуют; выход на уступ требует двойного прыжка (48 px > 32 px). Кросс-правок нет (только новые файлы в `world/zones/`, `data/zones/`, `tests/`).
+- **Разблокированы:** T-17 (переходы), T-30 (боссы).
+- **Решение:** слот освобождён (T-14) → запуск **T-30** (Boss framework + боссы 1–2, backend) — голова глубочайшей цепочки боссов (T-30→T-31→T-32), параллельно с T-06 (способности).
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -385,3 +391,35 @@
 - **Ограничения:** ability gate и подсказка «Нужно: Двойной прыжок» — T-09 (здесь только физическая заглушка завала и высокий уступ); логика чекпоинта/сохранения — T-26 (здесь только prop `Bonfire` и его позиция); состояние FSM/способность двойного прыжка — T-06 (тест физики эмулирует импульсы из `balancing.tres`, порог уступа 48 px: 32 < 48 ≤ 57.6). Палитра `Platforms` = accent (gold) задаётся контрактом T-13, поэтому уступ тёплый, а не серый, как в макете. Статус T-14 в `docs/TASKS.json` не менялся (`pending` до QA/Guardian).
 - **Кросс-файловые правки:** нет — только новые файлы в `world/zones/`, `data/zones/`, `tests/`. Untracked-файлы других сессий (`opencode.jsonc`, `entities/player/*` T-05) не тронуты.
 - **Коммит:** `7ac547f` «T-14: зона 1 «Деревня-бастион» (хаб)». Запись журнала закоммичена отдельным коммитом `docs(WORKFLOW_LOG)` вместе с накопившимися append-only записями Orchestrator/T-05 других сессий.
+
+## 2026-10-18 — T-06 выполнен (tasker-backend)
+
+- **Skills:** загружен `godot` (типизированный GDScript, `Resource`/`class_name`, CharacterBody2D + FSM-состояния, Area2D-подбор, GUT/headless — профильный стек способностей). Другие skills не требовались.
+- **Задача:** AbilitySystem + двойной прыжок (PLAN §2.1/§3.1/§3.3, SPEC US-02/AC-02.1).
+- **Сделано:**
+  - `core/abilities/ability_base.gd` — контракт `AbilityBase` (Resource): `id`, `display_name`, `description`, `activate(player) -> bool`, `deactivate(player)`, `player_flags()`. Базовая активация ставит на игроке runtime-флаг с id способности.
+  - `core/abilities/ability_double_jump.gd` — `AbilityDoubleJump`: `ID=double_jump`, `AIR_JUMPS=1`, `MIN_HEIGHT_FACTOR=0.8`.
+  - `core/abilities/ability_registry.gd` — `AbilityRegistry`: ленивый кеш данных из `data/abilities/*.tres`, API `get_ability/has_ability/all_ids/all` — единая точка для FSM, gates (T-09) и HUD (T-19).
+  - `data/abilities/double_jump.tres` — данные способности (RU-название для подсказок).
+  - `autoload/GameState.gd` — `abilities: Array[StringName]` (типизированный набор), `has_ability/add_ability/get_abilities/clear_abilities`; `add_ability` идемпотентен и эмитит `EventBus.ability_acquired`.
+  - `autoload/EventBus.gd` — сигнал `ability_acquired(ability_id)`.
+  - `world/props/ability_pickup.gd/.tscn` — Area2D-подбор по контакту: `GameState.add_ability` → сигнал → живой Player разблокирует поведение; точка одноразовая, скрывается, повтор не выдаёт способность.
+  - `entities/player/Player.gd` — `ability_flags`, `double_jumps_used`, привязка `GameState.abilities` в `_ready` + live-подписка на сигнал, `can_double_jump()/try_double_jump()/on_landed()`, вызов `PlayerAnimation.play_double_jump()`.
+  - `PlayerStateMachine` + `states/double_jump.gd` — состояние `double_jump` в воздушном тире (priority 50), импульс `get_double_jump_velocity()` (высота 0.8·H_jump = 25.6 px), вход Jump/Fall → DoubleJump через `force_state` (внутри тира, как coyote jump), выход DoubleJump → Fall на апексе.
+  - `states/jump.gd`, `states/fall.gd` — попытка двойного прыжка; `states/land.gd` — сброс счётчика (`Player.on_landed()`), повтор доступен только после приземления.
+  - `tests/unit/test_abilities.gd` — 8 GUT-тестов: контракт реестра, typed-набор/идемпотентность/сигнал, activate/deactivate флагов, подбор по контакту и реальная разблокировка прыжка, одноразовость pickup, отказ без способности, ровно один прыжок + высота ≥0.8·H_jump + сброс на приземлении + повтор после приземления, двойной прыжок из Fall.
+- **Проверки (portable Godot 4.4.1-stable, headless; `GODOT_PATH`):**
+  - Dev-worktree от `67ae3b0`: `--headless --import` exit 0; GUT **164/164, 1705 asserts** (156 прежних + 8 новых), exit 0.
+  - Чистый worktree коммита `616cda2` (уже поверх T-14): import exit 0; GUT **175/175, 1817 asserts** (167 прежних + 8 новых), exit 0; единственное предупреждение чужое — inner class в `tests/integration/test_zone_01.gd` (T-14).
+  - Smoke `--headless --path game --quit` — exit 0 без скрипт-ошибок; отдельные запуски `Player.tscn` и `ability_pickup.tscn` — exit 0.
+  - Пользовательский smoke реальным вводом (InputEventKey SPACE через InputMap, временная сцена вне коммита): контакт с pickup → способность в `GameState` → флаг на игроке → SPACE = прыжок → второй SPACE = `double_jump`; 8/8 проверок PASS, exit 0.
+- **Найденные/исправленные проблемы:**
+  1. Fall→Land случается на следующем тике после `is_on_floor()` (`move_and_slide` взводит флаг позже `physics_update`) — тест сброса счётчика ждёт лишний кадр; это штатная латентность FSM, не баг кода.
+  2. Состояние `double_jump` само зовёт `PlayerAnimation.play_double_jump()` (API T-05), а затем то же состояние приходит сигналом — вспышка steel-3 перезапускалась; добавлен идемпотентный guard в `PlayerAnimation._start_double_jump_flash()`.
+  3. `monitoring/monitorable` нельзя менять внутри `body_entered` — в pickup переключение отложено через `set_deferred`.
+  4. Потенциальная циклическая ссылка `Player` ↔ `PlayerAnimation` — ссылка на слой анимации в Player оставлена untyped, вызов через `has_method/call`.
+- **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+1 сигнал), `autoload/GameState.gd` (+набор/API способностей), `entities/player/Player.gd`, `PlayerStateMachine.gd`, `states/{jump,fall,land}.gd`, `PlayerAnimation.gd` (guard вспышки). Новые файлы — только `core/abilities/`, `data/abilities/`, `world/props/ability_pickup.*`, `states/double_jump.gd`, `tests/unit/test_abilities.gd`.
+- **Контракт для следующих задач:** T-07/T-08 — наследовать `AbilityBase`, положить `.tres` в `data/abilities/`, добавить путь в `AbilityRegistry.ABILITY_PATHS`, переопределить `activate()` с `super.activate(player)`; поведение — в Player + FSM, разблокировка живой сессии идёт через `GameState.add_ability` → `EventBus.ability_acquired`. T-09 — `GameState.has_ability(id)` + `AbilityRegistry.get_ability(id).display_name` для подсказки, `ability_acquired` для открытия gates. T-19 — `GameState.get_abilities()`, сигнал и `display_name` для слотов. T-25 — способности пока не сериализуются: добавить `abilities: Array[String]` в `state`, поднять `schema_version` и шаг миграции по контракту `save_migrations.gd`.
+- **Ограничения:** гейт-подсказка и открытие завала — T-09; HUD-слоты — T-19; сейв набора способностей — T-25. Godot в системе не установлен, использован portable 4.4.1 (совместим с 4.4+). Статус T-06 в `docs/TASKS.json` не менялся (`pending` до QA/Guardian).
+- **Коммит:** `616cda2` «T-06: AbilitySystem + двойной прыжок» (на `v2` поверх T-14/T-25; исходный коммит ветки `ee5a58e`, перенесён cherry-pick). Чистый worktree `616cda2` — import/GUT/smoke зелёные.
+- **Примечание:** в `docs/WORKFLOW_LOG.md` на момент записи была незакоммиченная append-only запись Orchestrator (приёмка T-14) — она вошла в docs-коммит вместе с этой записью; её содержимое не правил.
