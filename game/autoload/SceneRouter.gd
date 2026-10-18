@@ -22,6 +22,9 @@ signal transition_started(zone_id: StringName, entry_id: StringName)
 signal transition_finished(zone_id: StringName, entry_id: StringName)
 ## Переход не выполнен (битый путь, таймаут). Старая зона остаётся активной.
 signal transition_failed(zone_id: StringName, reason: String)
+## Зона впервые показана в этом забеге (T-33, AC-04.2). Потребители: карта
+## мира и миникарта — открывают комнаты зоны; сейв может персистить список.
+signal zone_visited(zone_id: StringName)
 
 const DEFAULT_ZONE_ID: StringName = &"zone_01_village"
 const DEFAULT_ENTRY_ID: StringName = &"start"
@@ -51,6 +54,9 @@ var player: Player
 var current_zone: ZoneScene
 var current_zone_id: StringName = &""
 var current_entry_id: StringName = &""
+## Посещённые зоны за забег (T-33, AC-04.2). Порядок — порядок первого входа;
+## карта сортирует их по координатам комнат.
+var visited_zone_ids: Array[StringName] = []
 var is_loading: bool = false
 ## Длительность последнего успешного перехода, с (AC-04.1: ≤ 3 с).
 var last_load_seconds: float = 0.0
@@ -70,6 +76,15 @@ var _exit_grace_left: float = 0.0
 
 func _ready() -> void:
 	set_process(false)
+	# T-33: карта узнаёт о зоне из того же события, что и AudioManager/HUD.
+	# `_apply_zone` помечает зону раньше, повторный вызов идемпотентен.
+	if EventBus.has_signal(&"zone_loaded"):
+		if not EventBus.zone_loaded.is_connected(_on_zone_loaded):
+			EventBus.zone_loaded.connect(_on_zone_loaded)
+
+
+func _on_zone_loaded(zone_id: StringName, _display_name: String) -> void:
+	mark_zone_visited(zone_id)
 
 
 func _process(delta: float) -> void:
@@ -208,6 +223,43 @@ func zone_scene_path(zone_id: StringName) -> String:
 	return ZONE_SCENE_PATTERN % [String(zone_id), String(zone_id)]
 
 
+# ------------------------------------------------------------------------------
+# Visited zones (T-33, AC-04.2)
+# ------------------------------------------------------------------------------
+
+## Отмечает зону посещённой один раз. true — зона добавлена впервые.
+func mark_zone_visited(zone_id: StringName) -> bool:
+	if zone_id == &"" or visited_zone_ids.has(zone_id):
+		return false
+	visited_zone_ids.append(zone_id)
+	zone_visited.emit(zone_id)
+	return true
+
+
+func is_zone_visited(zone_id: StringName) -> bool:
+	return visited_zone_ids.has(zone_id)
+
+
+## Копия списка для карты/сейва: мутация результата не меняет маршрут.
+func get_visited_zone_ids() -> Array[StringName]:
+	var copy: Array[StringName] = []
+	copy.assign(visited_zone_ids)
+	return copy
+
+
+## Восстанавливает карту из сейва/теста без сигналов (новая игра — пусто).
+func restore_visited_zones(zone_ids: Array) -> void:
+	visited_zone_ids.clear()
+	for value: Variant in zone_ids:
+		var zone_id: StringName = StringName(str(value))
+		if zone_id != &"" and not visited_zone_ids.has(zone_id):
+			visited_zone_ids.append(zone_id)
+
+
+func reset_visited_zones() -> void:
+	visited_zone_ids.clear()
+
+
 ## Привязка WorldRoot (Main или тестовый хост).
 func bind_world_root(root: Node2D) -> void:
 	world_root = root
@@ -250,6 +302,7 @@ func reset() -> void:
 	current_zone = null
 	current_zone_id = &""
 	current_entry_id = &""
+	reset_visited_zones()
 
 	if InputManager.has_method(&"clear_buffered_input"):
 		InputManager.clear_buffered_input()
@@ -331,6 +384,7 @@ func _apply_zone(zone: ZoneScene, root: Node2D, entry_id: StringName) -> void:
 	current_zone = zone
 	current_zone_id = zone.zone_data.id
 	current_entry_id = entry_id
+	mark_zone_visited(current_zone_id)
 	root.add_child(zone)
 	if not zone.exit_requested.is_connected(_on_zone_exit_requested):
 		zone.exit_requested.connect(_on_zone_exit_requested)

@@ -10,6 +10,8 @@ extends Resource
 ##   tileset        -> все TileMapLayer зоны
 ##   entry_points   -> Marker2D-точки входа
 ##   exits          -> Area2D-триггеры и адреса переходов
+##   map_rooms      -> клетки карты мира/миникарты (T-33)
+##   map_bonfires   -> костры на карте (мировые координаты зоны)
 
 @export var id: StringName = &"zone_template"
 @export var display_name: String = ""
@@ -21,6 +23,10 @@ extends Resource
 @export var tileset: TileSet
 @export var entry_points: Array[ZoneEntryPoint] = []
 @export var exits: Array[ZoneExit] = []
+## Комнаты зоны на карте (T-33, AC-04.2). Пусто — зона не отображается на карте.
+@export var map_rooms: Array[ZoneRoom] = []
+## Костры в мировых координатах зоны; карта привязывает их к комнате.
+@export var map_bonfires: Array[Vector2] = []
 
 
 ## Проверка целостности данных зоны. Возвращает список проблем (пусто — данные валидны).
@@ -65,4 +71,30 @@ func validate() -> PackedStringArray:
 			issues.append("exit '%s' has no target_entry_id" % exit_def.id)
 		if exit_def.size.x <= 0.0 or exit_def.size.y <= 0.0:
 			issues.append("exit '%s' has non-positive size" % exit_def.id)
+
+	var room_ids: Dictionary = {}
+	for room: ZoneRoom in map_rooms:
+		if room == null:
+			issues.append("map_rooms contains null")
+			continue
+		if room.id == &"":
+			issues.append("map room id is empty")
+		elif room_ids.has(room.id):
+			issues.append("duplicate map room id '%s'" % room.id)
+		room_ids[room.id] = true
+		if room.grid_position.x < 0 or room.grid_position.y < 0:
+			issues.append("map room '%s' has negative grid position" % room.id)
+		if room.world_rect.size.x <= 0.0 or room.world_rect.size.y <= 0.0:
+			issues.append("map room '%s' has non-positive world rect" % room.id)
+
+	for bonfire_position: Vector2 in map_bonfires:
+		if map_rooms.is_empty():
+			break
+		var inside: bool = false
+		for room: ZoneRoom in map_rooms:
+			if room != null and room.world_rect.has_point(bonfire_position):
+				inside = true
+				break
+		if not inside:
+			issues.append("bonfire %s is outside every map room" % str(bonfire_position))
 	return issues

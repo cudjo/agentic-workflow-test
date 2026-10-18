@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="ZoneData" load_steps=14 format=3]
+[gd_resource type="Resource" script_class="ZoneData" load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_kxu3h"]
 [ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_ma6wk"]
 [ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_1oyym"]
 [ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_br644"]
 [ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_6dxx8"]
+[ext_resource type="Script" path="res://world/zones/zone_room.gd" id="6_room03"]
 
 [sub_resource type="Resource" id="Resource_uk4nd"]
 script = ExtResource("1_kxu3h")
@@ -49,6 +50,13 @@ position = Vector2(392, 48)
 size = Vector2(16, 32)
 target_zone_id = &"zone_04_ruins"
 target_entry_id = &"from_mountains"
+required_ability = &"wall_climb"
+
+[sub_resource type="Resource" id="Resource_room03"]
+script = ExtResource("6_room03")
+id = &"mountains"
+grid_position = Vector2i(7, 6)
+world_rect = Rect2(0, 0, 480, 270)
 
 [sub_resource type="Resource" id="Resource_l3igj"]
 script = ExtResource("3_1oyym")
@@ -67,3 +75,5 @@ ambient_level = 0.36
 tileset = ExtResource("5_6dxx8")
 entry_points = Array[ExtResource("1_kxu3h")]([SubResource("Resource_uk4nd"), SubResource("Resource_ct731"), SubResource("Resource_6ne7h"), SubResource("Resource_ruins_entry")])
 exits = Array[ExtResource("2_ma6wk")]([SubResource("Resource_g5m1y"), SubResource("Resource_xgegj"), SubResource("Resource_ruins_exit")])
+map_rooms = Array[ExtResource("6_room03")]([SubResource("Resource_room03")])
+map_bonfires = Array[Vector2]([Vector2(96, 224)])

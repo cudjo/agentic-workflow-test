@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="ZoneData" load_steps=14 format=3]
+[gd_resource type="Resource" script_class="ZoneData" load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_7nai2"]
 [ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_db616"]
 [ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_511b0"]
 [ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_liiyl"]
 [ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_vnxto"]
+[ext_resource type="Script" path="res://world/zones/zone_room.gd" id="6_room02"]
 
 [sub_resource type="Resource" id="Resource_t32nk"]
 script = ExtResource("1_7nai2")
@@ -49,6 +50,13 @@ position = Vector2(456, 144)
 size = Vector2(16, 32)
 target_zone_id = &"zone_04_ruins"
 target_entry_id = &"from_swamp"
+required_ability = &"dash"
+
+[sub_resource type="Resource" id="Resource_room02"]
+script = ExtResource("6_room02")
+id = &"swamp"
+grid_position = Vector2i(4, 6)
+world_rect = Rect2(0, 0, 480, 270)
 
 [sub_resource type="Resource" id="Resource_1paco"]
 script = ExtResource("3_511b0")
@@ -67,3 +75,5 @@ ambient_level = 0.36
 tileset = ExtResource("5_vnxto")
 entry_points = Array[ExtResource("1_7nai2")]([SubResource("Resource_t32nk"), SubResource("Resource_tipn6"), SubResource("Resource_tnptq"), SubResource("Resource_ruins_entry")])
 exits = Array[ExtResource("2_db616")]([SubResource("Resource_mf6lx"), SubResource("Resource_1dd0c"), SubResource("Resource_ruins_exit")])
+map_rooms = Array[ExtResource("6_room02")]([SubResource("Resource_room02")])
+map_bonfires = Array[Vector2]([Vector2(96, 224)])

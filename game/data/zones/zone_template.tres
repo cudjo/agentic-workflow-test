@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="ZoneData" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="ZoneData" load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_5mqfh"]
 [ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_08qkp"]
 [ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_1byfd"]
 [ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_uhfn1"]
 [ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_rbmsu"]
+[ext_resource type="Script" path="res://world/zones/zone_room.gd" id="6_roomtmpl"]
 
 [sub_resource type="Resource" id="Resource_ewcgj"]
 script = ExtResource("1_5mqfh")
@@ -32,6 +33,11 @@ size = Vector2(16, 32)
 target_zone_id = &"zone_01_village"
 target_entry_id = &"east_gate"
 
+[sub_resource type="Resource" id="Resource_roomtmpl"]
+script = ExtResource("6_roomtmpl")
+id = &"origin"
+grid_position = Vector2i(0, 0)
+
 [sub_resource type="Resource" id="Resource_7mxeq"]
 script = ExtResource("3_1byfd")
 background = Color(0.101961, 0.121569, 0.180392, 1)
@@ -48,3 +54,4 @@ ambient_level = 0.42
 tileset = ExtResource("5_rbmsu")
 entry_points = Array[ExtResource("1_5mqfh")]([SubResource("Resource_ewcgj"), SubResource("Resource_bcl6s")])
 exits = Array[ExtResource("2_08qkp")]([SubResource("Resource_ka4ek"), SubResource("Resource_6ipdw")])
+map_rooms = Array[ExtResource("6_roomtmpl")]([SubResource("Resource_roomtmpl")])

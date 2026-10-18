@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="ZoneData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="ZoneData" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_6hxa8"]
 [ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_mcbbc"]
 [ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_oimi3"]
 [ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_evtq2"]
 [ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_g6np5"]
+[ext_resource type="Script" path="res://world/zones/zone_room.gd" id="6_room05"]
 
 [sub_resource type="Resource" id="Resource_ipn3x"]
 script = ExtResource("1_6hxa8")
@@ -18,6 +19,12 @@ position = Vector2(12, 214)
 size = Vector2(16, 32)
 target_zone_id = &"zone_04_ruins"
 target_entry_id = &"from_finale"
+
+[sub_resource type="Resource" id="Resource_room05"]
+script = ExtResource("6_room05")
+id = &"finale"
+grid_position = Vector2i(10, 3)
+world_rect = Rect2(0, 0, 480, 270)
 
 [sub_resource type="Resource" id="Resource_qqr6v"]
 script = ExtResource("3_oimi3")
@@ -36,3 +43,4 @@ ambient_level = 0.38
 tileset = ExtResource("5_g6np5")
 entry_points = Array[ExtResource("1_6hxa8")]([SubResource("Resource_ipn3x")])
 exits = Array[ExtResource("2_mcbbc")]([SubResource("Resource_tlbse")])
+map_rooms = Array[ExtResource("6_room05")]([SubResource("Resource_room05")])

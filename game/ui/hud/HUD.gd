@@ -11,7 +11,8 @@ extends CanvasLayer
 ##     кулдаун — затемнённая полоса снизу (AC-02.2, контракт T-07);
 ##   * 4 быстрых слота (заглушки, контракт T-21), валюта и очки обучения
 ##     (поле-заглушка T-29);
-##   * справа сверху — название зоны и мини-карта-заглушка (контракт T-33);
+##   * справа сверху — название зоны и миникарта `AshenMinimap` (T-33,
+##     96x54, комнаты 8x6, тот же снимок, что у полной карты);
 ##   * контекстная подсказка ввода (`AshenPrompt` → глиф по
 ##     `InputManager.active_device`, EC-08);
 ##   * подсказка «Нужно: …» над препятствием (AC-02.4, контракт T-09);
@@ -20,8 +21,8 @@ extends CanvasLayer
 ## Источник истины — `GameState` (`hp`, `stamina`, `abilities`, `currency`,
 ## `current_zone_id`), обновления — сигналы `EventBus`. HUD не хранит
 ## собственного геймплейного состояния: только визуальные заглушки полей,
-## чьи системы ещё не реализованы (уровень/очки — T-29, миникарта — T-33,
-## кулдаун dash — T-07), и они описаны в контрактах ниже.
+## чьи системы ещё не реализованы (уровень/очки — T-29, кулдаун dash — T-07),
+## и они описаны в контрактах ниже.
 ##
 ## Все цвета/размеры — `UITokens`, все панели/шкалы/слоты — компоненты T-18.
 ## Состояние дублируется не только цветом: числа HP, «НЕТ СИЛ» + «!»,
@@ -31,9 +32,11 @@ extends CanvasLayer
 ##   * T-29 (прогрессия): `set_level(level)`, `set_training_points(points)`.
 ##     Когда в `GameState` появятся свойства `level`/`training_points`,
 ##     HUD подхватит их в `sync_from_game_state()` без правок HUD.
-##   * T-33 (миникарта): `set_minimap_data({"player_room": Vector2i, ...})`;
-##     поля неизвестных ключей игнорируются, падений нет. T-33 заменяет
-##     `_MinimapStub` на `ui/hud/minimap.gd`, сохраняя пару методов HUD.
+##   * T-33 (миникарта): `set_minimap_data(snapshot)` — внешний снимок
+##     `WorldMapModel.build()`; неизвестные ключи игнорируются, падений нет.
+##     Без внешнего вызова HUD сам синхронизирует миникарту из
+##     `SceneRouter.visited_zone_ids` + `GameState.current_zone_id` + позиции
+##     игрока и набора способностей (тот же снимок, что у `WorldMap`).
 ##   * T-07 (dash): `EventBus.ability_cooldown_changed(ability_id, remaining,
 ##     duration)` ИЛИ `hud.start_ability_cooldown(&"dash", c_dash)`;
 ##     `hud.set_ability_cooldown(...)` для ручной синхронизации.
@@ -47,11 +50,6 @@ const QUICK_SLOT_COUNT: int = 4
 const QUICK_SLOT_GAP: int = 5
 const ABILITY_SLOT_GAP: int = 3
 const ABILITY_IDS: Array[StringName] = [&"double_jump", &"dash", &"wall_climb"]
-const ABILITY_FALLBACK_NAMES: Dictionary = {
-	&"double_jump": "ДВОЙНОЙ ПРЫЖОК",
-	&"dash": "РЫВОК",
-	&"wall_climb": "КАРАБКАНЬЕ",
-}
 const ICON_PATTERNS: Dictionary = {
 	&"double_jump": [
 		"............",
@@ -136,8 +134,11 @@ var _currency_label: Label
 var _points_label: Label
 var _zone_label: Label
 var _minimap_panel: AshenPanel
-var _minimap: _MinimapStub
+var _minimap: AshenMinimap
 var _minimap_data: Dictionary = {}
+var _minimap_override: bool = false
+var _minimap_signature: String = ""
+var _map_model: WorldMapModel
 var _prompt_panel: AshenPanel
 var _prompt: AshenPrompt
 var _prompt_requested: bool = false
@@ -162,6 +163,7 @@ func _ready() -> void:
 	_build()
 	_connect_event_bus()
 	sync_from_game_state()
+	_sync_minimap_data()
 
 
 func _exit_tree() -> void:
@@ -266,12 +268,10 @@ func get_ability_slots() -> Array[AshenSlot]:
 
 
 ## Имя способности для слота/подсказки: реестр T-06, затем fallback HUD.
+## T-33: тот же fallback использует карта (`WorldMapModel.ability_label`),
+## чтобы подписи замков совпадали с HUD.
 func ability_display_name(ability_id: StringName) -> String:
-	if AbilityRegistry.has_ability(ability_id):
-		var ability: AbilityBase = AbilityRegistry.get_ability(ability_id)
-		if ability != null and not ability.display_name.is_empty():
-			return ability.display_name.to_upper()
-	return ABILITY_FALLBACK_NAMES.get(ability_id, String(ability_id).to_upper())
+	return WorldMapModel.ability_label(ability_id)
 
 
 func _refresh_abilities() -> void:
@@ -454,7 +454,7 @@ static func format_number(value_value: int) -> String:
 
 
 # ------------------------------------------------------------------------------
-# Зона и мини-карта (заглушка T-33)
+# Зона и мини-карта (T-33)
 # ------------------------------------------------------------------------------
 
 func get_zone_text() -> String:
@@ -469,19 +469,91 @@ func get_minimap_panel() -> AshenPanel:
 	return _minimap_panel
 
 
-## Данные мини-карты (T-33). Неизвестные/битые поля игнорируются.
+## Внешний снимок миникарты (T-33). Неизвестные/битые поля игнорируются.
+## Пустой словарь снимает внешний override: HUD снова рисует реальную карту.
 func set_minimap_data(data: Dictionary) -> void:
 	_minimap_data = data.duplicate(true)
-	var room: Variant = data.get("player_room")
-	if room is Vector2i:
-		_minimap.player_room = room
-	elif room is Vector2:
-		_minimap.player_room = Vector2i(room)
-	_minimap.queue_redraw()
+	_minimap_override = not data.is_empty()
+	_minimap.set_data(_minimap_data)
+	_minimap_signature = ""
 
 
 func get_minimap_data() -> Dictionary:
 	return _minimap_data.duplicate(true)
+
+
+## Автосинхронизация миникарты с полной картой: один и тот же снимок модели.
+func _sync_minimap_data() -> void:
+	if _minimap_override:
+		return
+	var snapshot: Dictionary = _build_minimap_snapshot()
+	var signature: String = _minimap_snapshot_signature(snapshot)
+	if signature == _minimap_signature:
+		return
+	_minimap_signature = signature
+	_minimap_data = snapshot
+	_minimap.set_data(snapshot)
+
+
+func _build_minimap_snapshot() -> Dictionary:
+	var visited: Array[StringName] = []
+	if SceneRouter.has_method(&"get_visited_zone_ids"):
+		var stored: Variant = SceneRouter.get_visited_zone_ids()
+		if stored is Array:
+			for value: Variant in stored:
+				visited.append(StringName(str(value)))
+	var current_zone: StringName = GameState.current_zone_id
+	if current_zone == &"" and SceneRouter.has_method(&"get"):
+		var router_zone: Variant = SceneRouter.get(&"current_zone_id")
+		if router_zone is StringName:
+			current_zone = router_zone
+	var player_position: Vector2 = _player_position(current_zone)
+	return _map_model_instance().build(
+		visited,
+		current_zone,
+		player_position,
+		GameState.get_abilities()
+	)
+
+
+func _map_model_instance() -> WorldMapModel:
+	if _map_model == null:
+		_map_model = WorldMapModel.new()
+		_map_model.reload()
+	return _map_model
+
+
+## Позиция игрока в текущей зоне; без игрока — центр комнаты (метка видна).
+func _player_position(zone_id: StringName) -> Vector2:
+	var tree := get_tree()
+	if tree != null:
+		var player := tree.get_first_node_in_group(&"player") as Node2D
+		if player != null and is_instance_valid(player):
+			return player.global_position
+	var data: ZoneData = _map_model_instance().get_zone(zone_id)
+	var room: ZoneRoom = WorldMapModel.first_room(data)
+	if room != null:
+		return room.world_rect.get_center()
+	return Vector2.ZERO
+
+
+func _minimap_snapshot_signature(snapshot: Dictionary) -> String:
+	var visited: Array = snapshot.get("visited_zone_ids", [])
+	var visited_text := PackedStringArray()
+	for value: Variant in visited:
+		visited_text.append(str(value))
+	var player: Dictionary = snapshot.get("player", {})
+	var abilities := PackedStringArray()
+	for ability_id: StringName in GameState.get_abilities():
+		abilities.append(String(ability_id))
+	return "%s|%s|%s|%s|%s|%s" % [
+		",".join(visited_text),
+		str(snapshot.get("current_zone_id", "")),
+		str(player.get("cell", Vector2i(-1, -1))),
+		str(player.get("local", Vector2.ZERO)),
+		",".join(abilities),
+		str(snapshot.get("bonfires", []).size()),
+	]
 
 
 func _set_zone(zone_id: StringName, display_name: String) -> void:
@@ -647,6 +719,7 @@ func sync_from_game_state() -> void:
 	_update_currency()
 	_update_zone_from_state()
 	_sync_progression_fields()
+	_sync_minimap_data()
 
 
 ## Поля T-29: пока свойств нет в GameState — остаются значения-заглушки.
@@ -667,6 +740,7 @@ func _poll_game_state() -> void:
 	if signature != _last_abilities:
 		_refresh_abilities()
 		sync_from_game_state()
+	_sync_minimap_data()
 
 
 func _abilities_signature() -> String:
@@ -692,6 +766,7 @@ func _connect_event_bus() -> void:
 	_connect_signal(EventBus.boss_reward_granted, _on_boss_reward_granted)
 	_connect_signal(EventBus.save_loaded, _on_save_loaded)
 	_connect_signal(EventBus.player_respawned, _on_player_respawned)
+	_connect_signal(EventBus.checkpoint_activated, _on_checkpoint_activated)
 	# Контракты T-07/T-09: подключаемся, если сигналы уже объявлены в EventBus.
 	if EventBus.has_signal(&"ability_cooldown_changed"):
 		if not EventBus.is_connected(
@@ -716,6 +791,7 @@ func _disconnect_event_bus() -> void:
 	_disconnect_signal(EventBus.boss_reward_granted, _on_boss_reward_granted)
 	_disconnect_signal(EventBus.save_loaded, _on_save_loaded)
 	_disconnect_signal(EventBus.player_respawned, _on_player_respawned)
+	_disconnect_signal(EventBus.checkpoint_activated, _on_checkpoint_activated)
 	if EventBus.has_signal(&"ability_cooldown_changed"):
 		if EventBus.is_connected(
 			&"ability_cooldown_changed",
@@ -747,12 +823,21 @@ func _on_stamina_changed(current: float, maximum: float) -> void:
 
 func _on_ability_acquired(_ability_id: StringName) -> void:
 	_refresh_abilities()
+	_minimap_override = false
+	_sync_minimap_data()
 
 
 func _on_zone_entered(zone_id: StringName, display_name: String) -> void:
 	_set_zone(zone_id, display_name)
 	_boss_bar.end_fight()
 	_apply_prompt_visibility()
+	_minimap_override = false
+	_sync_minimap_data()
+
+
+func _on_checkpoint_activated(_zone_id: StringName, _bonfire_id: StringName) -> void:
+	_minimap_override = false
+	_sync_minimap_data()
 
 
 func _on_boss_reward_granted(_boss_id: StringName, _reward_id: StringName, _gold: int) -> void:
@@ -874,7 +959,7 @@ func _build_top_right() -> void:
 		int(minimap_size.x),
 		int(minimap_size.y)
 	)
-	_minimap = _MinimapStub.new()
+	_minimap = AshenMinimap.new()
 	_minimap_panel.add_child(_minimap)
 
 	_zone_label = _make_label("", UITokens.STONE_5, HORIZONTAL_ALIGNMENT_RIGHT)
@@ -1242,65 +1327,6 @@ class _PortraitFace extends Control:
 		draw_rect(Rect2(width - 6, 8, 2, 2), UITokens.VOID)
 		# наплечники
 		draw_rect(Rect2(2, size.y - 3, width - 4, 2), UITokens.STEEL_9)
-
-
-## Мини-карта-заглушка до T-33: комнаты, проход, метка игрока.
-class _MinimapStub extends Control:
-
-	const ROOMS: Array[Rect2i] = [
-		Rect2i(4, 6, 20, 14),
-		Rect2i(26, 6, 16, 14),
-		Rect2i(26, 24, 16, 14),
-		Rect2i(44, 24, 20, 14),
-		Rect2i(66, 24, 16, 14),
-	]
-	const LINKS: Array[Rect2i] = [
-		Rect2i(24, 12, 2, 2),
-		Rect2i(33, 20, 2, 4),
-		Rect2i(42, 30, 2, 2),
-		Rect2i(64, 30, 2, 2),
-	]
-
-	var player_room: Vector2i = Vector2i(1, 0)
-	var marker_rooms: Array[Vector2i] = [Vector2i(0, 0), Vector2i(4, 0)]
-
-	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		custom_minimum_size = UITokens.MINIMAP_SIZE
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		draw_rect(Rect2(Vector2.ZERO, size), UITokens.VOID)
-		for index: int in LINKS.size():
-			draw_rect(Rect2(LINKS[index].position, LINKS[index].size), UITokens.STEEL_9)
-		for index: int in ROOMS.size():
-			var room: Rect2i = ROOMS[index]
-			draw_rect(Rect2(room.position, room.size), UITokens.NIGHT_3)
-			UIStyle.draw_frame(
-				self,
-				Rect2(room.position, room.size),
-				UITokens.BORDER_INNER,
-				UITokens.STONE_9
-			)
-		for index: int in marker_rooms.size():
-			var room_index: int = clampi(marker_rooms[index].x, 0, ROOMS.size() - 1)
-			var room: Rect2i = ROOMS[room_index]
-			draw_rect(
-				Rect2(Vector2(room.position) + Vector2(2, 2), Vector2(3, 3)),
-				UITokens.GOLD_9
-			)
-		var player_index: int = clampi(player_room.x, 0, ROOMS.size() - 1)
-		var player_rect: Rect2i = ROOMS[player_index]
-		draw_rect(
-			Rect2(
-				Vector2(player_rect.position) + Vector2(6, 5),
-				Vector2(3, 3)
-			),
-			UITokens.GOLD_3
-		)
-		# закрытый проход (замок) — состояние не только цветом
-		UIStyle.draw_lock(self, Rect2(78, 6, 9, 10), UITokens.STONE_5)
 
 
 ## Затемнённая полоса кулдауна снизу слота (AC-02.2, DESIGN §6.3).
