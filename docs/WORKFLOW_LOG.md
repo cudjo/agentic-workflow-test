@@ -66,6 +66,15 @@
 - Коммит `78be26f`. Godot 4.4.1 portable, GUT 9.4.0, 10 autoload-заглушек, Main.tscn, InputMap. Верификация headless: import + quit + GUT smoke — OK.
 - T-02 и T-03 разблокированы. Запуск параллельно.
 
+## 2026-10-14 — T-02 выполнен (tasker-devops)
+- CI: `.github/workflows/ci.yml` (test + export), `game/export_presets.cfg` (Win/Linux release).
+- ⚠️ Экспорт-шаблоны 4.4.1 ещё докачиваются; пресеты проверены парсингом.
+
+## 2026-10-14 — T-03 выполнен (tasker-backend)
+- Коммит `b806feb`. InputManager.gd, input_buffer.gd, ремап, coyote time, device_changed.
+- GUT: 12/12 passed, 23 asserts.
+- T-04 разблокирован.
+
 ## 2026-10-14 — Planner: План, декомпозиция, инициализация
 
 - **Действие:** Проанализированы `docs/SPEC.md` (гейт 1), `docs/DESIGN.md` и `docs/mockups/` (гейт 2), состояние репозитория. Подготовлены артефакты инициализации.
@@ -134,3 +143,36 @@
   - `test_device_changed_keyboard_event` падал, т.к. `active_device` по умолчанию уже `keyboard`; сигнал не эмитился. Исправлено: в тесте устанавливается `DEVICE_GENERIC` перед эмитацией клавиатурного события.
   - `remap_action` принимает `Array[InputEvent]`; передача `[new_jump]` вызывала ошибку typed array — исправлено явным приведением `var events: Array[InputEvent] = [new_jump]`.
 - **Коммит:** `b806feb` «T-03: InputSystem — буфер ввода, ремап, устройства, coyote-time». Статус задачи остаётся `pending` — отметит QA/Guardian по гейтам.
+
+## 2026-10-18 — Orchestrator: Продолжение реализации (checkpoint/resume)
+
+- **Действие:** Возобновление после паузы. Сверено состояние по журналу и `docs/TASKS.json`.
+- **Состояние:** T-01/T-02/T-03 выполнены (артефакты + коммиты `78be26f`, `b806feb`; статусы `pending` до зелёных гейтов). Гейты 1 и 2 пройдены человеком.
+- **Готовые к запуску задачи (dependsOn выполнены):** T-04 (игрок), T-13 (тайлсеты), T-18 (тема), T-25 (сейвы), T-34 (аудио). Проверено: пересечений по файлам между ними нет.
+- **Решение:** Запуск первой волны из 2 фоновых задач параллельно — **T-04** (backend: контроллер игрока + FSM, критический путь этапов 1–3) и **T-13** (dba: тайлсеты/ZoneData, фундамент зон этапа 4).
+- **Следующие волны:** T-18 + T-25, затем T-34; далее строго по графу зависимостей (T-05/T-06/T-10 после T-04; T-14…T-16 после T-13; и т.д.).
+- **Примечание по окружению:** Godot в системе не установлен — Tasker'ы используют portable-сборку (4.4.x/4.7.x) во временном каталоге через `GODOT_PATH` (конвенция `docs/init.*`, см. логи T-01/T-03).
+
+## 2026-10-18 — T-04 выполнен (tasker-backend)
+
+- **Skills:** загружен `godot` (GDScript, CharacterBody2D, FSM, GUT — профильный стек задачи). Другие skills не требовались.
+- **Действие:** реализован контроллер игрока и FSM по PLAN §2.1/§3.1–3.2, DESIGN §7.
+- **Реализовано:**
+  - `data/balance/balancing.tres` + `BalancingParams` — единый источник: V_walk=90, H_jump=32, t_apex=0.35 (vy0≈182.86, g≈522.45 — выводятся формулами), H_double-фактор, D/T/C_dash, V_wall_slide, T_parry, E_attack/E_block/E_roll, t_attack/t_hurt/t_land/t_death, v_roll и окно i-frames переката (0.07–0.35 s = кадры 2–5).
+  - `entities/player/Player.tscn` — CharacterBody2D, хитбокс 10×20 (RectangleShape2D), слой player/mask world, программная заглушка 16×24, дочерний `StateMachine`.
+  - `entities/player/Player.gd` — ручная гравитация velocity-Verlet (высота прыжка H_jump без дрейфа), движение V_walk, прыжок/перекат/атака/блок/dash через `InputManager` (без дублирования InputMap), coyote-time, буфер, facing, `is_invulnerable()`, `apply_hurt()/kill()`.
+  - `PlayerStateMachine.gd` + `states/` (idle, run, jump, fall, land, attack, block, roll, dash, hurt, death): `request_state()` пропускает только строго высший приоритет, `force_state()` — жизненный цикл внутри тира. Порядок: Death 100 > Hurt 90 > Roll/Dash 80 > Attack/Block 60 > Jump/Fall 50 > Land 30 > Run 10 > Idle 0.
+  - `GameState`: выносливость (stamina_max из balancing.tres, `try_spend_stamina`/`restore_stamina`/`reset_stamina`); `EventBus`: `player_state_changed`, `stamina_changed`, `player_died`.
+- **Верификация (portable Godot 4.4.1):**
+  - `--headless --import` — OK, без ошибок.
+  - `docs/init.ps1` (import + smoke + GUT) — OK.
+  - GUT: **24/24 passed, 95 asserts** (было 12/23; +12 тестов T-04, 0 падений). Покрыто: значения из balancing.tres, старт движения за 1 кадр, высота прыжка ±1 px, jump→fall→land, idle↔run, attack/block, приоритеты Hurt/Death/Roll, i-frames переката (кадры 2–5) и списание E_roll один раз, отказ переката без выносливости.
+  - Smoke `--headless --path game --quit` — OK, скрипт-ошибок/варнингов нет.
+- **Найденные и исправленные проблемы:**
+  - Ручной вызов `_physics_process()` из GUT использует idle-delta (0.15 s) для `move_and_slide()`, из-за чего высота прыжка была 237 px. Тесты переведены на реальные `await physics_frame` (60 Hz).
+  - Гравитация половинными шагами до/после state-update давала Euler-сумму и апекс 33.6 px (пре-шаг затирался импульсом прыжка). Полушаг перенесён после state-update → velocity-Verlet, апекс в пределах ±1 px.
+  - `block` буферизовался как одноразовое действие и «залипал» после отпускания; убран из буфера (блок — удерживаемое действие).
+  - `docs/init.ps1` / `init.sh` запускали GUT без `-ginclude_subdirs` → «Nothing was run» с кодом 0. Добавлен флаг; init теперь реально прогоняет 24 теста.
+- **Кросс-файловые правки:** `autoload/EventBus.gd` (3 сигнала), `autoload/GameState.gd` (выносливость), `autoload/InputManager.gd` (`capture_buffer()` — арминг 150-мс буфера по физическому нажатию), `docs/init.ps1`, `docs/init.sh`.
+- **Замечание для следующих задач:** состояние `dash` реализовано как задел (D_dash/T_dash, i-frames), но ещё не гейтится способностью — это T-07; `attack`/`block` — каркас без хитбоксов/парирования (T-10/T-11); `t_parry`/`v_wall_slide` заведены в баланс под T-08/T-11.
+- **Коммит:** `c8f684e` «T-04: контроллер игрока + FSM». Статус задачи остаётся `pending` — отметит QA/Guardian по гейтам.
