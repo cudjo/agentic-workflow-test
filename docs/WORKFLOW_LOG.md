@@ -198,7 +198,8 @@
   - `world/props/` — bonfire, chest, door, rubble (scenes + typed scripts; rubble — StaticBody2D-блок с `blocking`).
 - **Проверки (portable Godot 4.4.1-stable, headless):**
   - `--headless --path game --import` — exit 0, без ошибок; PNG-атлас и `.uid` импортированы/закоммичены.
-  - GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **72/72 passed, 443 asserts** (включая 29 новых тестов T-13; тесты T-03/T-04/T-10 не сломаны).
+  - GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **80/80 passed, 491 asserts** (включая 29 новых тестов T-13; тесты T-03/T-04/T-10 не сломаны).
+  - Чистый HEAD-коммит в отдельном worktree (без незакоммиченных файлов T-10): GUT **53/53 passed, 353 asserts**, import exit 0 — коммит самодостаточен.
   - T-13 GUT: ZoneData — все поля/валидация; TileSet — слои/terrain sets/custom data/полигоны; физика — игрок стоит на solid, падает сквозь ladder/hazard и проходит one-way снизу, приземляется сверху; hazard/ladder-слои находятся shape-запросом; solid при `scale=2` даёт коллизию в масштабе (y=22); шаблон грузится `SceneRouter.instantiate_zone`, применяет поля, создаёт входы/выходы, эмитит `zone_entered` и `exit_requested`.
   - Smoke `--headless --path game --quit-after 90` — без скрипт-ошибок/варнингов.
 - **Найденные и исправленные проблемы:**
@@ -208,6 +209,7 @@
   4. Проверка масштаба подтвердила: one-way-полигон с нужной намоткой блокирует сверху и пропускает снизу; целочисленный `scale=2` даёт корректную коллизию.
 - **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+`zone_entered` — минимальный контракт для баннера T-14/загрузки T-17), `autoload/SceneRouter.gd` (+`instantiate_zone()` — только загрузка/проверка WorldRoot-совместимости; переходы/экран загрузки остаются T-17).
 - **Замечание:** в рабочем дереве параллельно присутствовали незакоммиченные файлы T-10 (combat/) и приёмочная запись T-04 — в коммит T-13 не включались; `docs/TASKS.json` и статус задачи не менялись (`pending` до QA/Guardian).
+- **Коммит:** `d1e46b9` «T-13: тайлсеты, ZoneData, props и шаблон зоны». Статус остаётся `pending` — отметит QA/Guardian по гейтам.
 
 ## 2026-10-18 — T-10 выполнен (tasker-backend)
 
