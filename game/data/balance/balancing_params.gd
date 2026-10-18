@@ -48,6 +48,23 @@ extends Resource
 ## Задержка экрана смерти, s (AC-05.2).
 @export var t_death: float = 1.2
 
+@export_group("Combat")
+## Множитель урона формулы `weapon_damage * combo_multiplier * damage_multiplier`
+## (T-10, AC-03.1).
+@export var damage_multiplier: float = 1.0
+## Минимальный урон после вычета защиты (формула не уходит в ноль).
+@export var min_damage: float = 1.0
+## Длительность вспышки попадания, s; жёстко ограничена 0.1 s (AC-03.1).
+@export var hit_flash_duration: float = 0.08
+## Множитель силы отбрасывания из данных оружия.
+@export var knockback_scale: float = 1.0
+## Окно связки комбо в конце удара, s (T-10).
+@export var combo_link_window: float = 0.12
+## Начало активной фазы хитбокса как доля длительности удара.
+@export var combo_hit_start_ratio: float = 0.33
+## Конец активной фазы хитбокса как доля длительности удара.
+@export var combo_hit_end_ratio: float = 0.66
+
 @export_group("Stamina")
 ## Максимальная выносливость.
 @export var stamina_max: float = 100.0
@@ -57,6 +74,12 @@ extends Resource
 @export var e_block: float = 8.0
 ## Стоимость переката.
 @export var e_roll: float = 10.0
+## Стоимость рывка.
+@export var e_dash: float = 12.0
+## Задержка перед началом восстановления выносливости, s.
+@export var stamina_regen_delay: float = 0.8
+## Скорость восстановления выносливости в покое, единиц/s.
+@export var stamina_regen_rate: float = 25.0
 
 
 ## Начальная вертикальная скорость прыжка (px/s, вверх — отрицательная).

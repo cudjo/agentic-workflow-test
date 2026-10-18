@@ -8,9 +8,12 @@ extends CharacterBody2D
 ## Movement/timings are delegated to PlayerStateMachine (DESIGN §7 priorities).
 
 const BALANCE_PATH: String = "res://data/balance/balancing.tres"
+const FALLBACK_WEAPON_PATH: String = "res://data/weapons/one_handed_sword.tres"
 ## Actions whose presses are kept in InputManager's buffer for 150 ms.
 ## Block is not buffered: it is a held action, so engine state is enough.
 const BUFFERED_ACTIONS: Array[StringName] = [&"jump", &"attack", &"roll", &"dash"]
+## States in which stamina regenerates after `stamina_regen_delay` (T-10).
+const RESTING_STATES: Array[StringName] = [&"idle", &"run", &"land"]
 
 ## Movement/timing data (single source of truth).
 @export var balance: BalancingParams
@@ -18,8 +21,14 @@ const BUFFERED_ACTIONS: Array[StringName] = [&"jump", &"attack", &"roll", &"dash
 ## FSM node. Untyped on purpose: Player -> PlayerStateMachine -> states -> Player
 ## would otherwise form a cyclic class reference.
 var state_machine
+## Melee combo state for the current weapon (T-10).
+var combo: ComboTracker
+var attack_hitbox: Hitbox
 var facing: int = 1
 var is_dead: bool = false
+
+var _hitbox_step: int = -1
+var _combo_weapon_id: StringName = &""
 
 @onready var visual: Sprite2D = $Visual
 
@@ -29,6 +38,8 @@ func _ready() -> void:
 		balance = load(BALANCE_PATH) as BalancingParams
 	if balance == null:
 		push_error("Player: balancing resource is missing at %s" % BALANCE_PATH)
+	attack_hitbox = get_node_or_null("Hitbox") as Hitbox
+	_configure_combo()
 	state_machine = get_node_or_null("StateMachine")
 	if state_machine == null:
 		push_error("Player: StateMachine child node is missing")
@@ -55,6 +66,8 @@ func _physics_process(delta: float) -> void:
 		velocity.y += gravity * delta * 0.5
 	if is_on_floor() and velocity.y > 0.0:
 		velocity.y = 0.0
+
+	GameState.update_stamina(delta, is_resting())
 
 
 # ------------------------------------------------------------------------------
@@ -120,21 +133,50 @@ func try_dash() -> bool:
 		return false
 	if not InputManager.just_pressed(&"dash"):
 		return false
+	if not GameState.try_spend_stamina(balance.e_dash):
+		return false
 	return state_machine.request_state(&"dash")
 
 
+## Melee attack: costs E_attack; starts the weapon's combo (T-10, AC-03.3).
+## At zero stamina the attack is refused and the HUD "no stamina" flag is up.
 func try_attack() -> bool:
 	if not state_machine.can_request(&"attack"):
 		return false
 	if not InputManager.just_pressed(&"attack"):
 		return false
+	if not GameState.try_spend_stamina(balance.e_attack):
+		return false
+	if combo == null or get_weapon() == null or get_weapon().id != _combo_weapon_id:
+		_configure_combo()
+	if combo == null:
+		return false
+	combo.start()
 	return state_machine.request_state(&"attack")
+
+
+## Chains the next combo hit when the link window is open; costs E_attack.
+func try_link_attack() -> bool:
+	if combo == null or not combo.can_link():
+		return false
+	if not GameState.try_spend_stamina(balance.e_attack):
+		return false
+	return combo.try_link()
+
+
+## Advances the active combo by one physics tick; true when the swing ended.
+func advance_combo(delta: float) -> bool:
+	if combo == null:
+		return true
+	return combo.advance(delta)
 
 
 func try_block() -> bool:
 	if not state_machine.can_request(&"block"):
 		return false
 	if not is_block_held():
+		return false
+	if not GameState.try_spend_stamina(balance.e_block):
 		return false
 	return state_machine.request_state(&"block")
 
@@ -173,6 +215,65 @@ func reset_player() -> void:
 # ------------------------------------------------------------------------------
 # Queries
 # ------------------------------------------------------------------------------
+
+## Weapon data for the current run (GameState is the source of truth).
+func get_weapon() -> WeaponData:
+	if GameState.weapon != null:
+		return GameState.weapon
+	return load(FALLBACK_WEAPON_PATH) as WeaponData
+
+
+## Stamina regenerates only in locomotion states (T-10).
+func is_resting() -> bool:
+	return RESTING_STATES.has(get_state_name())
+
+
+## Mirrors the combo hit window onto the Hitbox child (AC-03.1).
+## Hitbox is enabled for the active phase of the current combo step only.
+func sync_attack_hitbox() -> void:
+	if attack_hitbox == null or combo == null:
+		return
+	var hit_active: bool = (
+		combo.is_active()
+		and combo.is_hit_active(balance.combo_hit_start_ratio, balance.combo_hit_end_ratio)
+	)
+	if not hit_active:
+		attack_hitbox.deactivate()
+		return
+	if combo.step_index != _hitbox_step:
+		_hitbox_step = combo.step_index
+		attack_hitbox.clear_hits()
+	var weapon_data: WeaponData = get_weapon()
+	var weapon_damage: float = weapon_data.damage if weapon_data != null else 0.0
+	var step_multiplier: float = (
+		weapon_data.get_step_multiplier(combo.step_index) if weapon_data != null else 1.0
+	)
+	var payload: Damage = Damage.compute(balance, weapon_damage, step_multiplier)
+	var knockback_force: float = (
+		weapon_data.knockback * balance.knockback_scale if weapon_data != null else 0.0
+	)
+	attack_hitbox.activate(payload, knockback_force, Vector2(float(facing), 0.0))
+
+
+func stop_attack_hitbox() -> void:
+	_hitbox_step = -1
+	if attack_hitbox != null:
+		attack_hitbox.deactivate()
+
+
+func _configure_combo() -> void:
+	var weapon_data: WeaponData = get_weapon()
+	if weapon_data == null or balance == null:
+		combo = ComboTracker.new()
+		return
+	combo = ComboTracker.new()
+	combo.setup(
+		weapon_data.get_combo_length(),
+		balance.t_attack * weapon_data.attack_speed,
+		balance.combo_link_window
+	)
+	_combo_weapon_id = weapon_data.id
+
 
 func get_state_name() -> StringName:
 	if state_machine == null:

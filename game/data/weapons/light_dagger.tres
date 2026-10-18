@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/weapons/weapon_data.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"light_dagger"
+display_name_key = "weapon.light_dagger.name"
+weapon_type = 0
+damage = 6.0
+knockback = 55.0
+attack_speed = 0.7
+combo_multipliers = PackedFloat32Array(1, 0.8, 1.25)
