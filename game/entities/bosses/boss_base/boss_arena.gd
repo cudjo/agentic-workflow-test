@@ -61,6 +61,13 @@ func _ready() -> void:
 	queue_redraw()
 
 
+## Выход из зоны в бою (SceneRouter) не должен оставлять `in_combat` включённым.
+func _exit_tree() -> void:
+	if _fight_started:
+		_fight_started = false
+		GameState.set_in_combat(false)
+
+
 ## Открывает бой. Возвращает false, если босс уже побеждён/отсутствует.
 func start_fight() -> bool:
 	if _fight_started:
@@ -69,6 +76,7 @@ func start_fight() -> bool:
 		# Повторный вход на арену после смерти босса: добираем награду EC-09.
 		if _zone_id != &"":
 			GameState.claim_pending_boss_rewards(_zone_id)
+		GameState.set_in_combat(false)
 		_open_barriers()
 		return false
 
@@ -76,14 +84,18 @@ func start_fight() -> bool:
 		boss.queue_free()
 		boss = null
 		GameState.claim_pending_boss_rewards(_zone_id)
+		GameState.set_in_combat(false)
 		_open_barriers()
 		return false
 
 	_fight_started = true
 	_close_barriers()
+	# EC-06 (Integration-02): бой блокирует не-боевые интерактивы и сохранение.
+	GameState.set_in_combat(true)
 	boss.arena_bounds = Rect2(global_position + bounds.position, bounds.size)
 	if not boss.activate_fight():
 		_fight_started = false
+		GameState.set_in_combat(false)
 		_open_barriers()
 		return false
 	fight_started.emit()
@@ -110,6 +122,7 @@ func _on_trigger_body_entered(body: Node2D) -> void:
 
 func _on_boss_defeated(_boss: BossBase) -> void:
 	_fight_started = false
+	GameState.set_in_combat(false)
 	_open_barriers()
 	fight_finished.emit()
 

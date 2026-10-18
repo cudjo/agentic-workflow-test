@@ -22,6 +22,14 @@ extends Node2D
 ## Цвет силуэта-заглушки в мире до арта NPC.
 @export var placeholder_color: Color = Color(0.29, 0.32, 0.36, 1.0)
 
+## Группа для interact-системы игрока (Integration-02): `DialogueNpc` и
+## `TraderNpc` находятся одним запросом, без обхода дерева зоны.
+const GROUP: StringName = &"dialogue_npcs"
+
+
+func _ready() -> void:
+	add_to_group(GROUP)
+
 
 func get_data() -> DialogueData:
 	if dialogue == null and not dialogue_id.is_empty():

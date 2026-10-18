@@ -423,6 +423,18 @@
 - **Все 36 имплементаций запущены; осталась T-36 (в работе) + QA.** Перед QA закрываю накопленные интеграционные зазоры.
 - **Решение (зазор «сериализация»):** слот освобождён (T-11) → запуск **Integration-01** (персист visited_zones + passed_gates + journal, schema v5→v6) — backend, безопасно параллельно с T-36 (локализация не трогает `core/save/`). Сборку Main/зон/интеракций сделаю после T-36.
 
+## 2026-10-18 — Orchestrator: Приёмка Integration-01, ожидание T-36
+
+- **Integration-01 принят:** персист visited_zones/passed_gates/journal (блок `session`, schema v5→v6), коммит `b8bea0f`, GUT **499/499, 5236 asserts** (чистый worktree). Кросс-правки `save_serializer`, `save_migrations`, `SaveManager`, `ability_gate.gd` (+get/restore/refresh) — на контроль Guardian.
+- **Остаточный зазор (→ Integration-02):** «Новая игра» не сбрасывает `passed_gates`/`journal` (правка в `ui/menus/MainMenu.gd` — отложена из-за T-36).
+- **Решение:** жду завершения T-36 (локализация), т.к. Integration-02 (сборка Main/зон/интеракций + reset-фикс) трогает `ui/menus/MainMenu.gd` и `Main.tscn` — конфликтует с T-36. Слот параллелизма не заполняю.
+
+## 2026-10-18 — Orchestrator: Приёмка T-36, запуск Integration-02 (сборка)
+
+- **T-36 принят:** локализация RU/EN (415 ключей CSV, весь UI через `tr()`, мгновенное переключение, переполнение проверено 64 рендерами 100/150%), коммит `dd7ed96`, GUT **510/510, 6936 asserts** (+10 тестов). Кросс-правки `project.godot` (translations), autoload'ы, данные, весь UI — на контроль Guardian.
+- **Все 36 задач T-01…T-36 + Integration-01 выполнены.** Осталась сборка → QA (T-37) → Guardian → гейт merge.
+- **Решение:** запуск **Integration-02** (финальная сборка: сцена-флоу MainMenu→Main→зона, монтаж HUD/DialogueScreen/DeathHandler, interact-система игрока, расстановка арен боссов и NPC, reset «Новой игры»).
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -918,3 +930,13 @@
 - **Кросс-файловые правки (на контроль Guardian):** `autoload/SaveManager.gd` (применение `session` после `state`), `autoload/Journal.gd` и `autoload/SceneRouter.gd` (только doc-комментарии), `world/props/ability_gate.gd` (+группа/API восстановления). `GameState.gd` не менялся. `ui/`, `assets/locale/`, `autoload/Locale.gd`, `Main.tscn`, сцены зон, `docs/TASKS.json`, `game/tests/_probe.gd`, `opencode.jsonc` не трогались.
 - **Ограничения:** в рабочем дереве параллельно шла T-36 — baseline полного GUT до правок дал 494/496 (падения `test_campfire` слотов и `test_remap_journal_factions` из-за незакоммиченных locale/UI-правок и конкурентного `user://`), в чистом worktree `b8bea0f` — 499/499. Новая игра из меню (`MainMenu._reset_for_new_game`) сбрасывает `SceneRouter`, но не вызывает `AbilityGate.reset_passed_gates()`/`Journal.reset_state()` — после загрузки слота и старта «Новой игры» прогресс мира может остаться; правка в `ui/` запрещена рамками задачи, выношу в сборку Main после T-36. Независимые приёмка QA и ревью Guardian Tasker'ом не выполнялись.
 - **Коммит:** `b8bea0f` «Integration-01: персист visited_zones/passed_gates/journal (schema v6)».
+
+## 2026-10-19 — Integration-02 выполнен (tasker)
+
+- **Skills:** загружен `godot` (GDScript 4.4, `.tscn`/PackedScene, CanvasLayer/Control, autoload/сигналы, GUT/headless — профильный стек сборки сцен). Другие skills не требовались: нет React/PostgreSQL/Docker/Go/Python-контекста.
+- **Действие:** финальная сборка готовых систем (follow-up Orchestrator, не из `docs/TASKS.json`) — сцена-флоу меню → игра, монтаж HUD/DialogueScreen/DeathHandler, interact-система игрока, арены боссов в зонах, NPC в хабе, reset «Новой игры». Статусы задач не менялись.
+- **Сделано:** `run/main_scene` → `MainMenu.tscn`; `Main.tscn` — HUD (10), DialogueScreen (20, группа `dialogue_ui`), DeathHandler (`death_handler`), Campfire в `campfire_ui`; новый `PlayerInteraction` (interact → ближайший костёр/NPC, блок в бою/загрузке/открытом UI); арены `boss_arena_zone_01..04` вставлены в зоны 1–4 (узкий trigger — вход в правую половину, заглушка неба скрыта `self_modulate`, босс виден); `KeeperNpc`/`TraderNpc` на маркерах хаба; `MainMenu._reset_for_new_game` сбрасывает `AbilityGate.passed_gates`/`Journal`; `BossArena` выставляет `GameState.in_combat` (EC-06).
+- **Тесты/evidence (portable Godot 4.4.1, headless):** `--headless --import` exit 0; GUT **518/518 passed, 7047 asserts** (+8 `tests/integration/test_assembly.gd`, 111 assert); `--headless --path game --quit-after 180`, `Main.tscn`, зоны 1–5 — exit 0 без SCRIPT ERROR; flow-смоук `tests/tools/assembly_flow_smoke.tscn` — меню → «Новая игра» → зона 1 (игрок/HUD/NPC/арена) → interact у костра, `ASSEMBLY_FLOW_OK`, exit 0.
+- **Найденное:** полноэкранные заглушки арен закрывали арт однокомнатных зон и триггерили бой на спавне (trigger сужен, отрисовка арены скрыта); арены 1–4 не включали EC-06 `in_combat`; `-s`-смоук не видит autoload-имена (переделан в сцену-раннер); observer для смены сцен добавляется в root отложенно.
+- **Ограничения:** арены живут в комнате зоны (отдельных босс-комнат/камеры нет), визуальные створки барьеров не рисуются (физика работает); «Продолжить» ставит на точку входа зоны, не на чекпоинт. Подробности — `docs/features/integration-02/WORKFLOW_LOG.md`. Независимые QA/Guardian не выполнялись.
+- **Коммит:** «Integration-02: финальная сборка — флоу/монтаж/interact/арены/NPC/reset».

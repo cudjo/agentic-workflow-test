@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://Main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://ui/map/WorldMap.tscn" id="2_map"]
@@ -10,14 +10,16 @@
 [ext_resource type="PackedScene" path="res://ui/factions/Factions.tscn" id="8_factions"]
 [ext_resource type="PackedScene" path="res://ui/factions/FactionChoice.tscn" id="9_choice"]
 [ext_resource type="PackedScene" path="res://ui/inventory/Inventory.tscn" id="10_inventory"]
+[ext_resource type="PackedScene" path="res://ui/hud/HUD.tscn" id="11_hud"]
+[ext_resource type="PackedScene" path="res://ui/dialogue/DialogueScreen.tscn" id="12_dialogue"]
+[ext_resource type="Script" path="res://core/death/death_handler.gd" id="13_death_handler"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_main")
 
 [node name="WorldRoot" type="Node2D" parent="."]
 
-[node name="HUD" type="CanvasLayer" parent="."]
-layer = 10
+[node name="HUD" parent="." instance=ExtResource("11_hud")]
 
 [node name="UI" type="CanvasLayer" parent="."]
 layer = 20
@@ -34,7 +36,12 @@ layer = 20
 
 [node name="Inventory" parent="." instance=ExtResource("10_inventory")]
 
-[node name="Campfire" parent="." instance=ExtResource("5_campfire")]
+[node name="Campfire" parent="." instance=ExtResource("5_campfire") groups=["campfire_ui"]]
+
+[node name="DialogueScreen" parent="." instance=ExtResource("12_dialogue") groups=["dialogue_ui"]]
+
+[node name="DeathHandler" type="Node" parent="."]
+script = ExtResource("13_death_handler")
 
 [node name="Toasts" type="CanvasLayer" parent="."]
 layer = 30

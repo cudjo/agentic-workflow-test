@@ -890,6 +890,11 @@ func _reset_for_new_game() -> void:
 	GameState.reset_stamina()
 	if SceneRouter.has_method(&"reset"):
 		SceneRouter.reset()
+	# Integration-02: прогресс мира не переживает «Новую игру». SceneRouter.reset()
+	# чистит visited_zones; пройденные ability gates и журнал живут в статике
+	# AbilityGate/autoload Journal и сбрасываются здесь же.
+	AbilityGate.reset_passed_gates()
+	Journal.reset_state()
 
 
 func _connect_signals() -> void:

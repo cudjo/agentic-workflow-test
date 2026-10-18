@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=4]
+[gd_scene load_steps=25 format=4]
 
 [ext_resource type="Script" path="res://world/zones/zone_scene.gd" id="1_vk41c"]
 [ext_resource type="Resource" path="res://data/zones/zone_01_village.tres" id="2_q6kwn"]
@@ -14,6 +14,9 @@
 [ext_resource type="Script" path="res://world/zones/zone_01_village/zone_01_foreground.gd" id="13_20vpb"]
 [ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="14_yjrm6"]
 [ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="15_2v7ew"]
+[ext_resource type="PackedScene" path="res://entities/bosses/zone_01/boss_arena_zone_01.tscn" id="16_arena"]
+[ext_resource type="Script" path="res://entities/npc/dialogue_npc.gd" id="17_npc"]
+[ext_resource type="Script" path="res://entities/npc/trader_npc.gd" id="18_trader"]
 
 [sub_resource type="Gradient" id="Gradient_mcwiw"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
@@ -37,6 +40,9 @@ size = Vector2(480, 6)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_680nj"]
 size = Vector2(480, 2)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_arena_entry"]
+size = Vector2(228, 200)
 
 [node name="Zone01Village" type="Node2D"]
 script = ExtResource("1_vk41c")
@@ -142,6 +148,24 @@ metadata/future_gate = "T-09"
 [node name="Foreground" type="Node2D" parent="."]
 script = ExtResource("13_20vpb")
 
+[node name="Arena" type="Node2D" parent="."]
+
+[node name="ArenaAnchor" type="Marker2D" parent="Arena"]
+metadata/role = &"boss_arena"
+
+[node name="ArenaEntrance" type="Marker2D" parent="Arena"]
+position = Vector2(240, 214)
+metadata/role = &"boss_arena_entrance"
+
+[node name="BossArenaZone01" parent="Arena" instance=ExtResource("16_arena")]
+self_modulate = Color(1, 1, 1, 0)
+
+[node name="Trigger" parent="Arena/BossArenaZone01" index="3"]
+position = Vector2(354, 120)
+
+[node name="CollisionShape2D" parent="Arena/BossArenaZone01/Trigger" index="0"]
+shape = SubResource("RectangleShape2D_arena_entry")
+
 [node name="NPCs" type="Node2D" parent="."]
 
 [node name="NPC_Keeper" type="Marker2D" parent="NPCs"]
@@ -151,6 +175,21 @@ metadata/role = &"npc"
 [node name="Trader" type="Marker2D" parent="NPCs"]
 position = Vector2(292, 214)
 metadata/role = &"trader"
+
+[node name="KeeperNpc" type="Node2D" parent="NPCs"]
+position = Vector2(150, 214)
+script = ExtResource("17_npc")
+dialogue_id = &"elder_lira"
+
+[node name="TraderNpc" type="Node2D" parent="NPCs"]
+position = Vector2(292, 214)
+script = ExtResource("18_trader")
+dialogue_id = &"quartermaster_helga"
+stock = Array[StringName]([&"healing_herb", &"iron_dagger"])
+prices = {
+"healing_herb": 25,
+"iron_dagger": 60
+}
 
 [node name="Entries" type="Node2D" parent="."]
 unique_name_in_owner = true

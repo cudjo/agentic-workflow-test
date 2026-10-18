@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://entities/player/Player.gd" id="1_player"]
 [ext_resource type="Resource" path="res://data/balance/balancing.tres" id="2_balance"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://core/combat/hitbox.gd" id="4_hitbox"]
 [ext_resource type="Script" path="res://core/combat/hurtbox.gd" id="5_hurtbox"]
 [ext_resource type="Script" path="res://entities/player/PlayerAnimation.gd" id="6_animation"]
+[ext_resource type="Script" path="res://entities/player/player_interaction.gd" id="7_interaction"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hitbox"]
 size = Vector2(10, 20)
@@ -67,3 +68,6 @@ shape = SubResource("RectangleShape2D_hurt")
 
 [node name="StateMachine" type="Node" parent="."]
 script = ExtResource("3_state_machine")
+
+[node name="Interaction" type="Node" parent="."]
+script = ExtResource("7_interaction")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=4]
+[gd_scene load_steps=26 format=4]
 
 [ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_scene.gd" id="1_yywuo"]
 [ext_resource type="Resource" path="res://data/zones/zone_04_ruins.tres" id="2_v7hlj"]
@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_glow.gd" id="15_ksx2k"]
 [ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="16_ciisd"]
 [ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="17_2wfwk"]
+[ext_resource type="PackedScene" path="res://entities/bosses/zone_04/boss_arena_zone_04.tscn" id="18_arena"]
 
 [sub_resource type="Gradient" id="Gradient_4o48h"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
@@ -40,6 +41,9 @@ size = Vector2(480, 6)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uodgm"]
 size = Vector2(480, 2)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_arena_entry"]
+size = Vector2(228, 200)
 
 [node name="Zone04Ruins" type="Node2D"]
 script = ExtResource("1_yywuo")
@@ -146,6 +150,24 @@ lever_id = &"right"
 
 [node name="Foreground" type="Node2D" parent="."]
 script = ExtResource("14_7mjg6")
+
+[node name="Arena" type="Node2D" parent="."]
+
+[node name="ArenaAnchor" type="Marker2D" parent="Arena"]
+metadata/role = &"boss_arena"
+
+[node name="ArenaEntrance" type="Marker2D" parent="Arena"]
+position = Vector2(240, 214)
+metadata/role = &"boss_arena_entrance"
+
+[node name="BossArenaZone04" parent="Arena" instance=ExtResource("18_arena")]
+self_modulate = Color(1, 1, 1, 0)
+
+[node name="Trigger" parent="Arena/BossArenaZone04" index="5"]
+position = Vector2(354, 120)
+
+[node name="CollisionShape2D" parent="Arena/BossArenaZone04/Trigger" index="0"]
+shape = SubResource("RectangleShape2D_arena_entry")
 
 [node name="Glow" type="CanvasLayer" parent="."]
 
