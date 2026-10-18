@@ -20,6 +20,7 @@ trade_denied_reason = "Торговец «{faction}» не станет гово
 quest_denied_reason = "«{faction}» не доверит этот квест: репутация {reputation} ниже порога {threshold}. Помощь можно найти у союзной фракции."
 alternative_faction_id = &"free"
 reputation_events = {
+"action_campfire_oath": 1,
 "quest_clear_swamp": 15,
 "quest_guard_patrol": 10,
 "quest_free_smuggle": -10,

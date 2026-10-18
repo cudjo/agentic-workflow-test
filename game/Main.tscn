@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://ui/map/WorldMap.tscn" id="2_map"]
 [ext_resource type="Script" path="res://ui/components/toast_host.gd" id="3_toast_host"]
 [ext_resource type="PackedScene" path="res://ui/death/DeathScreen.tscn" id="4_death"]
+[ext_resource type="PackedScene" path="res://ui/campfire/Campfire.tscn" id="5_campfire"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_main")
@@ -17,6 +18,8 @@ layer = 10
 layer = 20
 
 [node name="WorldMap" parent="." instance=ExtResource("2_map")]
+
+[node name="Campfire" parent="." instance=ExtResource("5_campfire")]
 
 [node name="Toasts" type="CanvasLayer" parent="."]
 layer = 30
