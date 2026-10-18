@@ -3,7 +3,8 @@ extends GutTest
 ## (PLAN §3.4, AC-05.1, EC-07/EC-14). T-26 — schema v3: HP, инвентарь,
 ## способности, смерть/corpse run и чекпоинт костра. T-27 — schema v4:
 ## репутация фракций и выбранная фракция (US-06). T-29 — schema v5:
-## характеристики, очки обучения, уровень и опыт (US-08).
+## характеристики, очки обучения, уровень и опыт (US-08). Integration-01 —
+## schema v6: посещённые зоны, пройденные ability gates и журнал.
 ##
 ## Тесты работают в отдельном каталоге `user://test_saves_t25`, чтобы не
 ## трогать реальные слоты игрока; `SaveManager.saves_dir` переопределяется
@@ -32,6 +33,9 @@ var _original_stats: Dictionary = {}
 var _original_learning_points: int = 0
 var _original_level: int = 1
 var _original_xp: int = 0
+var _original_visited: Array[StringName] = []
+var _original_passed_gates: Array[StringName] = []
+var _original_journal: Dictionary = {}
 
 
 func before_all() -> void:
@@ -75,6 +79,14 @@ func before_each() -> void:
 	GameState.clear_corpse()
 	GameState.death_active = false
 	GameState.set_in_combat(false)
+	# Integration-01: прогресс мира живёт в автолоадах — тест сохраняет его
+	# и начинает с пустого, чтобы загрузка была заметна и не текла между тестами.
+	_original_visited = SceneRouter.get_visited_zone_ids()
+	_original_passed_gates = AbilityGate.get_passed_gate_ids()
+	_original_journal = Journal.get_state()
+	SceneRouter.reset_visited_zones()
+	AbilityGate.reset_passed_gates()
+	Journal.reset_state()
 	_cleanup_dir()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(TEST_DIR))
 
@@ -110,6 +122,9 @@ func after_each() -> void:
 	GameState.active_slot = _original_active_slot
 	GameState.set_in_combat(_original_in_combat)
 	GameState.restore_factions(_original_factions, _original_chosen_faction)
+	SceneRouter.restore_visited_zones(_original_visited)
+	AbilityGate.restore_passed_gates(_original_passed_gates)
+	Journal.restore_state(_original_journal)
 	_cleanup_dir()
 
 
@@ -604,6 +619,106 @@ func test_round_trip_restores_progression() -> void:
 	assert_true(raw.contains("\"learning_points\":5"), "save body carries learning points")
 	assert_true(raw.contains("\"level\":3"), "save body carries level")
 	assert_true(raw.contains("\"xp\":300"), "save body carries XP")
+
+
+func test_round_trip_restores_visited_zones_gates_and_journal() -> void:
+	# Integration-01 (schema v6): прогресс мира вне GameState.
+	SceneRouter.restore_visited_zones([&"zone_01_village", &"zone_03_mountains"])
+	AbilityGate.mark_gate_passed(&"mountains_dash_ledge")
+	AbilityGate.mark_gate_passed(&"village_ledge")
+	Journal.start_quest(&"quest_clear_swamp")
+	Journal.start_quest(&"quest_guard_patrol")
+	Journal.complete_quest(&"quest_guard_patrol")
+	Journal.record_event(&"zone_entered", "Деревня-бастион")
+	Journal.record_event(&"boss_defeated", "Палач пал")
+
+	assert_true(
+		SaveManager.save_slot(1, {"zone_id": "zone_03_mountains"}),
+		"visited zones/gates/journal save"
+	)
+
+	# Чистим всё, чтобы загрузка была заметна.
+	SceneRouter.reset_visited_zones()
+	AbilityGate.reset_passed_gates()
+	Journal.reset_state()
+	assert_eq(SceneRouter.get_visited_zone_ids(), [], "world progress is cleared before load")
+
+	assert_true(SaveManager.load_slot(1), "schema v6 slot loads")
+	assert_eq(
+		SceneRouter.get_visited_zone_ids(),
+		[&"zone_01_village", &"zone_03_mountains"],
+		"visited zones are restored (AC-04.2)"
+	)
+	assert_true(
+		AbilityGate.is_gate_passed(&"mountains_dash_ledge"),
+		"passed gate is restored (EC-10)"
+	)
+	assert_true(AbilityGate.is_gate_passed(&"village_ledge"), "all passed gates are restored")
+	assert_false(
+		AbilityGate.is_gate_passed(&"swamp_dash_gate"),
+		"gates that were not passed stay closed"
+	)
+
+	assert_true(Journal.is_active(&"quest_clear_swamp"), "active quest is restored")
+	assert_true(Journal.is_completed(&"quest_guard_patrol"), "completed quest is restored")
+	assert_false(Journal.is_active(&"quest_guard_patrol"), "completed quest is not active")
+	var events: Array[Dictionary] = Journal.get_events()
+	assert_eq(events.size(), 2, "journal events are restored")
+	assert_eq(String(events[0].get("id", "")), "zone_entered", "event order is preserved")
+	assert_eq(String(events[0].get("text", "")), "Деревня-бастион", "event text is restored")
+
+	# Идемпотентность: повторная загрузка не дублирует зоны/gates/события.
+	assert_true(SaveManager.load_slot(1), "the same slot loads twice")
+	assert_eq(SceneRouter.get_visited_zone_ids().size(), 2, "visited zones are not duplicated")
+	assert_eq(Journal.get_events().size(), 2, "journal events are not duplicated")
+	assert_eq(Journal.get_completed_quests().size(), 1, "completed quests are not duplicated")
+
+	var raw: String = _read_text(SaveManager.get_slot_path(1))
+	assert_true(raw.contains("\"session\":{"), "save body carries the session block")
+	assert_true(raw.contains("\"visited_zones\":["), "session carries visited zones")
+	assert_true(raw.contains("\"passed_gates\":["), "session carries passed gates")
+	assert_true(raw.contains("\"journal\":{"), "session carries the journal")
+	assert_true(raw.contains("\"active\":["), "journal carries active quests")
+	assert_true(raw.contains("\"events\":["), "journal carries events")
+
+
+func test_v5_save_is_migrated_to_v6_with_empty_session_defaults() -> void:
+	# Тело v5 — всё состояние GameState без нового блока `session`.
+	var v5_body: Dictionary = {
+		"state": SaveSerializer.serialize_state(GameState),
+		"meta": {"zone_id": "zone_01_village", "level": 2},
+	}
+
+	var migrated: Dictionary = SaveMigrations.migrate(5, v5_body)
+	assert_true(migrated["ok"], "v5 is mappable to v6")
+	var body: Dictionary = migrated["body"]
+	assert_true(body.has("session"), "v5->v6 adds the session block")
+	var session: Dictionary = body["session"]
+	assert_eq(session["visited_zones"], [], "visited zones default to empty")
+	assert_eq(session["passed_gates"], [], "passed gates default to empty")
+	var journal: Dictionary = session["journal"]
+	assert_eq(journal["active"], [], "journal active quests default to empty")
+	assert_eq(journal["completed"], [], "journal completed quests default to empty")
+	assert_eq(journal["events"], [], "journal events default to empty")
+	assert_true(body["state"].has("currency"), "existing v5 state fields survive")
+
+	# Реальный файл v5 загружается и не тащит прогресс прошлой сессии.
+	SceneRouter.restore_visited_zones([&"zone_02_swamp"])
+	AbilityGate.mark_gate_passed(&"swamp_dash_gate")
+	Journal.start_quest(&"quest_clear_swamp")
+	_write_text(SaveManager.get_slot_path(2), SaveSerializer.encode(v5_body, 5))
+
+	assert_true(SaveManager.load_slot(2), "v5 slot loads through v6 migration")
+	assert_eq(
+		SceneRouter.get_visited_zone_ids(),
+		[],
+		"migrated old save resets visited zones"
+	)
+	assert_false(
+		AbilityGate.is_gate_passed(&"swamp_dash_gate"),
+		"migrated old save has no passed gates"
+	)
+	assert_eq(Journal.get_active_quests(), [], "migrated old save has an empty journal")
 
 
 func test_newer_schema_file_is_not_loaded() -> void:

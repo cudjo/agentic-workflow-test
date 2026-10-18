@@ -24,6 +24,9 @@ signal opened
 
 const CATALOG_PATH: String = "res://data/ability_gates.tres"
 const HINT_MARGIN: float = 8.0
+## Группа живых проходов: после загрузки сейва (schema v6) они переоценивают
+## блокировку, не дожидаясь пересоздания сцены зоны.
+const GROUP: StringName = &"ability_gates"
 
 ## id записи в `ability_gates.tres`; пусто — требование берётся из `ability_id`
 ## или метаданных `ability_gate` (совместимость с заглушками T-14/T-15).
@@ -35,7 +38,8 @@ const HINT_MARGIN: float = 8.0
 ## Каталог требований; null — загружается `CATALOG_PATH`.
 @export var catalog: AbilityGateCatalog
 
-## Статический набор пройденных проходов: переживает пересоздание сцены зоны.
+## Статический набор пройденных проходов: переживает пересоздание сцены зоны
+## и восстанавливается из сейва (schema v6, `SaveSerializer.apply_session`).
 static var _passed_gates: Dictionary = {}
 
 @onready var hint: AbilityHint = get_node_or_null(^"AbilityHint") as AbilityHint
@@ -51,6 +55,7 @@ var _hud_hint_active: bool = false
 
 
 func _ready() -> void:
+	add_to_group(GROUP)
 	super._ready()
 	collision_layer = CombatLayers.WORLD
 	collision_mask = 0
@@ -145,6 +150,40 @@ static func mark_gate_passed(passed_gate_id: StringName) -> void:
 
 static func is_gate_passed(passed_gate_id: StringName) -> bool:
 	return passed_gate_id != &"" and _passed_gates.has(passed_gate_id)
+
+
+## Копия набора пройденных проходов для сейва (schema v6). Порядок — порядок
+## первого прохода, мутация результата не меняет набор.
+static func get_passed_gate_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for key: Variant in _passed_gates.keys():
+		ids.append(StringName(str(key)))
+	return ids
+
+
+## Восстанавливает набор пройденных проходов из сейва (schema v6, EC-10).
+## Идемпотентно: набор заменяется, живые gates переоценивают блокировку —
+## уже пройденный маршрут не блокирует игрока после загрузки.
+static func restore_passed_gates(gate_ids: Array) -> void:
+	_passed_gates.clear()
+	for value: Variant in gate_ids:
+		mark_gate_passed(StringName(str(value)))
+	refresh_live_gates()
+
+
+## Переоценивает живые проходы по актуальному набору (загрузка сейва при уже
+## созданной зоне). Пройденность берётся только из набора: загруженный сейв —
+## источник истины, а не состояние узлов прошлой сессии.
+static func refresh_live_gates() -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	for node: Node in tree.get_nodes_in_group(GROUP):
+		var gate: AbilityGate = node as AbilityGate
+		if gate == null or not is_instance_valid(gate):
+			continue
+		gate._passed = is_gate_passed(gate._gate_key())
+		gate._refresh_state(true)
 
 
 ## Сброс для новой игры/тестов.

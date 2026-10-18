@@ -23,7 +23,9 @@ signal transition_finished(zone_id: StringName, entry_id: StringName)
 ## Переход не выполнен (битый путь, таймаут). Старая зона остаётся активной.
 signal transition_failed(zone_id: StringName, reason: String)
 ## Зона впервые показана в этом забеге (T-33, AC-04.2). Потребители: карта
-## мира и миникарта — открывают комнаты зоны; сейв может персистить список.
+## мира и миникарта — открывают комнаты зоны; сейв персистит список
+## (`SaveSerializer`, schema v6) и восстанавливает его через
+## `restore_visited_zones()`.
 signal zone_visited(zone_id: StringName)
 
 const DEFAULT_ZONE_ID: StringName = &"zone_01_village"

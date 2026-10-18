@@ -9,7 +9,7 @@ extends RefCounted
 ## (сырое тело). Поэтому проверка не зависит от того, как JSON парсит/печатает
 ## числа и в каком порядке лежат ключи: тело сверяется байт в байт.
 ##
-## Тело (schema_version = 5):
+## Тело (schema_version = 6):
 ##   state: {stats, learning_points, level, xp,
 ##           stamina, weapon_id, weapon_path,
 ##           bosses_defeated, boss_rewards_pending, currency,
@@ -18,13 +18,16 @@ extends RefCounted
 ##           death_items, death_currency, death_lost,
 ##           respawn_bonfire, respawn_zone_id, respawn_position,
 ##           factions, chosen_faction}
+##   session: {visited_zones, passed_gates, journal}
 ##   meta:  {zone_id, zone_name, level, play_time, saved_at_unix} + extras
 ## `state` — только реально существующие поля `GameState`. T-26 (v3) добавил
 ## HP, инвентарь, способности, corpse-метку/флаг смерти (EC-04) и чекпоинт
 ## костра; T-27 (v4) — репутацию фракций (`factions`: id -> int) и выбранную
 ## фракцию; T-29 (v5) — характеристики (`stats`: id -> int), очки обучения,
-## уровень и опыт. Контракт добавления полей и версии описан в
-## `save_migrations.gd`.
+## уровень и опыт. Integration-01 (v6) добавил `session` — прогресс мира вне
+## GameState: посещённые зоны (T-33), пройденные ability gates (T-09/EC-10)
+## и журнал квестов/событий (T-28). Контракт добавления полей и версии описан
+## в `save_migrations.gd`.
 ##
 ## `meta` — данные для UI (зона, уровень, время) и задел под будущие поля:
 ## известные ключи нормализуются, незнакомые проходят через `_json_safe()`.
@@ -49,9 +52,11 @@ static func sha256_hex(text: String) -> String:
 
 ## Собирает тело сейва из состояния и метаданных вызывающего (костёр T-22,
 ## зона T-17) — позиция/инвентарь сюда добавятся в своих задачах.
+## `session` — прогресс мира (зоны/gates/журнал), см. `serialize_session()`.
 static func build_body(state: Node, metadata: Dictionary = {}) -> Dictionary:
 	return {
 		"state": serialize_state(state),
+		"session": serialize_session(),
 		"meta": normalize_meta(metadata),
 	}
 
@@ -237,6 +242,62 @@ static func apply_state(state: Node, state_data: Dictionary) -> bool:
 	return true
 
 
+## Снимок прогресса мира сверх GameState (schema v6): посещённые зоны (T-33),
+## пройденные ability gates (T-09/EC-10) и журнал квестов/событий (T-28).
+## Читает автолоады напрямую; если их нет (юнит-тесты сериализатора) —
+## возвращает пустые значения, а не падает.
+static func serialize_session() -> Dictionary:
+	var visited: Array = []
+	var router: Node = _autoload(&"SceneRouter")
+	if router != null and router.has_method(&"get_visited_zone_ids"):
+		var visited_value: Variant = router.call(&"get_visited_zone_ids")
+		if visited_value is Array:
+			for zone_value: Variant in visited_value:
+				visited.append(String(zone_value))
+
+	var passed_gates: Array = []
+	for gate_id: StringName in AbilityGate.get_passed_gate_ids():
+		passed_gates.append(String(gate_id))
+
+	var journal_state: Dictionary = {}
+	var journal: Node = _autoload(&"Journal")
+	if journal != null and journal.has_method(&"get_state"):
+		var journal_value: Variant = journal.call(&"get_state")
+		if journal_value is Dictionary:
+			var safe_value: Variant = _json_safe(journal_value)
+			journal_state = safe_value if safe_value is Dictionary else {}
+
+	return {
+		"visited_zones": visited,
+		"passed_gates": passed_gates,
+		"journal": journal_state,
+	}
+
+
+## Применяет `session` из сейва. Идемпотентно: наборы зон/gates заменяются,
+## живые gates переоценивают блокировку (EC-10: пройденный проход не блокирует),
+## журнал восстанавливается через `Journal.restore_state()`. Отсутствующие
+## ключи дают пустой прогресс — старые сейвы после миграции загружаются.
+static func apply_session(session_data: Dictionary) -> bool:
+	var router: Node = _autoload(&"SceneRouter")
+	if router != null and router.has_method(&"restore_visited_zones"):
+		var visited_value: Variant = session_data.get("visited_zones", [])
+		var visited: Array = visited_value if visited_value is Array else []
+		router.call(&"restore_visited_zones", visited)
+
+	var passed_value: Variant = session_data.get("passed_gates", [])
+	var passed_gates: Array = passed_value if passed_value is Array else []
+	AbilityGate.restore_passed_gates(passed_gates)
+
+	var journal: Node = _autoload(&"Journal")
+	if journal != null and journal.has_method(&"restore_state"):
+		var journal_value: Variant = session_data.get("journal", {})
+		var journal_state: Dictionary = journal_value if journal_value is Dictionary else {}
+		journal.call(&"restore_state", journal_state)
+
+	return true
+
+
 ## Ищет оружие по пути (основной способ), затем по id (переносимость между
 ## сборками), иначе — дефолтное оружие GameState. Никогда не возвращает
 ## невалидный ресурс.
@@ -357,6 +418,16 @@ static func _corrupted() -> Dictionary:
 		"schema_version": 0,
 		"body": {},
 	}
+
+
+## Автолоад по имени (`/root/<name>`) без жёсткой ссылки на глобальное имя:
+## сериализатор остаётся статическим и тестируемым вне дерева сцены.
+static func _autoload(autoload_name: StringName) -> Node:
+	var main_loop: MainLoop = Engine.get_main_loop()
+	var tree: SceneTree = main_loop as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	return tree.root.get_node_or_null(NodePath(String(autoload_name)))
 
 
 ## JSON-совместимое значение для extras: StringName → String, Vector2 → словарь,

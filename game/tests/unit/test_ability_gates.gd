@@ -237,6 +237,26 @@ func test_visited_proof_zone_opens_gate_without_ability() -> void:
 	assert_false(gate.get_hint().is_shown(), "подсказка не нужна")
 
 
+func test_restore_passed_gates_opens_live_and_future_gates() -> void:
+	# Integration-01 (schema v6): загрузка сейва при уже созданной зоне.
+	var gate: AbilityGate = _spawn_gate(&"swamp_dash_gate", Vector2.ZERO)
+	assert_true(gate.blocking, "до восстановления gate закрыт")
+
+	AbilityGate.restore_passed_gates(["swamp_dash_gate"])
+	assert_true(AbilityGate.is_gate_passed(&"swamp_dash_gate"), "набор восстановлен")
+	assert_true(gate.is_open(), "живой пройденный gate открыт без способности (EC-10)")
+	assert_false(gate.get_hint().is_shown(), "подсказка скрыта")
+
+	var again: AbilityGate = _spawn_gate(&"swamp_dash_gate", Vector2(80.0, 0.0))
+	assert_true(again.is_open(), "новый gate с тем же gate_id тоже открыт")
+
+	# Повторное восстановление идемпотентно и заменяет набор.
+	AbilityGate.restore_passed_gates(["swamp_dash_gate"])
+	assert_eq(AbilityGate.get_passed_gate_ids().size(), 1, "дубликаты не появляются")
+	AbilityGate.restore_passed_gates([])
+	assert_false(AbilityGate.is_gate_passed(&"swamp_dash_gate"), "пустой сейв заменяет набор")
+
+
 func test_other_visited_zone_does_not_open_gate() -> void:
 	SceneRouter.mark_zone_visited(&"zone_02_swamp")
 	var gate: AbilityGate = _spawn_gate(&"village_ledge", Vector2.ZERO)

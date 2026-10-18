@@ -11,9 +11,9 @@ extends Node
 ## Контракт для T-28 (диалоги/квесты): `start_quest()`, `complete_quest()`,
 ## `record_event()`, `is_active()`, `is_completed()`.
 ##
-## `get_state()`/`restore_state()` — снимок для будущей сериализации сейва
-## (T-25). Сейчас SaveManager журнал не пишет: это отдельный integration-шаг,
-## чтобы не менять schema_version без миграции.
+## `get_state()`/`restore_state()` — снимок для сериализации сейва (T-25):
+## с schema v6 (`Integration-01`) журнал пишется в `body.session.journal`
+## и восстанавливается `SaveSerializer.apply_session()`.
 
 signal journal_changed
 signal quest_started(quest_id: StringName, title: String)

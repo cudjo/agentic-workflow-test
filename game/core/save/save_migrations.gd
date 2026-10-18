@@ -8,9 +8,11 @@ extends RefCounted
 ##
 ## Контракт расширения для будущих задач (T-26 HP/corpse, T-27 фракции,
 ## T-29 прогрессия и т.д.):
-## 1. Новое поле добавляется в `SaveSerializer.serialize_state()` и
-##    `SaveSerializer.apply_state()` (только реально существующие поля
-##    `GameState`; отсутствующие в сейве ключи не должны ломать загрузку).
+## 1. Новое поле GameState добавляется в `SaveSerializer.serialize_state()` и
+##    `SaveSerializer.apply_state()`; новый прогресс мира (зоны/gates/журнал) —
+##    в `SaveSerializer.serialize_session()`/`apply_session()` (только реально
+##    существующие поля владельца; отсутствующие в сейве ключи не должны
+##    ломать загрузку).
 ## 2. `CURRENT_VERSION` увеличивается на 1.
 ## 3. В `migrate()` добавляется следующий шаг (`_v1_to_v2`, ...): в тело
 ##    версии N вставляется дефолт нового поля (значение из GameState/данных),
@@ -27,8 +29,11 @@ extends RefCounted
 ## (`chosen_faction`).
 ## Версия 5 — T-29: характеристики (`stats`), очки обучения
 ## (`learning_points`), уровень (`level`) и опыт (`xp`).
+## Версия 6 — Integration-01: прогресс мира (`session`): посещённые зоны
+## (`visited_zones`, T-33), пройденные ability gates (`passed_gates`, T-09/EC-10)
+## и журнал квестов/событий (`journal`, T-28).
 
-const CURRENT_VERSION: int = 5
+const CURRENT_VERSION: int = 6
 const BALANCE_PATH: String = "res://data/balance/balancing.tres"
 const PROGRESSION_PATH: String = "res://data/balance/progression.tres"
 const FALLBACK_MAX_HP: float = 100.0
@@ -94,6 +99,10 @@ static func migrate(schema_version: int, body: Dictionary) -> Dictionary:
 	if version == 4:
 		migrated = _v4_to_v5(migrated)
 		version = 5
+
+	if version == 5:
+		migrated = _v5_to_v6(migrated)
+		version = 6
 
 	if version != CURRENT_VERSION:
 		return {
@@ -217,6 +226,39 @@ static func _v4_to_v5(body: Dictionary) -> Dictionary:
 		state["xp"] = 0
 
 	migrated["state"] = state
+	return migrated
+
+
+## v5 → v6: Integration-01 — прогресс мира вне GameState: посещённые зоны
+## (T-33), пройденные ability gates (T-09/EC-10) и журнал квестов/событий
+## (T-28). Старые сейвы получают пустые наборы (мир ещё не исследован),
+## существующие поля состояния и метаданные не меняются.
+static func _v5_to_v6(body: Dictionary) -> Dictionary:
+	var migrated: Dictionary = body.duplicate(true)
+	var session_value: Variant = migrated.get("session", {})
+	var session: Dictionary = session_value if session_value is Dictionary else {}
+
+	var visited_value: Variant = session.get("visited_zones")
+	if not visited_value is Array:
+		session["visited_zones"] = []
+	var passed_value: Variant = session.get("passed_gates")
+	if not passed_value is Array:
+		session["passed_gates"] = []
+
+	var journal_value: Variant = session.get("journal")
+	var journal: Dictionary = journal_value if journal_value is Dictionary else {}
+	var active_value: Variant = journal.get("active")
+	if not active_value is Array:
+		journal["active"] = []
+	var completed_value: Variant = journal.get("completed")
+	if not completed_value is Array:
+		journal["completed"] = []
+	var events_value: Variant = journal.get("events")
+	if not events_value is Array:
+		journal["events"] = []
+	session["journal"] = journal
+
+	migrated["session"] = session
 	return migrated
 
 

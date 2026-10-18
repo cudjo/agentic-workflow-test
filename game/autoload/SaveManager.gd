@@ -2,7 +2,9 @@ extends Node
 ## SaveManager — 3 слота в `user://saves/slot_{1..3}.json` (T-25, PLAN §3.4).
 ##
 ## Формат, checksum и перенос полей GameState — `core/save/save_serializer.gd`;
-## версии/миграции — `core/save/save_migrations.gd`.
+## версии/миграции — `core/save/save_migrations.gd`. Кроме `state` (GameState)
+## сейв хранит `session` (v6): посещённые зоны, пройденные ability gates и
+## журнал — они применяются после `state` при загрузке.
 ##
 ## Атомарность (EC-14): тело сначала пишется в `slot_N.json.tmp`, затем
 ## `DirAccess.rename` заменяет слот. Любая ошибка диска оставляет старый слот
@@ -83,7 +85,8 @@ func save_slot(slot: int, metadata: Dictionary = {}) -> bool:
 
 
 ## Загружает слот в GameState. Возвращает false для пустого/повреждённого/
-## несовместимого слота, не меняя GameState (EC-07).
+## несовместимого слота, не меняя GameState (EC-07). После `state` применяется
+## `session` — посещённые зоны, пройденные gates и журнал (schema v6).
 func load_slot(slot: int) -> bool:
 	var result: Dictionary = read_slot(slot)
 	if not bool(result.get("ok", false)):
@@ -103,6 +106,12 @@ func load_slot(slot: int) -> bool:
 	var applied: bool = SaveSerializer.apply_state(state, state_data)
 	if not applied:
 		return false
+
+	# Integration-01 (v6): прогресс мира. Применяется после GameState —
+	# способности восстановлены, gates/журнал переоценивают состояние.
+	var session_value: Variant = body.get("session", {})
+	var session_data: Dictionary = session_value if session_value is Dictionary else {}
+	SaveSerializer.apply_session(session_data)
 
 	_remember_active_slot(state, slot)
 	var bus: Node = _event_bus()
