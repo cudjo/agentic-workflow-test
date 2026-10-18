@@ -153,6 +153,14 @@
 - **Следующие волны:** T-18 + T-25, затем T-34; далее строго по графу зависимостей (T-05/T-06/T-10 после T-04; T-14…T-16 после T-13; и т.д.).
 - **Примечание по окружению:** Godot в системе не установлен — Tasker'ы используют portable-сборку (4.4.x/4.7.x) во временном каталоге через `GODOT_PATH` (конвенция `docs/init.*`, см. логи T-01/T-03).
 
+## 2026-10-18 — T-04 выполнен (tasker-backend, приёмка Orchestrator)
+
+- **Результат:** Контроллер игрока (CharacterBody2D + FSM). Коммиты `c8f684e`, `1b91f54`. GUT **24/24 passed, 95 asserts** (было 12/23; +12 тестов T-04). Portable Godot 4.4.1: import/init/smoke — OK.
+- **Артефакты:** `game/data/balance/balancing.tres` (+`BalancingParams`), `game/entities/player/` (Player.tscn/Player.gd/PlayerStateMachine.gd/states/), GUT `test_player_movement.gd`, `test_player_fsm.gd`.
+- **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+`player_state_changed`/`stamina_changed`/`player_died`), `autoload/GameState.gd` (выносливость), `autoload/InputManager.gd` (+`capture_buffer()`), `docs/init.ps1`/`init.sh` (+`-ginclude_subdirs` — фикс ложнозелёного GUT без тестов).
+- **Замечания Tasker:** `dash`/`attack`/`block` — каркасы под T-07/T-10/T-11; `t_parry`/`V_wall_slide` заведены в баланс под T-08/T-11. Чужие untracked-файлы (`game/tests/_probe.gd`, `opencode.jsonc`) не трогал — взять на заметку для уборки перед гейтом.
+- **Решение:** Разблокированы T-05, T-06 (после T-05), T-10, T-26 (частично). Слот освобождён → запуск **T-10** (боевое ядро) параллельно с продолжающейся T-13.
+
 ## 2026-10-18 — T-04 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (GDScript, CharacterBody2D, FSM, GUT — профильный стек задачи). Другие skills не требовались.
@@ -176,3 +184,54 @@
 - **Кросс-файловые правки:** `autoload/EventBus.gd` (3 сигнала), `autoload/GameState.gd` (выносливость), `autoload/InputManager.gd` (`capture_buffer()` — арминг 150-мс буфера по физическому нажатию), `docs/init.ps1`, `docs/init.sh`.
 - **Замечание для следующих задач:** состояние `dash` реализовано как задел (D_dash/T_dash, i-frames), но ещё не гейтится способностью — это T-07; `attack`/`block` — каркас без хитбоксов/парирования (T-10/T-11); `t_parry`/`v_wall_slide` заведены в баланс под T-08/T-11.
 - **Коммит:** `c8f684e` «T-04: контроллер игрока + FSM». Статус задачи остаётся `pending` — отметит QA/Guardian по гейтам.
+
+## 2026-10-18 — tasker-dba: T-13 Тайлсеты и пайплайн уровней + ZoneData
+
+- **Skills:** загружен `godot` (GDScript, TileSet/TileMapLayer, Resource, GUT, headless-проверки — профильный стек задачи). Другие skills не требовались.
+- **Действие:** реализована T-13 (`docs/TASKS.json`) по PLAN §2.1/§2.3/§3.6 и DESIGN §8.6. Арт отсутствует, поэтому тайлы — программные grayscale-заглушки за тем же контрактом (16×16, source id, atlas-координаты, физические слои, Terrain Sets); цвет задаёт палитра зоны из ZoneData через `modulate`.
+- **Артефакты:**
+  - `world/tilesets/zone_terrain.tres` — TileSet 16×16: 4 физических слоя (solid=world 1, one-way=world 1, ladder=interactable 128, hazard=256), 2 Terrain Sets (ground/platforms) по 5 палитрам зон, 16 side-вариантов ground на зону, custom data `tile_type`/`zone_index`; atlas 256×128, 105 тайлов.
+  - `world/tilesets/terrain_tiles.gd` — контракт раскладки атласа (source id, строки/столбцы, mask↔peering bits), `tests/tools/build_level_pipeline.gd` — воспроизводимый генератор заглушек (атлас → TileSet → ZoneData → шаблон сцены; исключён из экспорта).
+  - `world/zones/zone_data.gd` + `zone_palette.gd`/`zone_entry_point.gd`/`zone_exit.gd` — типизированные Resource'ы: id, display_name, палитра, ambient, tileset, точки входа, выходы/связи; `validate()` проверяет целостность.
+  - `data/zones/zone_template.tres` — ZoneData-шаблон (палитра зоны 1, ambient 0.42, 2 входа, 2 выхода со связями zone_02_swamp/zone_01_village).
+  - `world/zones/zone_scene.gd` + `zone_template.tscn` — WorldRoot-совместимый корень (Node2D/ZoneScene): применяет ВСЕ поля ZoneData (фон, ambient, tileset всех четырёх TileMapLayer'ов, modulate палитры, пламя костра), создаёт Marker2D входов и Area2D выходов, эмитит `zone_ready` и `EventBus.zone_entered(id, display_name)`. В шаблоне — демо-раскладка solid/one-way/ladder/hazard и все 4 props.
+  - `world/props/` — bonfire, chest, door, rubble (scenes + typed scripts; rubble — StaticBody2D-блок с `blocking`).
+- **Проверки (portable Godot 4.4.1-stable, headless):**
+  - `--headless --path game --import` — exit 0, без ошибок; PNG-атлас и `.uid` импортированы/закоммичены.
+  - GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **72/72 passed, 443 asserts** (включая 29 новых тестов T-13; тесты T-03/T-04/T-10 не сломаны).
+  - T-13 GUT: ZoneData — все поля/валидация; TileSet — слои/terrain sets/custom data/полигоны; физика — игрок стоит на solid, падает сквозь ladder/hazard и проходит one-way снизу, приземляется сверху; hazard/ladder-слои находятся shape-запросом; solid при `scale=2` даёт коллизию в масштабе (y=22); шаблон грузится `SceneRouter.instantiate_zone`, применяет поля, создаёт входы/выходы, эмитит `zone_entered` и `exit_requested`.
+  - Smoke `--headless --path game --quit-after 90` — без скрипт-ошибок/варнингов.
+- **Найденные и исправленные проблемы:**
+  1. Новые `class_name` не видны в `-s`-скрипте до `--import` — пайплайн разбит на «атлас → import → TileSet/сцена».
+  2. `ResourceSaver` встраивал TileSet в ZoneData и сцену (дублирование 30 КБ ×3) — после сохранения ресурс перечитывается с диска, теперь `ExtResource("zone_terrain.tres")`.
+  3. `ZoneScene` ссылался на глобальный `EventBus`, из-за чего не грузился в tool-режиме без autoload'ов — эмиссия через `/root/EventBus` с проверкой сигнала (в рантайме/тестах тот же autoload).
+  4. Проверка масштаба подтвердила: one-way-полигон с нужной намоткой блокирует сверху и пропускает снизу; целочисленный `scale=2` даёт корректную коллизию.
+- **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+`zone_entered` — минимальный контракт для баннера T-14/загрузки T-17), `autoload/SceneRouter.gd` (+`instantiate_zone()` — только загрузка/проверка WorldRoot-совместимости; переходы/экран загрузки остаются T-17).
+- **Замечание:** в рабочем дереве параллельно присутствовали незакоммиченные файлы T-10 (combat/) и приёмочная запись T-04 — в коммит T-13 не включались; `docs/TASKS.json` и статус задачи не менялись (`pending` до QA/Guardian).
+
+## 2026-10-18 — T-10 выполнен (tasker-backend)
+
+- **Skills:** загружен `godot` (GDScript, Area2D-слои, Resource-данные, GUT/headless — профильный стек боевого ядра). Другие skills не требовались.
+- **Действие:** реализовано боевое ядро T-10 по PLAN §2.1/§3.1, DESIGN §7, AC-03.1/AC-03.3.
+- **Реализовано:**
+  - `core/combat/combat_layers.gd` — единый источник битовых слоёв, совпадает с `[layer_names]` project.godot: player_hitbox=8 → mask enemy_hurtbox=64, enemy_hitbox=16 → mask player_hurtbox=32.
+  - `core/combat/damage.gd` — формула `max(min_damage, weapon_damage * combo_multiplier * damage_multiplier - defense)`; значения из `balancing.tres`; отбрасывание импульсом в CharacterBody2D; вспышка спрайта жёстко ≤ 0.1 s (AC-03.1).
+  - `core/combat/hitbox.gd` / `hurtbox.gd` — Area2D: хитбокс живёт на слое атакующего, маскирует hurtbox цели, бьёт каждого один раз за шаг; hurtbox применяет knockback/вспышку и поддерживает i-frames.
+  - `core/combat/stamina.gd` — трата, восстановление после задержки в покое, флаг `exhausted` (HUD «НЕТ СИЛ»); `GameState` владеет экземпляром, транслирует `stamina_changed` в EventBus, HUD читает `GameState.is_stamina_exhausted()`.
+  - `core/combat/combo.gd` — 2–3 удара, окно связки в конце шага, активная фаза хитбокса по долям; длительность шага = `t_attack * attack_speed`.
+  - `data/weapons/weapon_data.gd` + `light_dagger.tres`/`one_handed_sword.tres`/`two_handed_axe.tres` — 3 типа оружия (лёгкое/одноручное/двуручное) с уроном, отбрасыванием, скоростью и множителями комбо.
+  - `balancing_params.gd` + `balancing.tres` — группы Combat/Stamina: damage_multiplier, min_damage, hit_flash_duration=0.08, knockback_scale, combo_link_window=0.12, combo_hit_start/end_ratio, e_dash, stamina_regen_delay/rate.
+  - `Player.gd` + `Player.tscn` + `states/attack.gd` — узлы Hitbox/Hurtbox, комбо из данных оружия, связка второго удара, трата E_attack/E_block/E_roll/E_dash, восстановление в locomotion-состояниях.
+- **Верификация (portable Godot 4.7.2-stable, headless):**
+  - `--headless --import` — exit 0, без ошибок.
+  - GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **80/80 passed, 491 asserts** (+27 тестов T-10; 24 прежних T-03/T-04 зелёные; 29 тестов T-13 тоже зелёные).
+  - `docs/init.ps1` (import + smoke + GUT) — exit 0.
+  - Smoke `--headless --path game --quit` — exit 0, скрипт-ошибок/варнингов нет.
+  - Боевой сценарий в GUT: удар по dummy впереди — ровно одно попадание, урон по формуле, knockback в velocity цели, вспышка видна и гаснет ≤ 100 мс, E_attack списан; цель за спиной не задета; при 0 выносливости атака не стартует и флаг поднят; второй удар связывается в окне и снова тратит E_attack; dash/block тратят E_dash/E_block; комбо конфигурируется из данных оружия.
+- **Найденные/исправленные проблемы:**
+  - Реген выносливости в `Player._physics_process` мог «доливать» её в T-04-тесте переката — задержка 0.8 s из balancing.tres исключает ложное срабатывание; реген покрыт отдельными тестами.
+  - `area_entered` мог пропустить попадание при включении мониторинга поверх цели на коротком окне удара → опрос `get_overlapping_areas()` с дедупликацией.
+  - Вспышка ограничена и в `Damage.compute()/create()`, и константой `HIT_FLASH_MAX_SEC` — данные не могут нарушить AC-03.1.
+- **Кросс-файловые правки (на контроль Guardian):** `autoload/GameState.gd` (Stamina-делегат, текущее оружие, `is_stamina_exhausted()`, `update_stamina()`), `data/balance/balancing_params.gd` + `.tres`, `entities/player/Player.gd`/`Player.tscn`/`states/attack.gd`. `EventBus.gd` не менялся (его правка `zone_entered` пришла из T-13): флаг HUD доступен через GameState, существующего `stamina_changed` достаточно для полосы выносливости.
+- **Замечания:** `e_dash` добавлен в баланс (потребитель — T-07); `defense` в формуле — параметр под броню/врагов (T-12/T-29), пока 0; `docs/TASKS.json` и статус не менялись (`pending` до QA/Guardian). Чужие файлы (`_probe.gd`, `opencode.jsonc`, T-13-артефакты) не трогал.
+- **Коммит:** `1941388` «T-10: боевое ядро — урон/выносливость/комбо».
