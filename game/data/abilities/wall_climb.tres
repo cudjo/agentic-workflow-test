@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="AbilityWallClimb" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/abilities/ability_wall_climb.gd" id="1_wall_climb"]
+
+[resource]
+script = ExtResource("1_wall_climb")
+id = &"wall_climb"
+display_name = "Карабканье по стенам"
+description = "Удержание и скольжение по вертикальной стене с прыжком от неё. Открывает вертикальные шахты."

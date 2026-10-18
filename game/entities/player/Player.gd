@@ -20,6 +20,8 @@ const ABILITY_DOUBLE_JUMP_ID: StringName = AbilityDoubleJump.ID
 const MAX_DOUBLE_JUMPS: int = AbilityDoubleJump.AIR_JUMPS
 ## Способность «Рывок» (T-07, AC-02.2).
 const ABILITY_DASH_ID: StringName = AbilityDash.ID
+## Способность «Карабканье по стенам» (T-08, AC-02.3).
+const ABILITY_WALL_CLIMB_ID: StringName = AbilityWallClimb.ID
 
 ## Movement/timing data (single source of truth).
 @export var balance: BalancingParams
@@ -45,6 +47,9 @@ var ability_flags: Dictionary = {}
 var double_jumps_used: int = 0
 ## Остаток кулдауна рывка, с (C_dash из balancing.tres; T-07, AC-02.2).
 var dash_cooldown_left: float = 0.0
+## Направление wall kick: сторона, противоположная стене (T-08, AC-02.3).
+## Заполняется `try_wall_kick()` и сбрасывается при входе в `wall_kick`.
+var wall_kick_dir: int = 0
 
 var _hitbox_step: int = -1
 var _combo_weapon_id: StringName = &""
@@ -283,6 +288,56 @@ func play_double_jump_animation() -> void:
 		animation.call(&"play_double_jump")
 
 
+# ------------------------------------------------------------------------------
+# Wall climb (T-08, SPEC US-02, AC-02.3)
+# ------------------------------------------------------------------------------
+
+## Направление от игрока к стене: 1 — справа, -1 — слева, 0 — стены нет.
+## Опирается на `is_on_wall()`/`get_wall_normal()` последнего `move_and_slide`.
+func get_wall_dir() -> int:
+	if not is_on_wall():
+		return 0
+	return AbilityWallClimb.wall_dir_from_normal(get_wall_normal())
+
+
+## Удержание на стене возможно: способность получена, игрок в воздухе,
+## касается вертикальной стены и удерживает направление в её сторону.
+func can_wall_slide() -> bool:
+	if not has_ability(ABILITY_WALL_CLIMB_ID):
+		return false
+	if is_on_floor():
+		return false
+	var wall_dir: int = get_wall_dir()
+	if wall_dir == 0:
+		return false
+	return AbilityWallClimb.is_holding_into_wall(get_move_axis(), wall_dir)
+
+
+## Вход в wall slide из `fall` (AC-02.3). Без способности всегда false.
+func try_wall_slide() -> bool:
+	if not can_wall_slide():
+		return false
+	return state_machine.force_state(&"wall_slide")
+
+
+## Прыжок от стены: горизонтальный импульс в противоположную сторону
+## (`V_wall_kick`) + обычный вертикальный импульс прыжка. Вызывается из
+## `states/wall_slide.gd`; без способности или вне стены — false.
+func try_wall_kick() -> bool:
+	if not has_ability(ABILITY_WALL_CLIMB_ID):
+		return false
+	var wall_dir: int = get_wall_dir()
+	if wall_dir == 0:
+		return false
+	if not InputManager.just_pressed(&"jump"):
+		return false
+	wall_kick_dir = -wall_dir
+	if not state_machine.force_state(&"wall_kick"):
+		wall_kick_dir = 0
+		return false
+	return true
+
+
 func _bind_abilities() -> void:
 	for ability_id: StringName in GameState.get_abilities():
 		_activate_ability(ability_id)
@@ -418,6 +473,7 @@ func kill() -> void:
 func reset_player() -> void:
 	is_dead = false
 	velocity = Vector2.ZERO
+	wall_kick_dir = 0
 	on_landed()
 	reset_dash_cooldown()
 	stop_attack_hitbox()

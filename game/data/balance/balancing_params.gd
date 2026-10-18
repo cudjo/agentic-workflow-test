@@ -20,6 +20,14 @@ extends Resource
 ## Скорость скольжения по стене, px/s (AC-02.3).
 @export var v_wall_slide: float = 40.0
 
+@export_group("Wall climb")
+## Горизонтальный импульс wall kick (прыжка от стены), px/s (AC-02.3).
+## Больше V_walk, чтобы игрок гарантированно отрывался от стены.
+@export var v_wall_kick: float = 130.0
+## Сколько секунд после wall kick горизонтальный ввод не гасит импульс, s.
+## Даёт время отойти от стены прежде, чем вернётся управление движением.
+@export var t_wall_kick_lock: float = 0.18
+
 @export_group("Dash and roll")
 ## Длина рывка, px (AC-02.2).
 @export var d_dash: float = 48.0

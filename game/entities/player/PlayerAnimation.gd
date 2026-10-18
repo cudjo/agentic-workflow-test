@@ -23,6 +23,9 @@ const STATE_TO_ANIMATION := {
 	&"run": PlayerSpriteFrames.ANIM_RUN,
 	&"jump": PlayerSpriteFrames.ANIM_JUMP_RISE,
 	&"fall": PlayerSpriteFrames.ANIM_FALL,
+	&"wall_slide": PlayerSpriteFrames.ANIM_WALL_SLIDE,
+	# Wall kick — отталкивание от стены; визуально это прыжок (T-08).
+	&"wall_kick": PlayerSpriteFrames.ANIM_JUMP_RISE,
 	&"land": PlayerSpriteFrames.ANIM_LAND,
 	&"attack": PlayerSpriteFrames.ANIM_ATTACK_1,
 	&"block": PlayerSpriteFrames.ANIM_BLOCK,
@@ -30,9 +33,8 @@ const STATE_TO_ANIMATION := {
 	&"dash": PlayerSpriteFrames.ANIM_DASH,
 	&"hurt": PlayerSpriteFrames.ANIM_HURT,
 	&"death": PlayerSpriteFrames.ANIM_DEATH,
-	# Состояния, которые появятся в T-06/T-08/T-23: контракт уже готов.
+	# Состояния будущих задач (T-23): контракт уже готов.
 	&"double_jump": PlayerSpriteFrames.ANIM_DOUBLE_JUMP,
-	&"wall_slide": PlayerSpriteFrames.ANIM_WALL_SLIDE,
 	&"out_of_stamina": PlayerSpriteFrames.ANIM_OUT_OF_STAMINA,
 	&"sit": PlayerSpriteFrames.ANIM_SIT,
 }
