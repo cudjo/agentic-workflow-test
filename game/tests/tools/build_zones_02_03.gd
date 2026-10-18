@@ -276,15 +276,11 @@ func _paint_mountain_ground(ground: TileMapLayer) -> void:
 	for y in range(4, FLOOR_ROW_TOP):
 		ground.set_cell(Vector2i(11, y), TerrainTiles.SOURCE_ID, TerrainTiles.ground_atlas(MOUNTAIN_TILESET_ZONE, vertical))
 		ground.set_cell(Vector2i(14, y), TerrainTiles.SOURCE_ID, TerrainTiles.ground_atlas(MOUNTAIN_TILESET_ZONE, vertical))
-	for x in range(10, 17):
-		ground.set_cell(Vector2i(x, 3), TerrainTiles.SOURCE_ID, TerrainTiles.ground_atlas(MOUNTAIN_TILESET_ZONE, horizontal))
 
 	# Вторая шахта-камин (декоративная вертикаль): стены 20 и 24, проход 21–23.
 	for y in range(5, FLOOR_ROW_TOP):
 		ground.set_cell(Vector2i(20, y), TerrainTiles.SOURCE_ID, TerrainTiles.ground_atlas(MOUNTAIN_TILESET_ZONE, vertical))
 		ground.set_cell(Vector2i(24, y), TerrainTiles.SOURCE_ID, TerrainTiles.ground_atlas(MOUNTAIN_TILESET_ZONE, vertical))
-	for x in range(20, 25):
-		ground.set_cell(Vector2i(x, 4), TerrainTiles.SOURCE_ID, TerrainTiles.ground_atlas(MOUNTAIN_TILESET_ZONE, horizontal))
 
 	# Ледяной козырёк над карнизом с dash-gate: обойти прыжком нельзя.
 	for x in range(3, 7):
@@ -295,6 +291,10 @@ func _paint_mountain_platforms(platforms: TileMapLayer) -> void:
 	# Ступени к карнизу с dash-gate.
 	_paint_platform_run(platforms, 12, 2, 4, MOUNTAIN_TILESET_ZONE)
 	_paint_platform_run(platforms, 10, 3, 6, MOUNTAIN_TILESET_ZONE)
+	# Верхние полки шахт — one-way: карабкающийся проходит снизу и встаёт сверху,
+	# шахта не «запечатана» сплошным тайлом (иначе wall climb ведёт в тупик).
+	_paint_platform_run(platforms, 3, 10, 16, MOUNTAIN_TILESET_ZONE)
+	_paint_platform_run(platforms, 4, 20, 24, MOUNTAIN_TILESET_ZONE)
 
 
 func _paint_mountain_hazards(hazards: TileMapLayer) -> void:

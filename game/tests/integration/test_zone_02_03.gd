@@ -299,7 +299,9 @@ func test_mountains_have_vertical_shafts_for_wall_climb() -> void:
 	assert_ne(ground.get_cell_source_id(Vector2i(14, 6)), -1, "right shaft wall exists")
 	assert_eq(ground.get_cell_source_id(Vector2i(12, 6)), -1, "shaft interior is open")
 	assert_eq(ground.get_cell_source_id(Vector2i(13, 6)), -1, "shaft interior is open")
-	assert_ne(ground.get_cell_source_id(Vector2i(12, 3)), -1, "shaft leads to a top ledge")
+	var platforms := mountains.get_node("Platforms") as TileMapLayer
+	assert_eq(ground.get_cell_source_id(Vector2i(12, 3)), -1, "shaft top is not sealed by solid ground")
+	assert_ne(platforms.get_cell_source_id(Vector2i(12, 3)), -1, "one-way ledge lets the climber emerge on top")
 
 	# Вторая вертикаль (камин) — для читаемости «шахт» во множественном числе.
 	assert_ne(ground.get_cell_source_id(Vector2i(20, 8)), -1, "second chimney wall exists")
