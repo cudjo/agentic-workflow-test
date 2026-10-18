@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://Main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://ui/map/WorldMap.tscn" id="2_map"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://ui/journal/Journal.tscn" id="7_journal"]
 [ext_resource type="PackedScene" path="res://ui/factions/Factions.tscn" id="8_factions"]
 [ext_resource type="PackedScene" path="res://ui/factions/FactionChoice.tscn" id="9_choice"]
+[ext_resource type="PackedScene" path="res://ui/inventory/Inventory.tscn" id="10_inventory"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_main")
@@ -30,6 +31,8 @@ layer = 20
 [node name="Remap" parent="." instance=ExtResource("6_remap")]
 
 [node name="WorldMap" parent="." instance=ExtResource("2_map")]
+
+[node name="Inventory" parent="." instance=ExtResource("10_inventory")]
 
 [node name="Campfire" parent="." instance=ExtResource("5_campfire")]
 
