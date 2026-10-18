@@ -12,6 +12,11 @@ signal stamina_changed(current: float, maximum: float)
 ## HP игрока достиг HP = 0; смерть обрабатывается T-26.
 signal player_died
 
+## Игрок получил новую способность (T-06, AC-02.1). Потребители: Player
+## (ставит runtime-флаг через AbilityBase.activate), ability gates (T-09),
+## HUD (T-19, слот способности больше не «закрыт»).
+signal ability_acquired(ability_id: StringName)
+
 ## Зона загружена и ZoneData применён (T-13). Потребители: баннер зоны (T-14),
 ## экран загрузки/переходы (T-17), HUD (T-19).
 signal zone_entered(zone_id: StringName, display_name: String)

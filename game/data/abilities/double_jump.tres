@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="AbilityDoubleJump" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/abilities/ability_double_jump.gd" id="1_double_jump"]
+
+[resource]
+script = ExtResource("1_double_jump")
+id = &"double_jump"
+display_name = "Двойной прыжок"
+description = "Второй прыжок в воздухе. Доступен один раз до приземления."

@@ -7,6 +7,10 @@ extends Node
 ## как ссылку на данные `data/weapons/*.tres`.
 ## Уведомления — через EventBus (`stamina_changed`); флаг «НЕТ СИЛ» HUD читает
 ## через `is_stamina_exhausted()` (AC-03.3), не заводя отдельного сигнала.
+##
+## T-06 добавил набор полученных способностей `abilities` (PLAN §3.3):
+## типизированный список id — источник истины для FSM игрока, ability gates
+## (T-09), HUD (T-19) и сейвов (T-25).
 
 const BALANCE_PATH: String = "res://data/balance/balancing.tres"
 const DEFAULT_WEAPON_PATH: String = "res://data/weapons/one_handed_sword.tres"
@@ -14,6 +18,10 @@ const DEFAULT_WEAPON_PATH: String = "res://data/weapons/one_handed_sword.tres"
 var balance: BalancingParams
 var weapon: WeaponData
 var stamina_state: Stamina
+
+## Полученные способности (id из AbilityRegistry), в порядке получения.
+## Типизированный набор; дубликаты невозможны (см. `add_ability`).
+var abilities: Array[StringName] = []
 
 ## Текущий максимум выносливости (из balancing.tres).
 var stamina_max: float:
@@ -72,6 +80,42 @@ func update_stamina(delta: float, resting: bool) -> void:
 ## HUD flag: stamina is empty, attacks are refused (AC-03.3).
 func is_stamina_exhausted() -> bool:
 	return stamina_state != null and stamina_state.is_exhausted()
+
+
+# ------------------------------------------------------------------------------
+# Abilities (T-06)
+# ------------------------------------------------------------------------------
+
+## Получена ли способность в этом забеге (AC-02.1, AC-04.3).
+func has_ability(ability_id: StringName) -> bool:
+	return abilities.has(ability_id)
+
+
+## Добавляет способность один раз; true — только при первом получении.
+## Эмитит `EventBus.ability_acquired`, чтобы живые системы (FSM игрока,
+## ability gates, HUD) разблокировали поведение сразу.
+func add_ability(ability_id: StringName) -> bool:
+	if ability_id == &"":
+		push_warning("GameState.add_ability: empty ability id")
+		return false
+	if abilities.has(ability_id):
+		return false
+	abilities.append(ability_id)
+	EventBus.ability_acquired.emit(ability_id)
+	return true
+
+
+## Копия набора для UI/gates/сейвов: мутация результата не меняет забег.
+func get_abilities() -> Array[StringName]:
+	var copy: Array[StringName] = []
+	copy.assign(abilities)
+	return copy
+
+
+## Очищает набор (новая игра, загрузка сейва перед повторной выдачей).
+## Флаги на живом игроке снимаются через `AbilityBase.deactivate()`.
+func clear_abilities() -> void:
+	abilities.clear()
 
 
 func set_weapon(new_weapon: WeaponData) -> void:

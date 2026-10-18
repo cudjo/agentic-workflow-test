@@ -241,7 +241,11 @@ func _play(animation: StringName) -> void:
 
 ## Холодная вспышка double jump на 2–3 кадра (steel-3). Не зависит от no_flash:
 ## это не мерцание урона, а одиночная вспышка способности.
+## T-06: FSM вызывает `play_double_jump()` на входе в состояние, после чего
+## то же состояние приходит сигналом — активную вспышку не перезапускаем.
 func _start_double_jump_flash() -> void:
+	if _is_double_jump_flash and _tint_left > 0.0:
+		return
 	var speed: float = 1.0
 	if sprite.sprite_frames != null and sprite.sprite_frames.has_animation(
 		PlayerSpriteFrames.ANIM_DOUBLE_JUMP

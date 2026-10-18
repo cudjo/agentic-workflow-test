@@ -14,6 +14,10 @@ const FALLBACK_WEAPON_PATH: String = "res://data/weapons/one_handed_sword.tres"
 const BUFFERED_ACTIONS: Array[StringName] = [&"jump", &"attack", &"roll", &"dash"]
 ## States in which stamina regenerates after `stamina_regen_delay` (T-10).
 const RESTING_STATES: Array[StringName] = [&"idle", &"run", &"land"]
+## Способность «Двойной прыжок» (T-06, AC-02.1).
+const ABILITY_DOUBLE_JUMP_ID: StringName = AbilityDoubleJump.ID
+## Сколько воздушных прыжков доступно до приземления (AC-02.1).
+const MAX_DOUBLE_JUMPS: int = AbilityDoubleJump.AIR_JUMPS
 
 ## Movement/timing data (single source of truth).
 @export var balance: BalancingParams
@@ -27,10 +31,20 @@ var attack_hitbox: Hitbox
 var facing: int = 1
 var is_dead: bool = false
 
+## Runtime-флаги способностей (T-06): ключ — id способности, значение true.
+## Ставятся `AbilityBase.activate()` при получении (GameState.abilities —
+## источник истины) и снимаются `deactivate()`.
+var ability_flags: Dictionary = {}
+## Потрачено воздушных прыжков с момента последнего приземления (AC-02.1).
+var double_jumps_used: int = 0
+
 var _hitbox_step: int = -1
 var _combo_weapon_id: StringName = &""
 
 @onready var visual: Sprite2D = $Visual
+## Визуальный слой. Untyped on purpose: Player <-> PlayerAnimation иначе
+## образуют циклическую ссылку классов.
+@onready var animation: Node = get_node_or_null("Animation")
 
 
 func _ready() -> void:
@@ -48,6 +62,9 @@ func _ready() -> void:
 		push_error("Player: StateMachine child node is missing")
 		return
 	state_machine.setup(self)
+	_bind_abilities()
+	if not EventBus.ability_acquired.is_connected(_on_ability_acquired):
+		EventBus.ability_acquired.connect(_on_ability_acquired)
 
 
 func _physics_process(delta: float) -> void:
@@ -189,6 +206,82 @@ func begin_coyote_time() -> void:
 
 
 # ------------------------------------------------------------------------------
+# Abilities (T-06, PLAN §3.3)
+# ------------------------------------------------------------------------------
+
+## Ставит/снимает runtime-флаг способности. Вызывается AbilityBase.activate()
+## при получении способности; ключ — id способности (`double_jump`).
+func set_ability_flag(flag: StringName, value: bool = true) -> void:
+	if flag == &"":
+		return
+	if value:
+		ability_flags[flag] = true
+	else:
+		ability_flags.erase(flag)
+
+
+func has_ability_flag(flag: StringName) -> bool:
+	return bool(ability_flags.get(flag, false))
+
+
+## Способность получена в этом забеге; GameState — источник истины.
+func has_ability(ability_id: StringName) -> bool:
+	return GameState.has_ability(ability_id)
+
+
+## Второй прыжок доступен: способность разблокирована, игрок в воздухе и
+## воздушный прыжок ещё не потрачен (AC-02.1).
+func can_double_jump() -> bool:
+	if is_on_floor():
+		return false
+	if double_jumps_used >= MAX_DOUBLE_JUMPS:
+		return false
+	return has_ability_flag(ABILITY_DOUBLE_JUMP_ID)
+
+
+## Второй прыжок по нажатию jump: ровно один раз до приземления (AC-02.1).
+## Переход внутри воздушного тира (Jump/Fall = 50), поэтому force_state.
+func try_double_jump() -> bool:
+	if not can_double_jump():
+		return false
+	if not InputManager.just_pressed(&"jump"):
+		return false
+	if not state_machine.force_state(&"double_jump"):
+		return false
+	double_jumps_used += 1
+	return true
+
+
+## Сброс счётчика воздушных прыжков (AC-02.1: доступен только после
+## приземления). Вызывается из `states/land.gd` и `reset_player()`.
+func on_landed() -> void:
+	double_jumps_used = 0
+
+
+## Проигрывает анимацию/вспышку двойного прыжка (API T-05).
+func play_double_jump_animation() -> void:
+	if animation != null and animation.has_method(&"play_double_jump"):
+		animation.call(&"play_double_jump")
+
+
+func _bind_abilities() -> void:
+	for ability_id: StringName in GameState.get_abilities():
+		_activate_ability(ability_id)
+
+
+func _activate_ability(ability_id: StringName) -> bool:
+	var ability: AbilityBase = AbilityRegistry.get_ability(ability_id)
+	if ability == null:
+		push_warning("Player: unknown ability '%s' in GameState" % ability_id)
+		return false
+	return ability.activate(self)
+
+
+func _on_ability_acquired(ability_id: StringName) -> void:
+	_activate_ability(ability_id)
+
+
+# ------------------------------------------------------------------------------
 # Damage / death API (T-10/T-26 extend; T-04 needs the FSM transitions)
 # ------------------------------------------------------------------------------
 
@@ -218,6 +311,7 @@ func kill() -> void:
 func reset_player() -> void:
 	is_dead = false
 	velocity = Vector2.ZERO
+	on_landed()
 	InputManager.consume_coyote_time(&"jump")
 	state_machine.force_state(&"idle")
 

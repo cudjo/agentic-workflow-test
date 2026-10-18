@@ -6,6 +6,7 @@ extends PlayerState
 func enter(_previous: StringName) -> void:
 	super.enter(_previous)
 	player.velocity.x = 0.0
+	player.on_landed()
 
 
 func physics_update(_delta: float) -> void:
