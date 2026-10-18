@@ -317,7 +317,7 @@ func test_combat_disables_save_answer_with_reason_and_toast() -> void:
 		"Сохранение в бою запрещено",
 		"полная причина видна в реплике"
 	)
-	assert_eq(dialog.get_body_text(), Campfire.COMBAT_TEXT)
+	assert_eq(dialog.get_body_text(), tr(Campfire.COMBAT_TEXT))
 
 	var toast: AshenToast = screen.get_toast()
 	assert_true(toast.visible)

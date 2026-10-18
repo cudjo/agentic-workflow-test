@@ -18,16 +18,16 @@ signal opened
 signal closed
 
 const LAYER: int = 20
-const TITLE_TEXT: String = "УПРАВЛЕНИЕ"
-const HINT_TEXT: String = "ENTER/A — НАЗНАЧИТЬ · ↑↓ — ВЫБОР"
-const CAPTURE_HINT: String = "НАЖМИТЕ КЛАВИШУ ИЛИ КНОПКУ · ESC — ОТМЕНА"
-const RESET_TEXT: String = "СБРОС"
-const BACK_TEXT: String = "НАЗАД"
-const RESET_DONE: String = "СБРОШЕНО К ПОУМОЛЧАНИЮ"
-const EMPTY_BINDING: String = "— НЕ НАЗНАЧЕНО —"
-const WAITING_TEXT: String = "ЖДЁМ ВВОД…"
-const CONFLICT_PREFIX: String = "! ДУБЛЬ: "
-const TAB_RESERVED: String = "TAB ЗАРЕЗЕРВИРОВАН ДЛЯ ВКЛАДОК"
+const TITLE_TEXT: String = "ui.remap.title"
+const HINT_TEXT: String = "ui.remap.hint"
+const CAPTURE_HINT: String = "ui.remap.capture_hint"
+const RESET_TEXT: String = "ui.remap.reset"
+const BACK_TEXT: String = "ui.remap.back"
+const RESET_DONE: String = "ui.remap.reset_done"
+const EMPTY_BINDING: String = "ui.remap.empty_binding"
+const WAITING_TEXT: String = "ui.remap.waiting"
+const CONFLICT_PREFIX: String = "ui.remap.conflict_prefix"
+const TAB_RESERVED: String = "ui.remap.tab_reserved"
 
 ## Стабильный порядок игровых действий в списке.
 const ACTION_ORDER: Array[StringName] = [
@@ -45,17 +45,18 @@ const ACTION_ORDER: Array[StringName] = [
 ]
 
 const ACTION_LABELS: Dictionary = {
-	&"move_left": "ВЛЕВО",
-	&"move_right": "ВПРАВО",
-	&"move_up": "ВВЕРХ",
-	&"move_down": "ВНИЗ",
-	&"jump": "ПРЫЖОК",
-	&"attack": "АТАКА",
-	&"block": "БЛОК",
-	&"roll": "ПЕРЕКАТ",
-	&"dash": "РЫВОК",
-	&"interact": "ДЕЙСТВИЕ",
-	&"map": "КАРТА",
+	&"move_left": "ui.remap.action_move_left",
+	&"move_right": "ui.remap.action_move_right",
+	&"move_up": "ui.remap.action_move_up",
+	&"move_down": "ui.remap.action_move_down",
+	&"jump": "ui.remap.action_jump",
+	&"attack": "ui.remap.action_attack",
+	&"block": "ui.remap.action_block",
+	&"roll": "ui.remap.action_roll",
+	&"dash": "ui.remap.action_dash",
+	&"interact": "ui.remap.action_interact",
+	&"map": "ui.remap.action_map",
+	&"inventory": "ui.remap.action_inventory",
 }
 
 ## Клавиши-модификаторы сами по себе не назначаются.
@@ -75,7 +76,7 @@ const STATUS_POSITION := Vector2(14, 224)
 const ACTIONS_POSITION := Vector2(14, 240)
 const ACTION_HEIGHT: int = 22
 const ROW_HEIGHT: int = 16
-const FOOTER_HINT: String = "↑↓ — ВЫБОР · ESC — НАЗАД"
+const FOOTER_HINT: String = "ui.remap.footer_hint"
 
 ## Пауза при открытии. QA/тесты выключают, чтобы не останавливать GUT.
 var pause_on_open: bool = true
@@ -111,10 +112,14 @@ func _init() -> void:
 
 func _ready() -> void:
 	_ensure_built()
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	_refresh_rows()
 
 
 func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 	if _pause_owned:
 		get_tree().paused = _pause_previous
 		_pause_owned = false
@@ -134,7 +139,7 @@ func open() -> void:
 	if pause_on_open:
 		get_tree().paused = true
 	_capturing_action = &""
-	_set_status("ВЫБЕРИТЕ ДЕЙСТВИЕ", UITokens.STONE_5)
+	_set_status(tr("ui.remap.select_action"), UITokens.STONE_5)
 	_refresh_rows()
 	opened.emit()
 
@@ -244,7 +249,7 @@ func get_actions() -> Array[StringName]:
 
 func get_action_label(action: StringName) -> String:
 	if ACTION_LABELS.has(action):
-		return str(ACTION_LABELS[action])
+		return tr(str(ACTION_LABELS[action]))
 	return String(action).to_upper()
 
 
@@ -289,12 +294,12 @@ func assign_event(action: StringName, event: InputEvent) -> bool:
 		if (conflicts[key] as Array).has(action):
 			has_conflict = true
 			break
-	var message: String = "СОХРАНЕНО: %s — %s" % [
+	var message: String = tr("ui.remap.saved") % [
 		get_action_label(action),
 		_format_event(normalized),
 	]
 	if has_conflict:
-		message += " · " + CONFLICT_PREFIX.strip_edges().trim_suffix(":")
+		message += " · " + tr(CONFLICT_PREFIX).strip_edges().trim_suffix(":")
 		_set_status(message, UITokens.BLOOD_5)
 	else:
 		_set_status(message, UITokens.GOLD_3)
@@ -306,7 +311,7 @@ func reset_bindings() -> void:
 	InputManager.reset_to_defaults()
 	_capturing_action = &""
 	_refresh_rows()
-	_set_status(RESET_DONE, UITokens.GOLD_3)
+	_set_status(tr(RESET_DONE), UITokens.GOLD_3)
 
 
 ## Дубли: ключ события -> список действий, где он встречается (>1).
@@ -410,13 +415,13 @@ func _ensure_built() -> void:
 	_panel.position = PANEL_RECT.position
 	_panel.size = PANEL_RECT.size
 
-	_title = _make_label(TITLE_TEXT, UITokens.GOLD_3, UITokens.FONT_H2)
+	_title = _make_label(tr(TITLE_TEXT), UITokens.GOLD_3, UITokens.FONT_H2)
 	_title.name = "Title"
 	_title.position = Vector2(16, 10)
 	_title.size = Vector2(200, UITokens.LINE_H2)
 	_root.add_child(_title)
 
-	_hint = _make_label("ENTER/A — НАЗНАЧИТЬ", UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_hint = _make_label(tr("ui.remap.assign_hint"), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_hint.name = "Hint"
 	_hint.position = Vector2(290, 14)
 	_hint.size = Vector2(176, UITokens.LINE_BODY)
@@ -444,13 +449,13 @@ func _ensure_built() -> void:
 	_list_box.add_theme_constant_override("v_separation", 0)
 	_scroll.add_child(_list_box)
 
-	_status = _make_label(HINT_TEXT, UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_status = _make_label(tr(HINT_TEXT), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_status.name = "Status"
 	_status.position = STATUS_POSITION
 	_status.size = Vector2(452, 14)
 	_root.add_child(_status)
 
-	_footer_hint = _make_label(FOOTER_HINT, UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_footer_hint = _make_label(tr(FOOTER_HINT), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_footer_hint.name = "FooterHint"
 	_footer_hint.position = Vector2(210, 244)
 	_footer_hint.size = Vector2(256, UITokens.LINE_BODY)
@@ -464,7 +469,7 @@ func _ensure_built() -> void:
 
 	_reset_button = AshenMenuItem.new()
 	_reset_button.name = "Reset"
-	_reset_button.text = RESET_TEXT
+	_reset_button.text = tr(RESET_TEXT)
 	_reset_button.font_size = UITokens.FONT_BODY
 	_reset_button.custom_minimum_size = Vector2(96, ACTION_HEIGHT)
 	_reset_button.pressed.connect(reset_bindings)
@@ -472,7 +477,7 @@ func _ensure_built() -> void:
 
 	_back_button = AshenMenuItem.new()
 	_back_button.name = "Back"
-	_back_button.text = BACK_TEXT
+	_back_button.text = tr(BACK_TEXT)
 	_back_button.font_size = UITokens.FONT_BODY
 	_back_button.custom_minimum_size = Vector2(88, ACTION_HEIGHT)
 	_back_button.pressed.connect(close)
@@ -526,15 +531,15 @@ func _refresh_rows() -> void:
 		var conflict_actions: Array = data.get("conflict_actions", [])
 		row.conflict = not conflict_actions.is_empty()
 		row.conflict_text = ""
-		var tooltip: String = "Enter/A — назначить"
+		var tooltip: String = tr("ui.remap.row_tooltip")
 		if row.conflict:
 			var names: Array[String] = []
 			for name: Variant in conflict_actions:
 				names.append(str(name))
 			# В строке — короткий маркер, полный список — в tooltip: колонка
 			# 210 px, длинные имена не должны перекрывать действие.
-			row.conflict_text = "! ДУБЛЬ"
-			tooltip = "Конфликт: %s" % ", ".join(names)
+			row.conflict_text = tr("ui.remap.duplicate")
+			tooltip = tr("ui.remap.conflict") % ", ".join(names)
 		row.set_meta("action", action)
 		row.pressed.connect(_on_row_pressed.bind(action))
 		row.focus_entered.connect(_on_row_focused.bind(action))
@@ -581,6 +586,17 @@ func _on_row_pressed(action: StringName) -> void:
 	start_capture(action)
 
 
+func _on_locale_changed(_code: String) -> void:
+	if not _built:
+		return
+	_title.text = tr(TITLE_TEXT)
+	_hint.text = tr("ui.remap.assign_hint")
+	_footer_hint.text = tr(FOOTER_HINT)
+	_reset_button.text = tr(RESET_TEXT)
+	_back_button.text = tr(BACK_TEXT)
+	_refresh_rows()
+
+
 func _set_status(text: String, color: Color) -> void:
 	_status.text = text
 	_status.add_theme_color_override("font_color", color)
@@ -625,7 +641,7 @@ func _format_event(event: InputEvent) -> String:
 	if event is InputEventJoypadMotion:
 		return _motion_label(event as InputEventJoypadMotion)
 	if event is InputEventMouseButton:
-		return "МЫШЬ%d" % (event as InputEventMouseButton).button_index
+		return tr("ui.remap.mouse") % (event as InputEventMouseButton).button_index
 	return ""
 
 
@@ -634,7 +650,7 @@ func _key_label(event: InputEventKey) -> String:
 	if code == 0:
 		return ""
 	if code == KEY_SPACE:
-		return "ПРОБЕЛ"
+		return tr("ui.remap.space")
 	if AshenKbd.KEY_LABELS.has(code):
 		return str(AshenKbd.KEY_LABELS[code])
 	var text: String = OS.get_keycode_string(code)
@@ -651,7 +667,7 @@ func _motion_label(event: InputEventJoypadMotion) -> String:
 		return "ST←" if event.axis_value < 0.0 else "ST→"
 	if event.axis == JOY_AXIS_LEFT_Y:
 		return "ST↑" if event.axis_value < 0.0 else "ST↓"
-	return "ОСЬ%d" % event.axis
+	return tr("ui.remap.axis") % event.axis
 
 
 ## Ключ события для поиска дублей («key:<code>» / «joy:<button>»).
@@ -728,13 +744,13 @@ class _RemapRow extends AshenMenuItem:
 		var text: String = bindings
 		var color: Color = UITokens.BONE
 		if capturing:
-			text = "ЖДЁМ ВВОД…"
+			text = tr("ui.remap.waiting")
 			color = UITokens.GOLD_3
 		elif conflict and not conflict_text.is_empty():
 			text = conflict_text
 			color = UITokens.BLOOD_5
 		elif text.is_empty():
-			text = "— НЕ НАЗНАЧЕНО —"
+			text = tr("ui.remap.empty_binding")
 			color = UITokens.STONE_5
 
 		var text_width: float = UIStyle.text_width(text, UITokens.FONT_BODY)

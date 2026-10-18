@@ -1,0 +1,433 @@
+keys,en
+ability.dash.description,A quick forward dash with invulnerability. Usable on the ground and in the air.
+ability.dash.name,Dash
+ability.double_jump.description,An air jump: the second leap reaches higher than the first.
+ability.double_jump.name,Double Jump
+ability.wall_climb.description,Grab walls and climb upward along the ledges.
+ability.wall_climb.name,Wall Climb
+faction.ash.lore,"They hear ash whisper.
+They believe it must burn.
+A new Bastion will rise."
+faction.ash.name,Ash Cult
+faction.ash.quest_denied,"Ritual of ""{faction}"": need reputation {threshold} (now {reputation})."
+faction.ash.territory,Ashen Altar
+faction.ash.territory_denied,Ash bars the way to {territory}: need reputation {threshold} (now {reputation}).
+faction.ash.trade_denied,"Servants of ""{faction}"": need reputation {threshold} (now {reputation})."
+faction.default_denied,"Access denied: reputation with ""{faction}"" {reputation} is below the threshold {threshold}."
+faction.free.lore,"Smugglers and hunters.
+They bow to no banner.
+Neither Order nor flame."
+faction.free.name,Free Marches
+faction.free.quest_denied,"Job of ""{faction}"": need reputation {threshold} (now {reputation}). Ask an ally."
+faction.free.territory,Market Row by the Bridge
+faction.free.territory_denied,"""{faction}"" bars the way to {territory}: need reputation {threshold} (now {reputation})."
+faction.free.trade_denied,"""{faction}"" will not trade: need reputation {threshold} (now {reputation})."
+faction.order.lore,"Last defenders.
+They hold the walls by law.
+They never forgive betrayal."
+faction.order.name,Order of Ash
+faction.order.quest_denied,"Quest of ""{faction}"": need reputation {threshold} (now {reputation}). An ally may help."
+faction.order.territory,Inner Courtyard of the Bastion
+faction.order.territory_denied,Guards bar strangers from {territory}. Need reputation {threshold} (now {reputation}).
+faction.order.trade_denied,"Trader of ""{faction}"": need reputation {threshold} (now {reputation})."
+faction.quest_unowned,"Quest ""%s"" belongs to no faction."
+faction.unknown,Unknown faction: %s
+npc.dialogue.missing,No dialogue is configured for this NPC.
+npc.teacher.maxed,STAT AT MAXIMUM
+npc.teacher.not_enough_points,"NOT ENOUGH TRAINING POINTS: need %d, have %d"
+npc.teacher.not_found,TEACHER NOT FOUND
+npc.teacher.skill_learned,SKILL ALREADY LEARNED
+npc.teacher.skill_not_found,SKILL NOT FOUND
+npc.trader.no_item,The trader does not sell this.
+npc.trader.no_money,Not enough coin: %d required.
+ui.ability_hint.need,Need:
+ui.audio.boss_defeated,BOSS DEFEATED
+ui.audio.boss_near,BOSS NEARBY
+ui.audio.boss_near_named,BOSS NEARBY · %s
+ui.audio.death,DEATH
+ui.audio.hit,HIT
+ui.audio.parry,PARRY
+ui.audio.phase,PHASE SHIFT
+ui.audio.phase_named,PHASE SHIFT · %s
+ui.boss.phase_1,PHASE I
+ui.boss.phase_2,PHASE II
+ui.boss.phase_3,PHASE III
+ui.camp.about,The swamp remembers the dead. It does not give them up without a price.
+ui.camp.answer_about,About the Swamp
+ui.camp.answer_another_slot,Another slot
+ui.camp.answer_cancel,Cancel  Esc
+ui.camp.answer_continue,Continue
+ui.camp.answer_leave,Leave  Esc
+ui.camp.answer_oath,Oath
+ui.camp.answer_retry,Retry
+ui.camp.answer_save,Save game
+ui.camp.combat_reason,Cannot save in combat
+ui.camp.combat_reason_full,Saving in combat is forbidden
+ui.camp.combat_text,"Not here, traveler. Enemies are near. Saving in combat is forbidden."
+ui.camp.corrupted,The fire does not recognize this record. Choose another slot.
+ui.camp.corrupted_toast,Slot corrupted. The previous record is intact.
+ui.camp.damaged_slot,! Slot corrupted
+ui.camp.disk_error,Not enough disk space. The previous record is intact.
+ui.camp.empty_slot,— Empty —
+ui.camp.error,The fire dims... the record failed. The previous one is intact.
+ui.camp.level_details,LV%d · %s
+ui.camp.oath_already,The oath has already been sworn.
+ui.camp.oath_taken,Oath accepted.
+ui.camp.oath_taken_delta,Oath accepted · %s %s%d
+ui.camp.overwrite,Overwrite
+ui.camp.overwrite_details,Overwrite replaces the record
+ui.camp.save,Save
+ui.camp.saved,The fire remembers you. Go while it still burns.
+ui.camp.saved_toast,SAVED · SLOT %d
+ui.camp.slot_corrupted_tooltip,Slot %d: corrupted (%s)
+ui.camp.slot_details,"Slot %d: %s, %s"
+ui.camp.slot_empty_tooltip,Slot %d: empty
+ui.camp.slot_heading,SAVE TO SLOT
+ui.camp.slot_label,Slot
+ui.camp.slots,Choose where the fire leaves its mark. The old record will fade.
+ui.camp.speaker,Keeper of the Flame
+ui.camp.speaker_faction_fallback,Order of Ash
+ui.camp.talk,The flame remembers those who return. Shall it remember you too?
+ui.choice.cancel,LATER
+ui.choice.chosen,%s CHOSEN
+ui.choice.confirm,PLEDGE
+ui.choice.confirm_hint,PRESS AGAIN TO CONFIRM
+ui.choice.default_reason,Your oath will shape the ending. The choice cannot be undone.
+ui.choice.hint,↑↓ — FACTION · ENTER/A — PLEDGE · ESC/B — LATER
+ui.choice.impact,IMPACT: ENDING AND NPC ATTITUDE
+ui.choice.reputation,REPUTATION: %+d
+ui.choice.threshold,THRESHOLD: %d
+ui.choice.title,CHOOSE A FACTION
+ui.common.back,Back
+ui.common.cancel,Cancel
+ui.common.close,Close
+ui.common.empty_dash,—
+ui.common.english,English
+ui.common.jump,Jump
+ui.common.language,Interface language
+ui.common.level,LV%d
+ui.common.none,NONE
+ui.common.not_enough,NONE · need %d
+ui.common.observe,Inspect
+ui.common.off,OFF
+ui.common.ok,OK
+ui.common.on,ON
+ui.common.russian,Russian
+ui.common.select,Select
+ui.common.unavailable,Unavailable
+ui.common.unknown_zone,Unknown zone
+ui.comp.critical,CRITICAL
+ui.comp.no_stamina,NO STAMINA
+ui.credits.chapter,Final chapter
+ui.credits.engine,Engine — Godot 4.4
+ui.credits.english_title,ПЕПЕЛЬНЫЙ БАСТИОН
+ui.credits.finish_hint,finish
+ui.credits.font,Font — Press Start 2P (OFL)
+ui.credits.sound,Sound — CC0 / temporary placeholders
+ui.credits.team,Developed by the Ashen Bastion team
+ui.credits.thanks,Thank you for reaching the end.
+ui.credits.title,CREDITS
+ui.credits.title_line,ASHEN BASTION
+ui.death.action_menu,Main menu
+ui.death.action_respawn,Respawn at the bonfire
+ui.death.coins,Coins
+ui.death.footnote_first,Equipment is there too.
+ui.death.footnote_lost,It cannot be reclaimed.
+ui.death.heading_first,LEFT AT THE PLACE OF DEATH
+ui.death.heading_lost,LOST FOREVER
+ui.death.items,Items
+ui.death.legend_bag,Your belongings
+ui.death.legend_bonfire,Bonfire
+ui.death.legend_lost,Lost
+ui.death.subtitle_lost,You fell again without reclaiming your belongings
+ui.death.subtitle_place,place of death
+ui.death.subtitle_unknown,Place of death
+ui.death.title,YOU DIED
+ui.death.warning_first,Die before reclaiming — items are lost forever.
+ui.death.warning_lost,The previous loss is irreversible.
+ui.dialogue.finish,Leave
+ui.dialogue.next,Next
+ui.ending.ash_body,"You took the flame into yourself.
+Ash no longer falls from the sky — it grows
+from your steps, and the Bastion bows."
+ui.ending.continue,CONTINUE
+ui.ending.credits_hint,credits
+ui.ending.faction_kicker,ENDING · FACTION
+ui.ending.faction_line,Faction: %s
+ui.ending.faction_none,No faction chosen
+ui.ending.free_body,"You burned the throne and gave the ash to the wind.
+The Bastion belongs to no one now —
+and that is its final victory."
+ui.ending.legacy,LEGACY: %s
+ui.ending.neutral_body,"The Bastion has fallen. Ash settled on empty halls,
+and no one named the victor.
+You walked into the grey morning — without banner or duty."
+ui.ending.neutral_kicker,ENDING · NO FACTION CHOSEN
+ui.ending.neutral_title,ASH ON THE WIND
+ui.ending.order_body,"You returned the law to the Bastion.
+The walls hold the ash again, and your name
+is carved above the gates — never to be erased."
+ui.ending.unknown_body,"The flame went out, but the Bastion remained.
+Its fate is held by %s — and you stand
+between its banner and the ash."
+ui.factions.access_closed,CLOSED !
+ui.factions.access_closed_short,SHUT
+ui.factions.access_open,ACCESS OPEN
+ui.factions.access_open_short,OPEN
+ui.factions.alternative,ALTERNATIVE: %s — %s
+ui.factions.alternative_none,NO ALTERNATIVE
+ui.factions.chosen_for_ending,%s CHOSEN FOR THE ENDING
+ui.factions.empty,— NO FACTION DATA —
+ui.factions.hint,↑↓ — FACTION · TAB/LB/RB — TAB
+ui.factions.kind_quest,QUESTS
+ui.factions.kind_territory,TERRITORY
+ui.factions.kind_trader,TRADER
+ui.factions.reputation,REPUTATION: %s
+ui.factions.tab_access,ACCESS
+ui.factions.tab_list,LIST
+ui.factions.threshold,THRESHOLD: %s
+ui.factions.threshold_rep,THRESHOLD: %d · REPUTATION: %+d
+ui.factions.title,FACTIONS
+ui.hud.currency_tooltip,Coins: %d
+ui.hud.need,Need:
+ui.hud.not_unlocked,Not unlocked: %s
+ui.hud.phase,PHASE %s
+ui.hud.phase_of,PHASE %s / %s
+ui.hud.training_points,TP %d
+ui.hud.training_points_tooltip,Training points: %d
+ui.inv.armor,ARMOR
+ui.inv.choose_item,CHOOSE AN ITEM
+ui.inv.close,CLOSE
+ui.inv.coins_short,COINS
+ui.inv.damage,DMG
+ui.inv.default_train_reason,Train with a teacher
+ui.inv.empty_cell,EMPTY CELL
+ui.inv.empty_inventory,— INVENTORY EMPTY —
+ui.inv.equip_armor,ARMOR
+ui.inv.equip_helmet,HELMET
+ui.inv.equip_ring_1,RING 1
+ui.inv.equip_ring_2,RING 2
+ui.inv.equip_shield,SHIELD
+ui.inv.equip_weapon,WEAPON
+ui.inv.equipment,EQUIPMENT
+ui.inv.equipped_suffix,%s · EQUIPPED
+ui.inv.faction_tooltip,%s: %s (access threshold %d)
+ui.inv.focus_hint,↑↓←→ — SELECT
+ui.inv.have,HAVE %d
+ui.inv.have_all,HAVE
+ui.inv.inventory,INVENTORY
+ui.inv.item.ash_shard.name,ASH SHARD
+ui.inv.item.ash_shard.subtitle,MATERIAL
+ui.inv.item.ashen_ring.name,ASHEN RING
+ui.inv.item.ashen_ring.subtitle,RING
+ui.inv.item.bone_charm.name,BONE CHARM
+ui.inv.item.bone_charm.subtitle,CHARM · +1 END
+ui.inv.item.healing_herb.name,HEALING HERB
+ui.inv.item.healing_herb.subtitle,CONSUMABLE · 20 HP
+ui.inv.item.iron_helm.name,IRON HELM
+ui.inv.item.iron_helm.subtitle,HELMET · ARMOR 3
+ui.inv.item.leather_armor.name,LEATHER ARMOR
+ui.inv.item.leather_armor.subtitle,ARMOR · DEF 5
+ui.inv.item.light_dagger.name,LIGHT DAGGER
+ui.inv.item.light_dagger.subtitle,LIGHT · DMG 6
+ui.inv.item.one_handed_sword.name,WARDEN SWORD
+ui.inv.item.one_handed_sword.subtitle,ONE-HANDED · DMG 10
+ui.inv.item.rusty_sword.name,RUSTY SWORD
+ui.inv.item.rusty_sword.subtitle,ONE-HANDED · DMG 7
+ui.inv.item.sealed_relic.name,SEALED RELIC
+ui.inv.item.sealed_relic.subtitle,RELIC
+ui.inv.item.sealed_relic.unavailable,ABILITY NOT UNLOCKED
+ui.inv.item.two_handed_axe.name,EXECUTIONER AXE
+ui.inv.item.two_handed_axe.subtitle,TWO-HANDED · DMG 18
+ui.inv.item.wooden_shield.name,WOODEN SHIELD
+ui.inv.item.wooden_shield.subtitle,SHIELD · DEF 4
+ui.inv.item_fallback,ITEM
+ui.inv.items,ITEMS
+ui.inv.learning_points,TRAINING PTS
+ui.inv.no_requirements,NO REQUIREMENTS
+ui.inv.none_more,NO · need %d
+ui.inv.points_word,points
+ui.inv.points_word_few,points
+ui.inv.points_word_many,points
+ui.inv.points_word_one,point
+ui.inv.reputation,REPUTATION
+ui.inv.requires,REQUIRED: 
+ui.inv.requires_item,%s %d (you have %d)
+ui.inv.separate_screen,This section opens as a separate screen
+ui.inv.slot_empty,%s: EMPTY
+ui.inv.slot_empty_short,%s: EMPTY
+ui.inv.stat_dexterity,DEX
+ui.inv.stat_endurance,END
+ui.inv.stat_health,HP
+ui.inv.stat_strength,STR
+ui.inv.stats,STATS
+ui.inv.tab_factions,FACTIONS
+ui.inv.tab_hero,HERO
+ui.inv.tab_journal,JOURNAL
+ui.inv.tab_map,MAP
+ui.inv.training_max,%s · maximum
+ui.inv.training_need,%s · need %d %s
+ui.inv.training_note,"TRAIN WITH
+A TEACHER"
+ui.inv.training_reason,Train with a teacher
+ui.inv.unavailable_prefix,UNAVAILABLE: %s
+ui.journal.empty_active,— NO ACTIVE QUESTS —
+ui.journal.empty_completed,— NO COMPLETED QUESTS —
+ui.journal.empty_description,DESCRIPTION UNAVAILABLE.
+ui.journal.empty_events,— NO EVENTS YET —
+ui.journal.empty_journal,— JOURNAL EMPTY —
+ui.journal.empty_selection,— SELECT AN ENTRY —
+ui.journal.event_prefix,%s · %s
+ui.journal.event_status,EVENT
+ui.journal.hint,↑↓ — SELECT · TAB/LB/RB — TAB
+ui.journal.section_active,ACTIVE · %d
+ui.journal.section_completed,COMPLETED · %d
+ui.journal.status_active,ACTIVE
+ui.journal.status_completed,COMPLETED
+ui.journal.tab_events,EVENTS
+ui.journal.tab_quests,QUESTS
+ui.journal.title,JOURNAL
+ui.map.close,CLOSE
+ui.map.current_zone,CURRENT ZONE
+ui.map.explore,EXPLORE THE WORLD
+ui.map.legend_bonfire,FLAME = BONFIRE
+ui.map.legend_lock,LOCK = ABILITY
+ui.map.legend_you,DIAMOND = YOU
+ui.map.locked,LOCKED: %s
+ui.map.no,NO
+ui.map.no_passes,NO PASSAGES
+ui.map.no_zones,NO VISITED ZONES
+ui.map.state_bonfire,%s · BONFIRE: %s
+ui.map.title,WORLD MAP
+ui.map.unknown_pass,UNEXPLORED PASSAGE
+ui.map.visited,VISITED
+ui.map.visited_zones,VISITED ZONES
+ui.map.yes,YES
+ui.menu.continue,Continue
+ui.menu.exit,Exit
+ui.menu.hint_continue,Load the latest save
+ui.menu.hint_exit,Quit the game
+ui.menu.hint_load,Choose a save
+ui.menu.hint_new,Start a new journey
+ui.menu.hint_settings,"Language, scale, accessibility"
+ui.menu.load,Load
+ui.menu.new_game,New game
+ui.menu.no_saves,No saves
+ui.menu.saves_corrupted,Saves are corrupted
+ui.menu.settings,Settings
+ui.menu.subtitle,ПЕПЕЛЬНЫЙ БАСТИОН · working title
+ui.menu.title1,ASHEN
+ui.menu.title2,BASTION
+ui.remap.action_attack,ATTACK
+ui.remap.action_block,BLOCK
+ui.remap.action_dash,DASH
+ui.remap.action_interact,INTERACT
+ui.remap.action_inventory,INVENTORY
+ui.remap.action_jump,JUMP
+ui.remap.action_map,MAP
+ui.remap.action_move_down,DOWN
+ui.remap.action_move_left,LEFT
+ui.remap.action_move_right,RIGHT
+ui.remap.action_move_up,UP
+ui.remap.action_roll,ROLL
+ui.remap.assign_hint,ENTER/A — ASSIGN
+ui.remap.axis,AXIS%d
+ui.remap.back,BACK
+ui.remap.capture_hint,PRESS A KEY OR BUTTON · ESC — CANCEL
+ui.remap.conflict,Conflict: %s
+ui.remap.conflict_prefix,! DUPLICATE: 
+ui.remap.duplicate,! DUPLICATE
+ui.remap.empty_binding,— NOT ASSIGNED —
+ui.remap.footer_hint,↑↓ — SELECT · ESC — BACK
+ui.remap.hint,ENTER/A — ASSIGN · ↑↓ — SELECT
+ui.remap.mouse,MOUSE%d
+ui.remap.reset,RESET
+ui.remap.reset_done,RESET TO DEFAULTS
+ui.remap.row_tooltip,Enter/A — assign
+ui.remap.saved,SAVED: %s — %s
+ui.remap.select_action,SELECT AN ACTION
+ui.remap.space,SPACE
+ui.remap.tab_reserved,TAB IS RESERVED FOR TABS
+ui.remap.title,CONTROLS
+ui.remap.waiting,WAITING FOR INPUT…
+ui.saves.a11y_corrupted,"Slot %d, corrupted"
+ui.saves.a11y_empty,"Slot %d, empty"
+ui.saves.a11y_valid,"Slot %d, %s"
+ui.saves.alert_corrupted,Slot %d is corrupted — choose another.
+ui.saves.alert_empty,Slot %d is empty — choose another.
+ui.saves.alert_error,Slot %d: load error — choose another.
+ui.saves.empty,— Empty —
+ui.saves.file_corrupted,File corrupted
+ui.saves.file_unsupported,Unsupported save
+ui.saves.heading,LOAD GAME
+ui.saves.hours_minutes,%dh %02dm
+ui.saves.load_slot,Load slot %d
+ui.saves.minutes,%dm
+ui.saves.reason_corrupted,Checksum mismatch
+ui.saves.reason_corrupted_data,Corrupted data
+ui.saves.reason_invalid_slot,Invalid slot
+ui.saves.reason_io,Cannot read the file
+ui.saves.reason_newer,Save is newer than the game
+ui.saves.reason_unsupported,Unsupported save version
+ui.saves.save_number,Save %d
+ui.saves.slot_corrupted,Slot %d is corrupted
+ui.saves.slot_empty,Slot %d is empty
+ui.settings.heading,SETTINGS · ACCESSIBILITY
+ui.settings.language_value,English
+ui.settings.remap_input,Keyboard · Gamepad
+ui.settings.remap_short,Remap · T-24
+ui.settings.remap_soon,Remapping arrives in T-24
+ui.settings.row_language,Language / Язык
+ui.settings.row_language_short,Language
+ui.settings.row_no_flash,No screen flashing
+ui.settings.row_no_flash_short,No flashing
+ui.settings.row_remap,Controls
+ui.settings.row_remap_short,Remap
+ui.settings.row_scale,Interface scale
+ui.settings.row_scale_short,Scale
+ui.settings.row_silhouette,Silhouette readability
+ui.settings.row_silhouette_short,Silhouettes
+ui.settings.row_subtitles,Sound subtitles
+ui.settings.row_subtitles_short,Subtitles
+ui.settings.row_window,Window mode
+ui.settings.row_window_short,Window
+ui.settings.window_borderless,Borderless
+ui.settings.window_fullscreen,Fullscreen
+ui.settings.window_windowed,Windowed
+ui.showcase.answer_about,About the Swamp
+ui.showcase.answer_another,Another slot
+ui.showcase.answer_cancel,Cancel
+ui.showcase.answer_leave,Leave
+ui.showcase.answer_oath,Oath
+ui.showcase.answer_retry,Retry
+ui.showcase.answer_save,Save game
+ui.showcase.camp_text,"Not here, traveler. While enemies are near, the flame will not accept an oath."
+ui.showcase.coins,COINS 1 240
+ui.showcase.enemy_near,Enemies nearby
+ui.showcase.equipped,Equipped: sword · 12 damage
+ui.showcase.faction,Order of Ash
+ui.showcase.hint,↑ ↓ · select    Enter · ok
+ui.showcase.level,LV7
+ui.showcase.oath_tag,[Order+1]
+ui.showcase.points,TP 3
+ui.showcase.requirements,Requirements: NO · need 2
+ui.showcase.saved,SAVED · SLOT 1
+ui.showcase.speaker,Keeper of the Flame
+ui.showcase.tab_equipment,EQUIPMENT
+ui.showcase.tab_factions,FACTIONS
+ui.showcase.tab_inventory,INVENTORY
+ui.showcase.zone,ZONE 1 · HUB
+zone.zone_01_village.epigraph,Ash remembers the names of those who stayed.
+zone.zone_01_village.name,Bastion Village
+zone.zone_02_swamp.epigraph,The mire releases neither heroes nor sins.
+zone.zone_02_swamp.name,Swamp
+zone.zone_03_mountains.epigraph,Above there is only wind and the silence of gods.
+zone.zone_03_mountains.name,Mountain Pass
+zone.zone_04_ruins.epigraph,Here they prayed to stone. The stone answered.
+zone.zone_04_ruins.name,Temple Ruins
+zone.zone_05_finale.epigraph,The last fire burns for the last warden.
+zone.zone_05_finale.name,Finale
+zone.zone_template.name,Zone template · Bastion Village
+ФАЗА I,PHASE I
+ФАЗА II,PHASE II
+ФАЗА III,PHASE III

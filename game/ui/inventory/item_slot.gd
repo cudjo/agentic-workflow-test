@@ -262,7 +262,7 @@ func _update_tooltip() -> void:
 	if item_name != "":
 		parts.append(item_name)
 	elif slot_hint != "" and state == State.EMPTY:
-		parts.append("%s: ПУСТО" % slot_hint)
+		parts.append(tr("ui.inv.slot_empty_short") % slot_hint)
 	if requirement_summary != "":
 		parts.append(requirement_summary)
 	if unavailable_reason != "":

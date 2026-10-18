@@ -17,19 +17,19 @@ signal closed
 signal choice_made(faction_id: StringName)
 
 const LAYER: int = 20
-const TITLE_TEXT: String = "ВЫБОР ФРАКЦИИ"
-const DEFAULT_REASON: String = "Присяга определит финал. Выбор нельзя отменить."
-const CONFIRM_TEXT: String = "ПРИСЯГНУТЬ"
-const CANCEL_TEXT: String = "ПОЗЖЕ"
-const ACCESS_OPEN: String = "ОТКР"
-const ACCESS_CLOSED: String = "ЗАКР"
-const ACCESS_OPEN_LONG: String = "ДОСТУП ОТКРЫТ"
-const ACCESS_CLOSED_LONG: String = "ЗАКРЫТ !"
+const TITLE_TEXT: String = "ui.choice.title"
+const DEFAULT_REASON: String = "ui.choice.default_reason"
+const CONFIRM_TEXT: String = "ui.choice.confirm"
+const CANCEL_TEXT: String = "ui.choice.cancel"
+const ACCESS_OPEN: String = "ui.factions.access_open_short"
+const ACCESS_CLOSED: String = "ui.factions.access_closed_short"
+const ACCESS_OPEN_LONG: String = "ui.factions.access_open"
+const ACCESS_CLOSED_LONG: String = "ui.factions.access_closed"
 const CHOSEN_MARK: String = "*"
-const EMPTY_FACTIONS: String = "— НЕТ ДАННЫХ ФРАКЦИЙ —"
-const IMPACT_TEXT: String = "ВЛИЯНИЕ: КОНЦОВКА И ОТНОШЕНИЕ NPC"
-const CONFIRM_HINT: String = "ЕЩЁ РАЗ — ПОДТВЕРДИТЬ"
-const HINT_TEXT: String = "↑↓ — ФРАКЦИЯ · ENTER/A — ПРИСЯГА · ESC/B — ПОЗЖЕ"
+const EMPTY_FACTIONS: String = "ui.factions.empty"
+const IMPACT_TEXT: String = "ui.choice.impact"
+const CONFIRM_HINT: String = "ui.choice.confirm_hint"
+const HINT_TEXT: String = "ui.choice.hint"
 
 const PANEL_RECT := Rect2(8, 8, 464, 254)
 const LIST_RECT := Rect2(14, 54, 220, 168)
@@ -75,12 +75,16 @@ func _init() -> void:
 
 func _ready() -> void:
 	_ensure_built()
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	if not EventBus.faction_choice_requested.is_connected(_on_choice_requested):
 		EventBus.faction_choice_requested.connect(_on_choice_requested)
 	_refresh()
 
 
 func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 	if EventBus.faction_choice_requested.is_connected(_on_choice_requested):
 		EventBus.faction_choice_requested.disconnect(_on_choice_requested)
 	if _pause_owned:
@@ -95,7 +99,7 @@ func _exit_tree() -> void:
 func open(reason: String = "") -> void:
 	_ensure_built()
 	_reason = reason
-	_subtitle.text = reason if not reason.is_empty() else DEFAULT_REASON
+	_subtitle.text = reason if not reason.is_empty() else tr(DEFAULT_REASON)
 	if visible:
 		return
 
@@ -282,13 +286,13 @@ func _ensure_built() -> void:
 	_panel.position = PANEL_RECT.position
 	_panel.size = PANEL_RECT.size
 
-	_title = _make_label(TITLE_TEXT, UITokens.GOLD_3, UITokens.FONT_H2)
+	_title = _make_label(tr(TITLE_TEXT), UITokens.GOLD_3, UITokens.FONT_H2)
 	_title.name = "Title"
 	_title.position = Vector2(16, 10)
 	_title.size = Vector2(360, UITokens.LINE_H2)
 	_root.add_child(_title)
 
-	_subtitle = _make_label(DEFAULT_REASON, UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_subtitle = _make_label(tr(DEFAULT_REASON), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_subtitle.name = "Subtitle"
 	_subtitle.position = Vector2(16, 30)
 	_subtitle.size = Vector2(448, 20)
@@ -335,7 +339,7 @@ func _ensure_built() -> void:
 
 	_confirm_button = AshenMenuItem.new()
 	_confirm_button.name = "Confirm"
-	_confirm_button.text = CONFIRM_TEXT
+	_confirm_button.text = tr(CONFIRM_TEXT)
 	_confirm_button.font_size = UITokens.FONT_BODY
 	_confirm_button.custom_minimum_size = Vector2(152, ACTION_HEIGHT)
 	_confirm_button.pressed.connect(_on_confirm_pressed)
@@ -343,7 +347,7 @@ func _ensure_built() -> void:
 
 	_cancel_button = AshenMenuItem.new()
 	_cancel_button.name = "Cancel"
-	_cancel_button.text = CANCEL_TEXT
+	_cancel_button.text = tr(CANCEL_TEXT)
 	_cancel_button.font_size = UITokens.FONT_BODY
 	_cancel_button.custom_minimum_size = Vector2(88, ACTION_HEIGHT)
 	_cancel_button.pressed.connect(close)
@@ -355,7 +359,7 @@ func _ensure_built() -> void:
 	_status.size = Vector2(186, ACTION_HEIGHT)
 	_root.add_child(_status)
 
-	_hint = _make_label(HINT_TEXT, UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, false)
+	_hint = _make_label(tr(HINT_TEXT), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, false)
 	_hint.name = "Hint"
 	_hint.position = Vector2(14, 250)
 	_hint.size = Vector2(452, UITokens.LINE_BODY)
@@ -390,6 +394,24 @@ func _make_label(
 # Список и детали
 # ------------------------------------------------------------------------------
 
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+func _retranslate() -> void:
+	if not _built:
+		return
+	_title.text = tr(TITLE_TEXT)
+	if _reason.is_empty():
+		_subtitle.text = tr(DEFAULT_REASON)
+	_confirm_button.text = tr(CONFIRM_TEXT)
+	_cancel_button.text = tr(CANCEL_TEXT)
+	_hint.text = tr(HINT_TEXT)
+	if _confirm_button.has_focus():
+		_status.text = tr(CONFIRM_HINT)
+	_refresh()
+
+
 func _refresh() -> void:
 	var ids: Array[StringName] = FactionManager.get_faction_ids()
 	if _selected_id == &"" or not ids.has(_selected_id):
@@ -409,7 +431,7 @@ func _rebuild_rows() -> void:
 
 	var ids: Array[StringName] = FactionManager.get_faction_ids()
 	if ids.is_empty():
-		_list_box.add_child(_make_label(EMPTY_FACTIONS, UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true))
+		_list_box.add_child(_make_label(tr(EMPTY_FACTIONS), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true))
 		return
 
 	var chosen: StringName = FactionManager.get_selected_faction()
@@ -421,7 +443,7 @@ func _rebuild_rows() -> void:
 		var allowed: bool = bool(info.get("allowed", false))
 		var row := AshenMenuItem.new()
 		row.name = "Faction_%s" % String(faction_id)
-		row.prefix_tag = (ACCESS_OPEN + " ") if allowed else (ACCESS_CLOSED + " ")
+		row.prefix_tag = (tr(ACCESS_OPEN) + " ") if allowed else (tr(ACCESS_CLOSED) + " ")
 		var name_text: String = FactionManager.get_faction_name(faction_id)
 		if chosen == faction_id:
 			name_text = "%s %s" % [CHOSEN_MARK, name_text]
@@ -429,7 +451,7 @@ func _rebuild_rows() -> void:
 		row.font_size = UITokens.FONT_BODY
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var tooltip: String = (
-			str(info.get("reason", "")) if not allowed else ACCESS_OPEN_LONG
+			str(info.get("reason", "")) if not allowed else tr(ACCESS_OPEN_LONG)
 		)
 		row.set_meta("faction_id", faction_id)
 		row.focus_entered.connect(_on_row_focused.bind(row))
@@ -500,22 +522,22 @@ func _rebuild_detail() -> void:
 	# Лор и полная причина отказа живут на вкладке «Фракции»; экран присяги
 	# показывает только то, что нужно для решения (имя, репутация, доступ).
 	_detail_box.add_child(
-		_make_label("РЕПУТАЦИЯ: %+d" % int(info.get("reputation", 0)), UITokens.BONE)
+		_make_label(tr("ui.choice.reputation") % int(info.get("reputation", 0)), UITokens.BONE)
 	)
 	_detail_box.add_child(
-		_make_label("ПОРОГ: %d" % int(info.get("threshold", 0)), UITokens.STONE_5)
+		_make_label(tr("ui.choice.threshold") % int(info.get("threshold", 0)), UITokens.STONE_5)
 	)
 	_detail_box.add_child(
 		_make_label(
-			ACCESS_OPEN_LONG if allowed else ACCESS_CLOSED_LONG,
+			tr(ACCESS_OPEN_LONG) if allowed else tr(ACCESS_CLOSED_LONG),
 			UITokens.STEEL_3 if allowed else UITokens.BLOOD_5
 		)
 	)
-	_detail_box.add_child(_make_label(IMPACT_TEXT, UITokens.STEEL_3, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true))
+	_detail_box.add_child(_make_label(tr(IMPACT_TEXT), UITokens.STEEL_3, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	if FactionManager.get_selected_faction() == faction_id:
 		_detail_box.add_child(
-			_make_label("%s ВЫБРАНА" % CHOSEN_MARK, UITokens.GOLD_3)
+			_make_label(tr("ui.choice.chosen") % CHOSEN_MARK, UITokens.GOLD_3)
 		)
 
 
@@ -586,7 +608,7 @@ func _on_accept() -> void:
 	# выбор фракции необратим, случайное нажатие не должно его фиксировать.
 	_rebuild_detail()
 	_confirm_button.grab_focus()
-	_status.text = CONFIRM_HINT
+	_status.text = tr(CONFIRM_HINT)
 
 
 func _on_row_focused(row: AshenMenuItem) -> void:

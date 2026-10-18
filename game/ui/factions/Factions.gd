@@ -16,22 +16,22 @@ signal opened
 signal closed
 
 const LAYER: int = 20
-const TITLE_TEXT: String = "ФРАКЦИИ"
+const TITLE_TEXT: String = "ui.factions.title"
 const TAB_REPUTATION: int = 0
 const TAB_ACCESS: int = 1
-const TAB_TITLES: Array[String] = ["СПИСОК", "ДОСТУП"]
+const TAB_TITLES: Array[String] = ["ui.factions.tab_list", "ui.factions.tab_access"]
 
-const ACCESS_OPEN: String = "ОТКР"
-const ACCESS_CLOSED: String = "ЗАКР"
-const ACCESS_OPEN_LONG: String = "ДОСТУП ОТКРЫТ"
-const ACCESS_CLOSED_LONG: String = "ЗАКРЫТ !"
+const ACCESS_OPEN: String = "ui.factions.access_open_short"
+const ACCESS_CLOSED: String = "ui.factions.access_closed_short"
+const ACCESS_OPEN_LONG: String = "ui.factions.access_open"
+const ACCESS_CLOSED_LONG: String = "ui.factions.access_closed"
 const CHOSEN_MARK: String = "*"
-const EMPTY_FACTIONS: String = "— НЕТ ДАННЫХ ФРАКЦИЙ —"
-const HINT_TEXT: String = "↑↓ — ФРАКЦИЯ · TAB/LB/RB — ВКЛАДКА"
-const CLOSE_TEXT: String = "Закрыть"
-const KIND_TERRITORY: String = "ТЕРРИТОРИЯ"
-const KIND_TRADER: String = "ТОРГОВЕЦ"
-const KIND_QUEST: String = "КВЕСТЫ"
+const EMPTY_FACTIONS: String = "ui.factions.empty"
+const HINT_TEXT: String = "ui.factions.hint"
+const CLOSE_TEXT: String = "ui.common.close"
+const KIND_TERRITORY: String = "ui.factions.kind_territory"
+const KIND_TRADER: String = "ui.factions.kind_trader"
+const KIND_QUEST: String = "ui.factions.kind_quest"
 
 const PANEL_RECT := Rect2(8, 8, 464, 254)
 const TAB_POSITION := Vector2(190, 10)
@@ -77,6 +77,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	_ensure_built()
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	if not EventBus.faction_reputation_changed.is_connected(_on_reputation_changed):
 		EventBus.faction_reputation_changed.connect(_on_reputation_changed)
 	if not EventBus.faction_access_changed.is_connected(_on_access_changed):
@@ -87,6 +89,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 	if EventBus.faction_reputation_changed.is_connected(_on_reputation_changed):
 		EventBus.faction_reputation_changed.disconnect(_on_reputation_changed)
 	if EventBus.faction_access_changed.is_connected(_on_access_changed):
@@ -270,7 +274,7 @@ func _ensure_built() -> void:
 	_panel.position = PANEL_RECT.position
 	_panel.size = PANEL_RECT.size
 
-	_title = _make_label(TITLE_TEXT, UITokens.GOLD_3, UITokens.FONT_H2)
+	_title = _make_label(tr(TITLE_TEXT), UITokens.GOLD_3, UITokens.FONT_H2)
 	_title.name = "Title"
 	_title.position = Vector2(16, 10)
 	_title.size = Vector2(168, UITokens.LINE_H2)
@@ -279,7 +283,7 @@ func _ensure_built() -> void:
 	_tab_bar = AshenTabBar.new()
 	_tab_bar.name = "Tabs"
 	_tab_bar.min_tab_width = 88
-	_tab_bar.set_tabs(PackedStringArray(TAB_TITLES))
+	_tab_bar.set_tabs(_localized_tabs())
 	_root.add_child(_tab_bar)
 	_tab_bar.position = TAB_POSITION
 	_tab_bar.size = Vector2(200, UITokens.TAB_HEIGHT)
@@ -318,7 +322,7 @@ func _ensure_built() -> void:
 	_detail_box.add_theme_constant_override("separation", UITokens.SP_2)
 	_detail_scroll.add_child(_detail_box)
 
-	_hint = _make_label(HINT_TEXT, UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_hint = _make_label(tr(HINT_TEXT), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_hint.name = "Hint"
 	_hint.position = Vector2(120, FOOTER_Y)
 	_hint.size = Vector2(346, UITokens.LINE_BODY)
@@ -328,7 +332,7 @@ func _ensure_built() -> void:
 	_prompt.name = "ClosePrompt"
 	_root.add_child(_prompt)
 	_prompt.position = Vector2(14, FOOTER_Y)
-	_prompt.setup(&"ui_cancel", CLOSE_TEXT)
+	_prompt.setup(&"ui_cancel", tr(CLOSE_TEXT))
 
 
 func _make_label(
@@ -360,6 +364,27 @@ func _make_label(
 # Список и детали
 # ------------------------------------------------------------------------------
 
+func _localized_tabs() -> PackedStringArray:
+	var tabs := PackedStringArray()
+	for key: String in TAB_TITLES:
+		tabs.append(tr(key))
+	return tabs
+
+
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+func _retranslate() -> void:
+	if not _built:
+		return
+	_title.text = tr(TITLE_TEXT)
+	_tab_bar.set_tabs(_localized_tabs())
+	_hint.text = tr(HINT_TEXT)
+	_prompt.setup(&"ui_cancel", tr(CLOSE_TEXT))
+	_refresh()
+
+
 func _refresh() -> void:
 	var ids: Array[StringName] = FactionManager.get_faction_ids()
 	if _selected_id == &"" or not ids.has(_selected_id):
@@ -379,7 +404,7 @@ func _rebuild_rows() -> void:
 
 	var ids: Array[StringName] = FactionManager.get_faction_ids()
 	if ids.is_empty():
-		var empty := _make_label(EMPTY_FACTIONS, UITokens.STONE_5)
+		var empty := _make_label(tr(EMPTY_FACTIONS), UITokens.STONE_5)
 		_list_box.add_child(empty)
 		return
 
@@ -392,7 +417,7 @@ func _rebuild_rows() -> void:
 		var allowed: bool = bool(info.get("allowed", false))
 		var row := AshenMenuItem.new()
 		row.name = "Faction_%s" % String(faction_id)
-		row.prefix_tag = (ACCESS_CLOSED + " ") if not allowed else (ACCESS_OPEN + " ")
+		row.prefix_tag = (tr(ACCESS_CLOSED) + " ") if not allowed else (tr(ACCESS_OPEN) + " ")
 		var name_text: String = FactionManager.get_faction_name(faction_id)
 		if chosen == faction_id:
 			name_text = "%s %s" % [CHOSEN_MARK, name_text]
@@ -402,7 +427,7 @@ func _rebuild_rows() -> void:
 		var tooltip: String = (
 			str(info.get("reason", ""))
 			if not allowed
-			else "%s: %s" % [ACCESS_OPEN_LONG, FactionManager.get_faction_name(faction_id)]
+			else "%s: %s" % [tr(ACCESS_OPEN_LONG), FactionManager.get_faction_name(faction_id)]
 		)
 		row.set_meta("faction_id", faction_id)
 		row.focus_entered.connect(_on_row_focused.bind(row))
@@ -454,7 +479,7 @@ func _rebuild_detail() -> void:
 	_access_reason = null
 
 	if _selected_id == &"":
-		_detail_box.add_child(_make_label(EMPTY_FACTIONS, UITokens.STONE_5))
+		_detail_box.add_child(_make_label(tr(EMPTY_FACTIONS), UITokens.STONE_5))
 		return
 
 	if _tab_index == TAB_ACCESS:
@@ -484,10 +509,10 @@ func _build_reputation_detail() -> void:
 		_detail_box.add_child(_make_label(lore, UITokens.STONE_5))
 
 	_detail_box.add_child(
-		_make_label("РЕПУТАЦИЯ: %s" % _format_reputation(reputation), UITokens.BONE)
+		_make_label(tr("ui.factions.reputation") % _format_reputation(reputation), UITokens.BONE)
 	)
 	_detail_box.add_child(
-		_make_label("ПОРОГ: %s" % _format_reputation(threshold, false), UITokens.STONE_5)
+		_make_label(tr("ui.factions.threshold") % _format_reputation(threshold, false), UITokens.STONE_5)
 	)
 	_detail_box.add_child(
 		_make_label(_access_line(allowed), UITokens.STEEL_3 if allowed else UITokens.BLOOD_5)
@@ -499,7 +524,7 @@ func _build_reputation_detail() -> void:
 	if FactionManager.get_selected_faction() == faction_id:
 		_detail_box.add_child(
 			_make_label(
-				"%s ВЫБРАНА ДЛЯ КОНЦОВКИ" % CHOSEN_MARK,
+				tr("ui.factions.chosen_for_ending") % CHOSEN_MARK,
 				UITokens.GOLD_3
 			)
 		)
@@ -531,8 +556,8 @@ func _build_access_detail() -> void:
 		var allowed: bool = bool(info.get("allowed", false))
 		var row := AshenMenuItem.new()
 		row.name = "Access_%d" % _access_infos.size()
-		row.text = str(entry["label"])
-		row.prefix_tag = (ACCESS_CLOSED_LONG + " ") if not allowed else (ACCESS_OPEN + " ")
+		row.text = tr(str(entry["label"]))
+		row.prefix_tag = (tr(ACCESS_CLOSED_LONG) + " ") if not allowed else (tr(ACCESS_OPEN) + " ")
 		row.font_size = UITokens.FONT_BODY
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.tooltip_text = str(info.get("reason", "")) if not allowed else _access_line(true)
@@ -564,7 +589,7 @@ func _on_access_focused(index: int) -> void:
 	var reason: String = str(info.get("reason", ""))
 	if _access_reason != null:
 		var lines: Array[String] = [
-			"ПОРОГ: %d · РЕПУТАЦИЯ: %+d" % [threshold, reputation],
+			tr("ui.factions.threshold_rep") % [threshold, reputation],
 		]
 		if allowed:
 			lines.append(status)
@@ -610,18 +635,18 @@ func _make_rule() -> ColorRect:
 
 
 func _access_line(allowed: bool) -> String:
-	return ACCESS_OPEN_LONG if allowed else ACCESS_CLOSED_LONG
+	return tr(ACCESS_OPEN_LONG) if allowed else tr(ACCESS_CLOSED_LONG)
 
 
 func _alternative_text(info: Dictionary) -> String:
 	var alternative_id: StringName = StringName(str(info.get("alternative_faction_id", "")))
 	if alternative_id == &"":
-		return "АЛЬТЕРНАТИВЫ НЕТ"
+		return tr("ui.factions.alternative_none")
 	var alternative_name: String = FactionManager.get_faction_name(alternative_id)
 	var alternative_allowed: bool = bool(info.get("alternative_allowed", false))
-	return "АЛЬТЕРНАТИВА: %s — %s" % [
+	return tr("ui.factions.alternative") % [
 		alternative_name,
-		ACCESS_OPEN_LONG if alternative_allowed else ACCESS_CLOSED_LONG,
+		tr(ACCESS_OPEN_LONG) if alternative_allowed else tr(ACCESS_CLOSED_LONG),
 	]
 
 

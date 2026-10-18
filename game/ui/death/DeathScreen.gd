@@ -24,24 +24,24 @@ extends CanvasLayer
 const LAYER: int = 40
 const DEATH_HANDLER_GROUP: StringName = &"death_handler"
 
-const TITLE_TEXT: String = "ТЫ ПОГИБ"
-const HEADING_FIRST: String = "ОСТАЛОСЬ НА МЕСТЕ ГИБЕЛИ"
-const HEADING_LOST: String = "УТРАЧЕНО НАВСЕГДА"
-const SUBTITLE_LOST: String = "Ты пал снова, не вернув своё"
-const SUBTITLE_PLACE: String = "место гибели"
-const SUBTITLE_UNKNOWN: String = "Место гибели"
-const FOOTNOTE_FIRST: String = "Экипировка — тоже там."
-const FOOTNOTE_LOST: String = "Вернуть уже нельзя."
-const WARNING_FIRST: String = "Умрёшь до подбора — вещи пропадут навсегда."
-const WARNING_LOST: String = "Прошлая потеря необратима."
-const LEGEND_BAG: String = "Твои вещи"
-const LEGEND_LOST: String = "Утрачено"
-const LEGEND_BONFIRE: String = "Костёр"
-const ACTION_RESPAWN: String = "Возродиться у костра"
-const ACTION_MENU: String = "В главное меню"
-const KEYS_HINT: String = "Ок"
-const COINS_LABEL: String = "Монеты"
-const ITEMS_LABEL: String = "Предметы"
+const TITLE_TEXT: String = "ui.death.title"
+const HEADING_FIRST: String = "ui.death.heading_first"
+const HEADING_LOST: String = "ui.death.heading_lost"
+const SUBTITLE_LOST: String = "ui.death.subtitle_lost"
+const SUBTITLE_PLACE: String = "ui.death.subtitle_place"
+const SUBTITLE_UNKNOWN: String = "ui.death.subtitle_unknown"
+const FOOTNOTE_FIRST: String = "ui.death.footnote_first"
+const FOOTNOTE_LOST: String = "ui.death.footnote_lost"
+const WARNING_FIRST: String = "ui.death.warning_first"
+const WARNING_LOST: String = "ui.death.warning_lost"
+const LEGEND_BAG: String = "ui.death.legend_bag"
+const LEGEND_LOST: String = "ui.death.legend_lost"
+const LEGEND_BONFIRE: String = "ui.death.legend_bonfire"
+const ACTION_RESPAWN: String = "ui.death.action_respawn"
+const ACTION_MENU: String = "ui.death.action_menu"
+const KEYS_HINT: String = "ui.common.ok"
+const COINS_LABEL: String = "ui.death.coins"
+const ITEMS_LABEL: String = "ui.death.items"
 const EMPTY_PREVIEW: String = "—"
 
 ## Геометрия макета death.html в кадре 480×270.
@@ -87,6 +87,10 @@ var _respawn_button: AshenMenuItem
 var _menu_button: AshenMenuItem
 var _warning: HBoxContainer
 var _warning_label: Label
+var _fire_label: Label
+var _coins_row_label: Label
+var _items_row_label: Label
+var _confirm_prompt: AshenPrompt
 
 var _preview_slots: Array[AshenSlot] = []
 var _map_model: WorldMapModel
@@ -109,6 +113,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	_ensure_built()
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	if not EventBus.death_screen_requested.is_connected(_on_death_screen_requested):
 		EventBus.death_screen_requested.connect(_on_death_screen_requested)
 	if not EventBus.player_respawned.is_connected(_on_player_respawned):
@@ -118,6 +124,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 	if EventBus.death_screen_requested.is_connected(_on_death_screen_requested):
 		EventBus.death_screen_requested.disconnect(_on_death_screen_requested)
 	if EventBus.player_respawned.is_connected(_on_player_respawned):
@@ -349,7 +357,7 @@ func _build_title() -> void:
 	_title_block.size = TITLE_RECT.size
 
 	_title_label = _make_label(
-		TITLE_TEXT,
+		tr(TITLE_TEXT),
 		UITokens.BLOOD_3,
 		UITokens.FONT_TITLE,
 		HORIZONTAL_ALIGNMENT_CENTER
@@ -379,7 +387,7 @@ func _build_left_panel() -> void:
 	box.add_theme_constant_override("separation", UITokens.SP_2)
 	_left_panel.add_child(box)
 
-	_heading_label = _make_label(HEADING_FIRST, UITokens.GOLD_3)
+	_heading_label = _make_label(tr(HEADING_FIRST), UITokens.GOLD_3)
 	_heading_label.name = "Heading"
 	_heading_label.custom_minimum_size = Vector2(0, UITokens.LINE_BODY)
 	box.add_child(_heading_label)
@@ -391,12 +399,12 @@ func _build_left_panel() -> void:
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(rule)
 
-	var coins: Dictionary = _make_loss_row(COINS_LABEL, _DeathIcon.Kind.COIN)
+	var coins: Dictionary = _make_loss_row(tr(COINS_LABEL), _DeathIcon.Kind.COIN)
 	box.add_child(coins["row"])
 	_currency_label = coins["value"] as Label
 	_currency_label.add_theme_color_override("font_color", UITokens.GOLD_3)
 
-	var items: Dictionary = _make_loss_row(ITEMS_LABEL, _DeathIcon.Kind.BAG)
+	var items: Dictionary = _make_loss_row(tr(ITEMS_LABEL), _DeathIcon.Kind.BAG)
 	box.add_child(items["row"])
 	_items_label = items["value"] as Label
 
@@ -410,7 +418,7 @@ func _build_left_panel() -> void:
 	_more_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_preview_box.add_child(_more_label)
 
-	_footnote_label = _make_label(FOOTNOTE_FIRST, UITokens.STONE_5)
+	_footnote_label = _make_label(tr(FOOTNOTE_FIRST), UITokens.STONE_5)
 	_footnote_label.name = "Footnote"
 	_footnote_label.custom_minimum_size = Vector2(0, UITokens.LINE_BODY)
 	box.add_child(_footnote_label)
@@ -456,7 +464,7 @@ func _build_right_panel() -> void:
 	_legend_icon = _DeathIcon.new()
 	_legend_icon.kind = _DeathIcon.Kind.BAG
 	own.add_child(_legend_icon)
-	_legend_label = _make_label(LEGEND_BAG, UITokens.STONE_5)
+	_legend_label = _make_label(tr(LEGEND_BAG), UITokens.STONE_5)
 	_legend_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	own.add_child(_legend_label)
 
@@ -466,7 +474,8 @@ func _build_right_panel() -> void:
 	var fire_icon := _DeathIcon.new()
 	fire_icon.kind = _DeathIcon.Kind.BONFIRE
 	fire.add_child(fire_icon)
-	var fire_label := _make_label(LEGEND_BONFIRE, UITokens.STONE_5)
+	_fire_label = _make_label(tr(LEGEND_BONFIRE), UITokens.STONE_5)
+	var fire_label := _fire_label
 	fire_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	fire.add_child(fire_label)
 
@@ -478,9 +487,9 @@ func _build_actions() -> void:
 	_root.add_child(_actions)
 	_actions.position = ACTIONS_POSITION
 
-	_respawn_button = _make_action(ACTION_RESPAWN, "Respawn")
+	_respawn_button = _make_action(tr(ACTION_RESPAWN), "Respawn")
 	_respawn_button.pressed.connect(_on_respawn_pressed)
-	_menu_button = _make_action(ACTION_MENU, "MainMenu")
+	_menu_button = _make_action(tr(ACTION_MENU), "MainMenu")
 	_menu_button.pressed.connect(_on_menu_pressed)
 
 
@@ -499,7 +508,8 @@ func _build_keys() -> void:
 
 	var prompt := AshenPrompt.new()
 	prompt.name = "ConfirmPrompt"
-	prompt.setup(&"ui_accept", KEYS_HINT)
+	_confirm_prompt = prompt
+	prompt.setup(&"ui_accept", tr(KEYS_HINT))
 	keys.add_child(prompt)
 
 
@@ -515,7 +525,7 @@ func _build_warning() -> void:
 	badge.name = "WarningBadge"
 	_warning.add_child(badge)
 
-	_warning_label = _make_label(WARNING_FIRST, UITokens.BONE)
+	_warning_label = _make_label(tr(WARNING_FIRST), UITokens.BONE)
 	_warning_label.name = "WarningText"
 	_warning_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_warning_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -554,7 +564,7 @@ func _make_loss_row(title: String, icon_kind: int) -> Dictionary:
 	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	value.custom_minimum_size = Vector2(48, UITokens.LINE_BODY)
 	row.add_child(value)
-	return {"row": row, "value": value}
+	return {"row": row, "value": value, "label": label}
 
 
 func _make_action(title: String, node_name: String) -> AshenMenuItem:
@@ -594,12 +604,30 @@ func _make_label(
 # Применение данных
 # ------------------------------------------------------------------------------
 
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+func _retranslate() -> void:
+	if _title_label == null:
+		return
+	_title_label.text = tr(TITLE_TEXT)
+	_respawn_button.text = tr(ACTION_RESPAWN)
+	_menu_button.text = tr(ACTION_MENU)
+	_coins_row_label.text = tr(COINS_LABEL)
+	_items_row_label.text = tr(ITEMS_LABEL)
+	_fire_label.text = tr(LEGEND_BONFIRE)
+	_confirm_prompt.setup(&"ui_accept", tr(KEYS_HINT))
+	if _showing:
+		_apply_view(_view)
+
+
 func _apply_view(view: Dictionary) -> void:
 	var lost: bool = bool(view.get("lost", false))
 
 	_subtitle_label.text = _subtitle_for(view, lost)
 
-	_heading_label.text = str(view.get("heading", HEADING_FIRST))
+	_heading_label.text = tr(str(view.get("heading", HEADING_FIRST)))
 	_heading_label.add_theme_color_override(
 		"font_color",
 		UITokens.BLOOD_5 if lost else UITokens.GOLD_3
@@ -616,19 +644,19 @@ func _apply_view(view: Dictionary) -> void:
 	_more_label.text = "+%d" % extra if extra > 0 else ""
 	_more_label.visible = extra > 0
 
-	_footnote_label.text = str(view.get("footnote", FOOTNOTE_FIRST))
+	_footnote_label.text = tr(str(view.get("footnote", FOOTNOTE_FIRST)))
 	_footnote_label.add_theme_color_override(
 		"font_color",
 		UITokens.BLOOD_5 if lost else UITokens.STONE_5
 	)
 
-	_warning_label.text = str(view.get("warning", WARNING_FIRST))
+	_warning_label.text = tr(str(view.get("warning", WARNING_FIRST)))
 	_warning_label.add_theme_color_override(
 		"font_color",
 		UITokens.STONE_5 if lost else UITokens.BONE
 	)
 
-	_legend_label.text = LEGEND_LOST if lost else LEGEND_BAG
+	_legend_label.text = tr(LEGEND_LOST) if lost else tr(LEGEND_BAG)
 	_legend_icon.kind = _DeathIcon.Kind.SKULL if lost else _DeathIcon.Kind.BAG
 	_legend_icon.queue_redraw()
 
@@ -638,12 +666,12 @@ func _apply_view(view: Dictionary) -> void:
 
 func _subtitle_for(view: Dictionary, lost: bool) -> String:
 	if lost:
-		return SUBTITLE_LOST
+		return tr(SUBTITLE_LOST)
 	var zone_id: String = str(view.get("zone_id", ""))
 	var zone_name: String = _zone_display_name(zone_id)
 	if zone_name.is_empty():
-		return SUBTITLE_UNKNOWN
-	return "%s · %s" % [zone_name, SUBTITLE_PLACE]
+		return tr(SUBTITLE_UNKNOWN)
+	return "%s · %s" % [zone_name, tr(SUBTITLE_PLACE)]
 
 
 func _rebuild_preview(items: Array[String], preview: Array[String]) -> void:
@@ -717,7 +745,7 @@ func _build_map_snapshot(view: Dictionary) -> Dictionary:
 	return {
 		"rooms": [{
 			"zone_id": zone_id,
-			"zone_name": data.display_name,
+			"zone_name": data.get_display_name(),
 			"room_id": room.id,
 			"cell": Vector2i.ZERO,
 			"world_rect": world_rect,
@@ -759,7 +787,7 @@ func _zone_display_name(zone_id: String) -> String:
 	var data: ZoneData = _map_model_instance().get_zone(StringName(zone_id))
 	if data == null:
 		return ""
-	return data.display_name
+	return data.get_display_name()
 
 
 func _local_in_rect(position: Vector2, rect: Rect2) -> Vector2:

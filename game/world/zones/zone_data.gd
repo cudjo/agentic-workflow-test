@@ -29,6 +29,16 @@ extends Resource
 @export var map_bonfires: Array[Vector2] = []
 
 
+## Локализованное имя зоны (`zone.<id>.name`), fallback — `display_name`.
+func get_display_name() -> String:
+	return LocaleText.lookup("zone.%s.name" % String(id), display_name)
+
+
+## Локализованная атмосферная строка (`zone.<id>.epigraph`).
+func get_epigraph() -> String:
+	return LocaleText.lookup("zone.%s.epigraph" % String(id), epigraph)
+
+
 ## Проверка целостности данных зоны. Возвращает список проблем (пусто — данные валидны).
 ## Вызывается ZoneScene при загрузке, чтобы битые .tres не падали молча.
 func validate() -> PackedStringArray:

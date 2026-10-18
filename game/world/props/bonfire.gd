@@ -98,7 +98,7 @@ func _find_zone_id() -> StringName:
 func _find_zone_name() -> String:
 	var zone: ZoneScene = _find_zone_scene()
 	if zone != null and zone.zone_data != null:
-		return zone.zone_data.display_name
+		return zone.zone_data.get_display_name()
 	return ""
 
 

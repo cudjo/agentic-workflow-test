@@ -168,9 +168,9 @@ func get_phase() -> int:
 ## Текстовая дублёр-подпись состояния (не только цвет): «НЕТ СИЛ», «КРИТИЧНО».
 func get_state_text() -> String:
 	if is_exhausted():
-		return "НЕТ СИЛ"
+		return tr("ui.comp.no_stamina")
 	if is_critical():
-		return "КРИТИЧНО"
+		return tr("ui.comp.critical")
 	return ""
 
 

@@ -19,10 +19,8 @@ signal answer_selected(index: int, effects: Array)
 const LAYER: int = 20
 const DIALOG_POSITION := Vector2(8, 166)
 const HINT_POSITION := Vector2(8, 150)
-const FINISH_RU: String = "Уйти"
-const FINISH_EN: String = "Leave"
-const NEXT_PAGE_RU: String = "Далее"
-const NEXT_PAGE_EN: String = "Next"
+const FINISH_TEXT: String = "ui.dialogue.finish"
+const NEXT_PAGE_TEXT: String = "ui.dialogue.next"
 
 var _ui_root: Control
 var _dialog: AshenDialog
@@ -220,7 +218,7 @@ func _render(snapshot: Dictionary) -> void:
 	if answers.is_empty() and not has_next_page and not ended:
 		# Терминальный узел без ответов: даём явный выход, чтобы диалог
 		# закрывался клавиатурой/геймпадом, а не «зависал».
-		answers.append({"text": _localized(FINISH_RU, FINISH_EN)})
+		answers.append({"text": tr(FINISH_TEXT)})
 		_synthetic_finish = true
 
 	_dialog.instant_text = Config.no_flash
@@ -240,7 +238,7 @@ func _update_hint(has_next_page: bool) -> void:
 		return
 	_next_hint.visible = has_next_page
 	if has_next_page:
-		_next_hint.label_text = _localized(NEXT_PAGE_RU, NEXT_PAGE_EN)
+		_next_hint.label_text = tr(NEXT_PAGE_TEXT)
 
 
 ## Явные соседи фокуса для сетки 2×2: отключённые ответы пропускаются,
@@ -326,7 +324,7 @@ func _build() -> void:
 
 	_next_hint = AshenPrompt.new()
 	_next_hint.name = "NextPageHint"
-	_next_hint.setup(&"ui_accept", NEXT_PAGE_RU)
+	_next_hint.setup(&"ui_accept", tr(NEXT_PAGE_TEXT))
 	_ui_root.add_child(_next_hint)
 	_next_hint.position = HINT_POSITION
 
@@ -351,5 +349,4 @@ func _resolve_language(language: String) -> String:
 	return DialogueText.normalize_language(TranslationServer.get_locale())
 
 
-func _localized(ru_text: String, en_text: String) -> String:
-	return DialogueText.pick(ru_text, en_text, _language)
+

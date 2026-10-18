@@ -24,6 +24,7 @@ var _title: Label
 var _body: Label
 var _faction: Label
 var _continue: AshenMenuItem
+var _credits_prompt: AshenPrompt
 
 
 func _init() -> void:
@@ -35,6 +36,29 @@ func _init() -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build()
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
+
+
+func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
+
+
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+func _retranslate() -> void:
+	if _ending_id == &"":
+		return
+	_continue.text = tr("ui.ending.continue")
+	_credits_prompt.setup(&"ui_accept", tr("ui.ending.credits_hint"))
+	if _ending_id == EndingCatalog.NEUTRAL_ID:
+		show_ending(EndingCatalog.resolve(&"", String(_faction_id)), _faction_id)
+	else:
+		var faction_id: StringName = StringName(String(_ending_id).trim_prefix(EndingCatalog.FACTION_PREFIX))
+		show_ending(EndingCatalog.resolve(faction_id, FactionManager.get_faction_name(faction_id)), faction_id)
 
 
 ## Показывает концовку. `ending` уже разрешён каталогом по фракции.
@@ -138,7 +162,7 @@ func _build() -> void:
 	_kicker = _make_label(UITokens.FONT_BODY, UITokens.STONE_5)
 	column.add_child(_kicker)
 
-	_title = _make_label(UITokens.FONT_H1, UITokens.GOLD_3)
+	_title = _make_label(UITokens.FONT_H2, UITokens.GOLD_3)
 	column.add_child(_title)
 
 	var divider := ColorRect.new()
@@ -157,7 +181,7 @@ func _build() -> void:
 
 	_continue = AshenMenuItem.new()
 	_continue.name = "Continue"
-	_continue.text = "ДАЛЬШЕ"
+	_continue.text = tr("ui.ending.continue")
 	_continue.font_size = UITokens.FONT_BODY
 	_continue.custom_minimum_size = Vector2(200.0, 16.0)
 	_continue.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -165,7 +189,8 @@ func _build() -> void:
 	column.add_child(_continue)
 
 	var prompt := AshenPrompt.new()
-	prompt.setup(&"ui_accept", "титры")
+	_credits_prompt = prompt
+	prompt.setup(&"ui_accept", tr("ui.ending.credits_hint"))
 	prompt.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(prompt)
 

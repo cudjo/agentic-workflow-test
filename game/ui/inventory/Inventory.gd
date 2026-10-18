@@ -29,7 +29,9 @@ const LAYER: int = 20
 const ACTION_TOGGLE: StringName = &"inventory"
 const SCREEN_SIZE := Vector2(480, 270)
 
-const TAB_TITLES: Array[String] = ["ГЕРОЙ", "КАРТА", "ЖУРНАЛ", "ФРАКЦИИ"]
+const TAB_TITLES: Array[String] = [
+	"ui.inv.tab_hero", "ui.inv.tab_map", "ui.inv.tab_journal", "ui.inv.tab_factions",
+]
 const ACTIVE_TAB: int = 0
 
 const EQUIPMENT_RECT := Rect2(8, 30, 112, 220)
@@ -57,16 +59,16 @@ const REPUTATION_ROW_HEIGHT: int = 17
 ## Число справа всегда показывает точное значение; длина заливки — для формы.
 const REPUTATION_BAR_RANGE: float = 10.0
 
-const TRAINING_REASON: String = "Повышайте у учителя"
-const TRAINING_NOTE: String = "ПОВЫШАЙТЕ\nУ УЧИТЕЛЯ"
-const EMPTY_CELL_TEXT: String = "ПУСТАЯ ЯЧЕЙКА"
-const EMPTY_INVENTORY_TEXT: String = "— ИНВЕНТАРЬ ПУСТ —"
+const TRAINING_REASON: String = "ui.inv.training_reason"
+const TRAINING_NOTE: String = "ui.inv.training_note"
+const EMPTY_CELL_TEXT: String = "ui.inv.empty_cell"
+const EMPTY_INVENTORY_TEXT: String = "ui.inv.empty_inventory"
 
 const STAT_SHORT_NAMES := {
-	&"strength": "СИЛА",
-	&"dexterity": "ЛОВК.",
-	&"endurance": "ВЫНОСЛ.",
-	&"health": "ЗДОР.",
+	&"strength": "ui.inv.stat_strength",
+	&"dexterity": "ui.inv.stat_dexterity",
+	&"endurance": "ui.inv.stat_endurance",
+	&"health": "ui.inv.stat_health",
 }
 
 ## Каталог отображения T-21. Требования/имена оружия приходят из данных
@@ -75,88 +77,88 @@ const STAT_SHORT_NAMES := {
 ## человекочитаемо, а не пропадает из сетки.
 const ITEM_CATALOG := {
 	&"one_handed_sword": {
-		"name": "МЕЧ СТРАЖА",
+		"name": "ui.inv.item.one_handed_sword.name",
 		"icon": "sword",
-		"subtitle": "ОДНОРУЧНОЕ · УРОН 10",
+		"subtitle": "ui.inv.item.one_handed_sword.subtitle",
 		"slot": &"weapon",
 	},
 	&"two_handed_axe": {
-		"name": "СЕКИРА ПАЛАЧА",
+		"name": "ui.inv.item.two_handed_axe.name",
 		"icon": "axe",
-		"subtitle": "ДВУРУЧНОЕ · УРОН 18",
+		"subtitle": "ui.inv.item.two_handed_axe.subtitle",
 		"slot": &"weapon",
 	},
 	&"light_dagger": {
-		"name": "ЛЁГКИЙ КИНЖАЛ",
+		"name": "ui.inv.item.light_dagger.name",
 		"icon": "dagger",
-		"subtitle": "ЛЁГКОЕ · УРОН 6",
+		"subtitle": "ui.inv.item.light_dagger.subtitle",
 		"slot": &"weapon",
 	},
 	&"rusty_sword": {
-		"name": "РЖАВЫЙ МЕЧ",
+		"name": "ui.inv.item.rusty_sword.name",
 		"icon": "sword",
-		"subtitle": "ОДНОРУЧНОЕ · УРОН 7",
+		"subtitle": "ui.inv.item.rusty_sword.subtitle",
 		"slot": &"weapon",
 	},
 	&"iron_helm": {
-		"name": "ЖЕЛЕЗНЫЙ ШЛЕМ",
+		"name": "ui.inv.item.iron_helm.name",
 		"icon": "helm",
-		"subtitle": "ШЛЕМ · ЗАЩИТА 3",
+		"subtitle": "ui.inv.item.iron_helm.subtitle",
 		"slot": &"helmet",
 		"armor": 3,
 	},
 	&"leather_armor": {
-		"name": "КОЖАНАЯ БРОНЯ",
+		"name": "ui.inv.item.leather_armor.name",
 		"icon": "armor",
-		"subtitle": "БРОНЯ · ЗАЩИТА 5",
+		"subtitle": "ui.inv.item.leather_armor.subtitle",
 		"slot": &"armor",
 		"armor": 5,
 	},
 	&"wooden_shield": {
-		"name": "ДЕРЕВЯННЫЙ ЩИТ",
+		"name": "ui.inv.item.wooden_shield.name",
 		"icon": "shield",
-		"subtitle": "ЩИТ · ЗАЩИТА 4",
+		"subtitle": "ui.inv.item.wooden_shield.subtitle",
 		"slot": &"shield",
 		"armor": 4,
 	},
 	&"ashen_ring": {
-		"name": "КОЛЬЦО ЗОЛЫ",
+		"name": "ui.inv.item.ashen_ring.name",
 		"icon": "ring",
-		"subtitle": "КОЛЬЦО",
+		"subtitle": "ui.inv.item.ashen_ring.subtitle",
 		"slot": &"ring_1",
 	},
 	&"healing_herb": {
-		"name": "ЦЕЛЕБНАЯ ТРАВА",
+		"name": "ui.inv.item.healing_herb.name",
 		"icon": "potion",
-		"subtitle": "РАСХОДНИК · 20 HP",
+		"subtitle": "ui.inv.item.healing_herb.subtitle",
 	},
 	&"ash_shard": {
-		"name": "ОСКОЛОК ПЕПЛА",
+		"name": "ui.inv.item.ash_shard.name",
 		"icon": "shard",
-		"subtitle": "МАТЕРИАЛ",
+		"subtitle": "ui.inv.item.ash_shard.subtitle",
 	},
 	&"bone_charm": {
-		"name": "КОСТЯНОЙ ОБЕРЕГ",
+		"name": "ui.inv.item.bone_charm.name",
 		"icon": "charm",
-		"subtitle": "ОБЕРЕГ · +1 ВЫНОСЛ.",
+		"subtitle": "ui.inv.item.bone_charm.subtitle",
 	},
 	&"sealed_relic": {
-		"name": "ЗАПЕЧАТАННАЯ РЕЛИКВИЯ",
+		"name": "ui.inv.item.sealed_relic.name",
 		"icon": "relic",
-		"subtitle": "РЕЛИКВИЯ",
+		"subtitle": "ui.inv.item.sealed_relic.subtitle",
 		"available": false,
-		"unavailable_reason": "СПОСОБНОСТЬ НЕ ОТКРЫТА",
+		"unavailable_reason": "ui.inv.item.sealed_relic.unavailable",
 	},
 }
 
 ## Слоты экипировки в порядке отображения (DESIGN §8.4, mockup `inventory.html`).
 const EQUIPMENT_SLOTS: Array[Dictionary] = [
-	{"slot_id": &"helmet", "label": "ШЛЕМ", "cell": Vector2i(1, 0)},
-	{"slot_id": &"weapon", "label": "ОРУЖИЕ", "cell": Vector2i(0, 1)},
-	{"slot_id": &"shield", "label": "ЩИТ", "cell": Vector2i(2, 1)},
-	{"slot_id": &"ring_1", "label": "КОЛЬЦО 1", "cell": Vector2i(0, 2)},
-	{"slot_id": &"ring_2", "label": "КОЛЬЦО 2", "cell": Vector2i(2, 2)},
-	{"slot_id": &"armor", "label": "БРОНЯ", "cell": Vector2i(1, 3)},
+	{"slot_id": &"helmet", "label": "ui.inv.equip_helmet", "cell": Vector2i(1, 0)},
+	{"slot_id": &"weapon", "label": "ui.inv.equip_weapon", "cell": Vector2i(0, 1)},
+	{"slot_id": &"shield", "label": "ui.inv.equip_shield", "cell": Vector2i(2, 1)},
+	{"slot_id": &"ring_1", "label": "ui.inv.equip_ring_1", "cell": Vector2i(0, 2)},
+	{"slot_id": &"ring_2", "label": "ui.inv.equip_ring_2", "cell": Vector2i(2, 2)},
+	{"slot_id": &"armor", "label": "ui.inv.equip_armor", "cell": Vector2i(1, 3)},
 ]
 
 ## Пауза при открытии. QA/тесты выключают, чтобы не останавливать GUT.
@@ -175,6 +177,15 @@ var _grid_slots: Array[InventoryItemSlot] = []
 var _equipment_slots: Dictionary = {}
 var _stat_rows: Array[Control] = []
 var _reputation_rows: Array[Control] = []
+var _tab_nodes: Array[Control] = []
+var _equipment_title: Label
+var _items_title: Label
+var _stats_title: Label
+var _learning_name: Label
+var _reputation_title: Label
+var _inventory_prompt: AshenPrompt
+var _close_prompt: AshenPrompt
+var _focus_hint: Label
 
 var _stacks: Array[Dictionary] = []
 var _selected_index: int = -1
@@ -314,7 +325,7 @@ func get_grid_rows() -> int:
 
 
 func get_tab_titles() -> Array[String]:
-	return TAB_TITLES.duplicate()
+	return _tab_titles()
 
 
 func get_active_tab() -> int:
@@ -322,7 +333,7 @@ func get_active_tab() -> int:
 
 
 func get_training_note() -> String:
-	return TRAINING_REASON
+	return tr(TRAINING_REASON)
 
 
 func get_learning_points() -> int:
@@ -425,8 +436,8 @@ func get_detail_data() -> Dictionary:
 		return {
 			"empty": true,
 			"item_id": &"",
-			"name": EMPTY_CELL_TEXT,
-			"subtitle": EMPTY_INVENTORY_TEXT if _stacks.is_empty() else "ВЫБЕРИТЕ ПРЕДМЕТ",
+			"name": tr(EMPTY_CELL_TEXT),
+			"subtitle": tr(EMPTY_INVENTORY_TEXT) if _stacks.is_empty() else tr("ui.inv.choose_item"),
 			"requirements": [],
 			"met": true,
 			"requirement_summary": "",
@@ -452,7 +463,7 @@ func get_detail_data() -> Dictionary:
 		"reason": str(info.get("reason", "")),
 		"equipped": is_item_equipped(item_id),
 		"unavailable": not bool(meta.get("available", true)),
-		"unavailable_reason": str(meta.get("unavailable_reason", "")),
+		"unavailable_reason": tr(str(meta.get("unavailable_reason", ""))),
 		"count": int(stack.get("count", 0)),
 	}
 
@@ -467,7 +478,7 @@ func get_equipment_data() -> Array[Dictionary]:
 		var slot: InventoryItemSlot = get_equipment_slot(slot_id)
 		rows.append({
 			"slot_id": slot_id,
-			"label": str(spec.get("label", "")),
+			"label": tr(str(spec.get("label", ""))),
 			"item_id": item_id,
 			"name": "" if item_id == &"" else _item_name(item_id),
 			"empty": item_id == &"",
@@ -543,7 +554,7 @@ func get_view_data() -> Dictionary:
 		"detail": get_detail_data(),
 		"stats": get_stat_data(),
 		"learning_points": GameState.learning_points,
-		"training_note": TRAINING_REASON,
+		"training_note": tr(TRAINING_REASON),
 		"reputation": get_reputation_data(),
 		"summary": get_equipment_summary(),
 		"selected_index": _selected_index,
@@ -625,7 +636,7 @@ func _refresh_grid() -> void:
 			state,
 			is_item_equipped(item_id),
 			summary,
-			str(meta.get("unavailable_reason", "")),
+			tr(str(meta.get("unavailable_reason", ""))),
 			_item_icon_kind(item_id)
 		)
 		slot.selected = selected
@@ -640,7 +651,7 @@ func _refresh_equipment() -> void:
 		if slot == null:
 			continue
 		var item_id: StringName = StringName(equipped_ids.get(slot_id, &""))
-		slot.slot_hint = str(spec.get("label", ""))
+		slot.slot_hint = tr(str(spec.get("label", "")))
 		slot.selected = false
 		if item_id == &"":
 			slot.item_id = &""
@@ -649,7 +660,7 @@ func _refresh_equipment() -> void:
 			slot.unavailable_reason = ""
 			slot.equipped = false
 			slot.state = InventoryItemSlot.State.EMPTY
-			slot.tooltip_text = "%s: ПУСТО" % str(spec.get("label", ""))
+			slot.tooltip_text = tr("ui.inv.slot_empty") % tr(str(spec.get("label", "")))
 			continue
 
 		var info: Dictionary = GameState.get_equipment_info(item_id)
@@ -773,8 +784,8 @@ func _ordered_requirement_ids(requirements: Dictionary) -> Array[StringName]:
 
 func _requirement_tag(required: int, current: int, deficit: int) -> String:
 	if deficit > 0:
-		return "НЕТ · ещё %d" % deficit
-	return "ЕСТЬ %d" % current
+		return tr("ui.inv.none_more") % deficit
+	return tr("ui.inv.have") % current
 
 
 func _requirement_summary(rows: Array[Dictionary]) -> String:
@@ -784,33 +795,35 @@ func _requirement_summary(rows: Array[Dictionary]) -> String:
 	for row: Dictionary in rows:
 		max_deficit = maxi(max_deficit, int(row.get("deficit", 0)))
 	if max_deficit > 0:
-		return "НЕТ · ещё %d" % max_deficit
-	return "ЕСТЬ"
+		return tr("ui.inv.none_more") % max_deficit
+	return tr("ui.inv.have_all")
 
 
 func _training_reason(cost: int) -> String:
 	if cost < 0:
-		return "%s · максимум" % TRAINING_REASON
-	return "%s · нужно %d %s" % [TRAINING_REASON, cost, _points_word(cost)]
+		return tr("ui.inv.training_max") % tr(TRAINING_REASON)
+	return tr("ui.inv.training_need") % [tr(TRAINING_REASON), cost, _points_word(cost)]
 
 
 func _points_word(cost: int) -> String:
+	if Locale.is_english():
+		return tr("ui.inv.points_word")
 	var tail: int = cost % 100
 	if tail >= 11 and tail <= 14:
-		return "очков"
+		return tr("ui.inv.points_word_many")
 	match cost % 10:
 		1:
-			return "очко"
+			return tr("ui.inv.points_word_one")
 		2, 3, 4:
-			return "очка"
+			return tr("ui.inv.points_word_few")
 		_:
-			return "очков"
+			return tr("ui.inv.points_word_many")
 
 
 func _short_stat_name(stat_id: StringName) -> String:
 	var known: Variant = STAT_SHORT_NAMES.get(stat_id)
 	if known is String:
-		return str(known)
+		return tr(str(known))
 	var name: String = GameState.get_stat_name(stat_id).to_upper()
 	if name.length() > 6:
 		return name.substr(0, 6)
@@ -849,6 +862,37 @@ func _format_number(value: int) -> String:
 	return ("-" if value < 0 else "") + digits + grouped
 
 
+func _tab_titles() -> Array[String]:
+	var titles: Array[String] = []
+	for key: String in TAB_TITLES:
+		titles.append(tr(key))
+	return titles
+
+
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+func _retranslate() -> void:
+	if not _built:
+		return
+	var titles: Array[String] = _tab_titles()
+	for index: int in _tab_nodes.size():
+		var node: Control = _tab_nodes[index]
+		if index < titles.size():
+			node.set(&"text", titles[index])
+	_equipment_title.text = tr("ui.inv.equipment")
+	_items_title.text = tr("ui.inv.items")
+	_stats_title.text = tr("ui.inv.stats")
+	_learning_name.text = tr("ui.inv.learning_points")
+	_reputation_title.text = tr("ui.inv.reputation")
+	_training_note.text = tr(TRAINING_NOTE)
+	_inventory_prompt.setup(ACTION_TOGGLE, tr("ui.inv.inventory"))
+	_close_prompt.setup(&"ui_cancel", tr("ui.inv.close"))
+	_focus_hint.text = tr("ui.inv.focus_hint")
+	refresh()
+
+
 func _item_meta(item_id: StringName) -> Dictionary:
 	var meta: Variant = ITEM_CATALOG.get(item_id)
 	return meta as Dictionary if meta is Dictionary else {}
@@ -858,14 +902,14 @@ func _item_name(item_id: StringName) -> String:
 	var meta: Dictionary = _item_meta(item_id)
 	var known: Variant = meta.get("name")
 	if known is String and known != "":
-		return str(known)
+		return tr(str(known))
 	return String(item_id).replace("_", " ").to_upper()
 
 
 func _item_subtitle(item_id: StringName) -> String:
 	var meta: Dictionary = _item_meta(item_id)
 	var known: Variant = meta.get("subtitle")
-	return str(known) if known is String else "ПРЕДМЕТ"
+	return tr(str(known)) if known is String else tr("ui.inv.item_fallback")
 
 
 func _item_armor(item_id: StringName) -> int:
@@ -931,6 +975,8 @@ func _connect_events() -> void:
 		EventBus.faction_reputation_changed.connect(_on_faction_reputation_changed)
 	if not EventBus.save_loaded.is_connected(_on_save_loaded):
 		EventBus.save_loaded.connect(_on_save_loaded)
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 
 
 func _disconnect_events() -> void:
@@ -944,6 +990,8 @@ func _disconnect_events() -> void:
 		EventBus.faction_reputation_changed.disconnect(_on_faction_reputation_changed)
 	if EventBus.save_loaded.is_connected(_on_save_loaded):
 		EventBus.save_loaded.disconnect(_on_save_loaded)
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 
 
 func _on_stat_changed(_stat_id: StringName, _value: int, _next_cost: int) -> void:
@@ -1011,15 +1059,16 @@ func _build_tabs() -> void:
 	strip.size = Vector2(SCREEN_SIZE.x - UITokens.SAFE_MARGIN * 2, 2)
 
 	var x: float = 14.0
-	for index: int in TAB_TITLES.size():
+	var titles: Array[String] = _tab_titles()
+	for index: int in titles.size():
 		var width: float = maxf(
 			56.0,
-			UIStyle.text_width(TAB_TITLES[index], UITokens.FONT_BODY) + 16.0
+			UIStyle.text_width(titles[index], UITokens.FONT_BODY) + 16.0
 		)
 		if index == ACTIVE_TAB:
 			var tab := AshenTab.new()
 			tab.name = "Tab%d" % index
-			tab.text = TAB_TITLES[index]
+			tab.text = titles[index]
 			tab.font_size = UITokens.FONT_BODY
 			tab.selected = true
 			tab.focus_mode = Control.FOCUS_NONE
@@ -1027,11 +1076,12 @@ func _build_tabs() -> void:
 			_root.add_child(tab)
 			tab.position = Vector2(x, float(UITokens.SAFE_MARGIN - 2))
 			tab.size = Vector2(width, float(UITokens.TAB_HEIGHT))
+			_tab_nodes.append(tab)
 		else:
 			# Разделы КАРТА/ЖУРНАЛ/ФРАКЦИИ — отдельные экраны (T-24). Здесь
 			# это контекстные подписи, а не disabled-кнопки без причины.
 			var label := _make_label(
-				TAB_TITLES[index],
+				titles[index],
 				UITokens.STONE_5,
 				UITokens.FONT_BODY,
 				HORIZONTAL_ALIGNMENT_CENTER
@@ -1039,14 +1089,16 @@ func _build_tabs() -> void:
 			label.name = "TabLabel%d" % index
 			label.position = Vector2(x, 9)
 			label.size = Vector2(width, 12)
-			label.tooltip_text = "Раздел открывается отдельным экраном"
+			label.tooltip_text = tr("ui.inv.separate_screen")
+			_tab_nodes.append(label)
 			_root.add_child(label)
 		x += width + float(UITokens.SP_2)
 
 
 func _build_equipment() -> void:
 	_add_panel("EquipmentPanel", EQUIPMENT_RECT, UIStyle.PanelVariant.SOLID, 0)
-	var title := _make_label("ЭКИПИРОВКА", UITokens.GOLD_3)
+	_equipment_title = _make_label(tr("ui.inv.equipment"), UITokens.GOLD_3)
+	var title := _equipment_title
 	title.name = "EquipmentTitle"
 	title.position = Vector2(20, 36)
 	title.size = Vector2(88, UITokens.LINE_BODY)
@@ -1058,7 +1110,7 @@ func _build_equipment() -> void:
 		var cell: Vector2i = spec.get("cell", Vector2i.ZERO)
 		slot.name = "Equip_%s" % str(slot_id)
 		slot.slot_size = UITokens.SLOT_INV
-		slot.slot_hint = str(spec.get("label", ""))
+		slot.slot_hint = tr(str(spec.get("label", "")))
 		slot.focus_mode = Control.FOCUS_NONE
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_root.add_child(slot)
@@ -1079,12 +1131,12 @@ func _build_equipment() -> void:
 	_add_separator("EquipmentRule", Vector2(20, 172), 80)
 
 	var rows: Array[Dictionary] = [
-		{"key": "damage", "label": "УРОН", "y": 182.0, "color": UITokens.BONE},
-		{"key": "armor", "label": "БРОНЯ", "y": 197.0, "color": UITokens.BONE},
-		{"key": "currency_text", "label": "МОН.", "y": 212.0, "color": UITokens.GOLD_3},
+		{"key": "damage", "label": "ui.inv.damage", "y": 182.0, "color": UITokens.BONE},
+		{"key": "armor", "label": "ui.inv.armor", "y": 197.0, "color": UITokens.BONE},
+		{"key": "currency_text", "label": "ui.inv.coins_short", "y": 212.0, "color": UITokens.GOLD_3},
 	]
 	for row: Dictionary in rows:
-		var name_label := _make_label(str(row.get("label", "")), UITokens.STONE_5)
+		var name_label := _make_label(tr(str(row.get("label", ""))), UITokens.STONE_5)
 		name_label.position = Vector2(20, float(row.get("y", 0.0)))
 		name_label.size = Vector2(48, UITokens.LINE_BODY)
 		_root.add_child(name_label)
@@ -1101,7 +1153,8 @@ func _build_equipment() -> void:
 func _build_items() -> void:
 	_add_panel("ItemsPanel", ITEMS_RECT, UIStyle.PanelVariant.SOLID, 2)
 
-	var title := _make_label("ПРЕДМЕТЫ", UITokens.GOLD_3)
+	_items_title = _make_label(tr("ui.inv.items"), UITokens.GOLD_3)
+	var title := _items_title
 	title.name = "ItemsTitle"
 	title.position = Vector2(136, 38)
 	title.size = Vector2(100, UITokens.LINE_BODY)
@@ -1161,7 +1214,8 @@ func _build_detail() -> void:
 func _build_stats() -> void:
 	_add_panel("StatsPanel", STATS_RECT, UIStyle.PanelVariant.SOLID, 0)
 
-	var title := _make_label("ХАРАКТЕРИСТИКИ", UITokens.GOLD_3)
+	_stats_title = _make_label(tr("ui.inv.stats"), UITokens.GOLD_3)
+	var title := _stats_title
 	title.name = "StatsTitle"
 	title.position = Vector2(STATS_X, 36)
 	title.size = Vector2(STATS_WIDTH, UITokens.LINE_BODY)
@@ -1179,7 +1233,8 @@ func _build_stats() -> void:
 
 	_add_separator("StatsRuleMid", Vector2(STATS_X, 116), STATS_WIDTH)
 
-	var lp_name := _make_label("ОЧКИ ОБУЧ.", UITokens.GOLD_3)
+	_learning_name = _make_label(tr("ui.inv.learning_points"), UITokens.GOLD_3)
+	var lp_name := _learning_name
 	lp_name.name = "LearningName"
 	lp_name.position = Vector2(STATS_X, 122)
 	lp_name.size = Vector2(90, UITokens.LINE_BODY)
@@ -1192,7 +1247,7 @@ func _build_stats() -> void:
 	_lp_value.size = Vector2(31, UITokens.LINE_BODY)
 	_root.add_child(_lp_value)
 
-	_training_note = _make_label(TRAINING_NOTE, UITokens.STONE_5)
+	_training_note = _make_label(tr(TRAINING_NOTE), UITokens.STONE_5)
 	_training_note.name = "TrainingNote"
 	_training_note.position = Vector2(STATS_X, 134)
 	_training_note.size = Vector2(STATS_WIDTH, 24)
@@ -1200,7 +1255,8 @@ func _build_stats() -> void:
 
 	_add_separator("StatsRuleBottom", Vector2(STATS_X, 158), STATS_WIDTH)
 
-	var rep_title := _make_label("РЕПУТАЦИЯ", UITokens.GOLD_3)
+	_reputation_title = _make_label(tr("ui.inv.reputation"), UITokens.GOLD_3)
+	var rep_title := _reputation_title
 	rep_title.name = "ReputationTitle"
 	rep_title.position = Vector2(STATS_X, 161)
 	rep_title.size = Vector2(STATS_WIDTH, UITokens.LINE_BODY)
@@ -1208,24 +1264,24 @@ func _build_stats() -> void:
 
 
 func _build_footer() -> void:
-	var inventory_prompt := AshenPrompt.new()
-	inventory_prompt.name = "InventoryPrompt"
-	_root.add_child(inventory_prompt)
-	inventory_prompt.position = Vector2(UITokens.SAFE_MARGIN, 256)
-	inventory_prompt.setup(ACTION_TOGGLE, "ИНВЕНТАРЬ")
+	_inventory_prompt = AshenPrompt.new()
+	_inventory_prompt.name = "InventoryPrompt"
+	_root.add_child(_inventory_prompt)
+	_inventory_prompt.position = Vector2(UITokens.SAFE_MARGIN, 256)
+	_inventory_prompt.setup(ACTION_TOGGLE, tr("ui.inv.inventory"))
 
-	var close_prompt := AshenPrompt.new()
-	close_prompt.name = "ClosePrompt"
-	_root.add_child(close_prompt)
-	close_prompt.position = Vector2(120, 256)
-	close_prompt.setup(&"ui_cancel", "ЗАКРЫТЬ")
+	_close_prompt = AshenPrompt.new()
+	_close_prompt.name = "ClosePrompt"
+	_root.add_child(_close_prompt)
+	_close_prompt.position = Vector2(120, 256)
+	_close_prompt.setup(&"ui_cancel", tr("ui.inv.close"))
 
-	var hint := _make_label("↑↓←→ — ВЫБОР", UITokens.STONE_5)
-	hint.name = "FocusHint"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	hint.position = Vector2(352, 256)
-	hint.size = Vector2(120, UITokens.LINE_BODY)
-	_root.add_child(hint)
+	_focus_hint = _make_label(tr("ui.inv.focus_hint"), UITokens.STONE_5)
+	_focus_hint.name = "FocusHint"
+	_focus_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_focus_hint.position = Vector2(352, 256)
+	_focus_hint.size = Vector2(120, UITokens.LINE_BODY)
+	_root.add_child(_focus_hint)
 
 
 func _add_panel(
@@ -1286,7 +1342,7 @@ class StatRow extends Control:
 	var full_name: String = ""
 	var value: int = 0
 	var required_points: int = -1
-	var disabled_reason: String = "Повышайте у учителя"
+	var disabled_reason: String = "ui.inv.default_train_reason"
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1409,7 +1465,7 @@ class ReputationRow extends Control:
 		mouse_filter = Control.MOUSE_FILTER_STOP
 
 	func _ready() -> void:
-		tooltip_text = "%s: %s (порог доступа %d)" % [
+		tooltip_text = tr("ui.inv.faction_tooltip") % [
 			full_name,
 			get_value_text(),
 			threshold,
@@ -1505,7 +1561,7 @@ class ItemDetailView extends Control:
 
 		var subtitle: String = str(data.get("subtitle", ""))
 		if bool(data.get("equipped", false)):
-			subtitle = "%s · НАДЕТО" % subtitle
+			subtitle = tr("ui.inv.equipped_suffix") % subtitle
 		UIStyle.draw_text(
 			self,
 			Vector2(0, 20.0),
@@ -1518,7 +1574,7 @@ class ItemDetailView extends Control:
 			return
 
 		if bool(data.get("unavailable", false)):
-			var lock_text: String = "НЕДОСТУПНО: %s" % str(data.get("unavailable_reason", ""))
+			var lock_text: String = tr("ui.inv.unavailable_prefix") % str(data.get("unavailable_reason", ""))
 			UIStyle.draw_text(
 				self,
 				Vector2(0, 32.0),
@@ -1533,7 +1589,7 @@ class ItemDetailView extends Control:
 			UIStyle.draw_text(
 				self,
 				Vector2(0, 32.0),
-				"ТРЕБОВАНИЙ НЕТ",
+				tr("ui.inv.no_requirements"),
 				UITokens.STEEL_3,
 				UITokens.FONT_BODY
 			)

@@ -52,7 +52,7 @@ func _emit_zone_entered() -> void:
 	# так ZoneScene грузится и инструментами (генератор пайплайна) вне дерева autoload'ов.
 	var event_bus := get_node_or_null("/root/EventBus")
 	if event_bus != null and event_bus.has_signal(&"zone_entered"):
-		event_bus.emit_signal(&"zone_entered", zone_data.id, zone_data.display_name)
+		event_bus.emit_signal(&"zone_entered", zone_data.id, zone_data.get_display_name())
 
 
 func _apply_zone_data() -> void:

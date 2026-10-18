@@ -14,12 +14,8 @@ extends RefCounted
 const NEUTRAL_ID: StringName = &"ending_neutral"
 const FACTION_PREFIX: String = "ending_"
 
-const NEUTRAL_TITLE: String = "ПЕПЕЛ НА ВЕТРУ"
-const NEUTRAL_BODY: String = (
-	"Бастион пал. Пепел лёг на пустые залы,\n"
-	+ "и никто не назвал имя победителя.\n"
-	+ "Ты ушёл в серое утро — без знамени и без долга."
-)
+const NEUTRAL_TITLE: String = "ui.ending.neutral_title"
+const NEUTRAL_BODY: String = "ui.ending.neutral_body"
 
 
 ## Текст концовки для фракции. `faction_name` — отображаемое имя из
@@ -31,10 +27,10 @@ static func resolve(
 	if faction_id == &"":
 		return EndingText.create(
 			NEUTRAL_ID,
-			"КОНЦОВКА · ФРАКЦИЯ НЕ ВЫБРАНА",
-			NEUTRAL_TITLE,
-			NEUTRAL_BODY,
-			"Фракция не выбрана",
+			LocaleText.current("ui.ending.neutral_kicker"),
+			LocaleText.current(NEUTRAL_TITLE),
+			LocaleText.current(NEUTRAL_BODY),
+			LocaleText.current("ui.ending.faction_none"),
 			Color("#e0b56a")
 		)
 
@@ -42,10 +38,10 @@ static func resolve(
 	var flavor: String = _flavor_for(faction_id, display)
 	return EndingText.create(
 		StringName("%s%s" % [FACTION_PREFIX, faction_id]),
-		"КОНЦОВКА · ФРАКЦИЯ",
-		"НАСЛЕДИЕ: %s" % display.to_upper(),
+		LocaleText.current("ui.ending.faction_kicker"),
+		LocaleText.current("ui.ending.legacy") % display.to_upper(),
 		flavor,
-		"Фракция: %s" % display,
+		LocaleText.current("ui.ending.faction_line") % display,
 		Color("#c08a3e")
 	)
 
@@ -80,25 +76,9 @@ static func read_faction_name(manager: Node, faction_id: StringName) -> String:
 static func _flavor_for(faction_id: StringName, display: String) -> String:
 	var key: String = String(faction_id).to_lower()
 	if key.contains("order") or key.contains("watch") or key.contains("guard"):
-		return (
-			"Ты вернул Бастиону закон.\n"
-			+ "Стены снова держат пепел, а имя твоё\n"
-			+ "высечено над воротами — и не сотрётся."
-		)
+		return LocaleText.current("ui.ending.order_body")
 	if key.contains("free") or key.contains("march") or key.contains("wild"):
-		return (
-			"Ты сжёг трон и раздал пепел ветру.\n"
-			+ "Бастион больше не принадлежит никому —\n"
-			+ "и в этом его последняя победа."
-		)
+		return LocaleText.current("ui.ending.free_body")
 	if key.contains("ash") or key.contains("cult") or key.contains("flame"):
-		return (
-			"Ты принял пламя в себя.\n"
-			+ "Пепел больше не падает с неба — он растёт\n"
-			+ "из твоих шагов, и Бастион склоняется."
-		)
-	return (
-		"Пламя угасло, но Бастион остался.\n"
-		+ "Его судьбу держит %s — и ты стоишь\n"
-		+ "между её знаменем и пеплом."
-	) % display
+		return LocaleText.current("ui.ending.ash_body")
+	return LocaleText.current("ui.ending.unknown_body") % display

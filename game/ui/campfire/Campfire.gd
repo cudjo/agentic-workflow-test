@@ -35,48 +35,44 @@ enum Action { SAVE, ABOUT, OATH, LEAVE, CONTINUE, RETRY, ANOTHER_SLOT, CANCEL }
 const LAYER: int = 20
 const TOAST_LAYER: int = 40
 
-const SPEAKER_NAME: String = "Хранитель Огня"
-const SPEAKER_FACTION_FALLBACK: String = "Орден Пепла"
+const SPEAKER_NAME: String = "ui.camp.speaker"
+const SPEAKER_FACTION_FALLBACK: String = "ui.camp.speaker_faction_fallback"
 const SPEAKER_FACTION_ID: StringName = &"order"
 const OATH_FACTION: StringName = &"order"
 ## Событие таблицы Δ, которым помечен ответ «Клятва» (данные T-27/T-23):
 ## +1 Ордену, без побочных квестовых последствий.
 const OATH_EVENT: StringName = &"action_campfire_oath"
 
-const TALK_TEXT: String = (
-	"Пламя помнит тех, кто возвращается. Дать ему запомнить и тебя?"
-)
-const SLOTS_TEXT: String = "Выбери, где огонь оставит твой след. Старая запись угаснет."
-const SAVED_TEXT: String = "Огонь запомнил тебя. Иди, пока он не погас."
+const TALK_TEXT: String = "ui.camp.talk"
+const SLOTS_TEXT: String = "ui.camp.slots"
+const SAVED_TEXT: String = "ui.camp.saved"
 ## Полная причина видна в реплике и тосте; в списке — короткая подпись,
 ## потому что 27 символов не помещаются в колонку 2×2 при 8 px (a11y).
-const COMBAT_REASON_FULL: String = "Сохранение в бою запрещено"
-const COMBAT_TEXT: String = (
-	"Не здесь, путник. Пока рядом враги. Сохранение в бою запрещено."
-)
-const ERROR_TEXT: String = "Огонь гаснет... запись не легла. Но прежняя цела."
-const CORRUPTED_TEXT: String = "Огонь не узнаёт эту запись. Выбери другой слот."
-const ABOUT_TEXT: String = "Болото помнит мёртвых. Оно не отдаёт своих без платы."
-const OATH_ALREADY_TEXT: String = "Клятва уже принесена."
+const COMBAT_REASON_FULL: String = "ui.camp.combat_reason_full"
+const COMBAT_TEXT: String = "ui.camp.combat_text"
+const ERROR_TEXT: String = "ui.camp.error"
+const CORRUPTED_TEXT: String = "ui.camp.corrupted"
+const ABOUT_TEXT: String = "ui.camp.about"
+const OATH_ALREADY_TEXT: String = "ui.camp.oath_already"
 
-const SAVE_ANSWER: String = "Сохранить игру"
-const ABOUT_ANSWER: String = "О Болоте"
-const OATH_ANSWER: String = "Клятва"
-const LEAVE_ANSWER: String = "Уйти  Esc"
-const CONTINUE_ANSWER: String = "Продолжить путь"
-const RETRY_ANSWER: String = "Повторить"
-const ANOTHER_SLOT_ANSWER: String = "Другой слот"
-const CANCEL_ANSWER: String = "Отмена  Esc"
-const SLOT_HEADING: String = "СОХРАНИТЬ В СЛОТ"
-const EMPTY_SLOT_TEXT: String = "— Пусто —"
-const DAMAGED_SLOT_TEXT: String = "! Слот повреждён"
+const SAVE_ANSWER: String = "ui.camp.answer_save"
+const ABOUT_ANSWER: String = "ui.camp.answer_about"
+const OATH_ANSWER: String = "ui.camp.answer_oath"
+const LEAVE_ANSWER: String = "ui.camp.answer_leave"
+const CONTINUE_ANSWER: String = "ui.camp.answer_continue"
+const RETRY_ANSWER: String = "ui.camp.answer_retry"
+const ANOTHER_SLOT_ANSWER: String = "ui.camp.answer_another_slot"
+const CANCEL_ANSWER: String = "ui.camp.answer_cancel"
+const SLOT_HEADING: String = "ui.camp.slot_heading"
+const EMPTY_SLOT_TEXT: String = "ui.camp.empty_slot"
+const DAMAGED_SLOT_TEXT: String = "ui.camp.damaged_slot"
 
 ## EC-06: короткая причина в списке и полная — в тосте/реплике.
-const COMBAT_REASON: String = "В бою нельзя"
+const COMBAT_REASON: String = "ui.camp.combat_reason"
 const COMBAT_TOAST: String = COMBAT_REASON_FULL
 ## EC-14: старый слот цел — атомарная запись SaveManager (T-25).
-const DISK_ERROR_TOAST: String = "Нет места на диске. Прежняя запись цела."
-const CORRUPTED_TOAST: String = "Слот повреждён. Прежняя запись цела."
+const DISK_ERROR_TOAST: String = "ui.camp.disk_error"
+const CORRUPTED_TOAST: String = "ui.camp.corrupted_toast"
 
 ## Подтверждение сохранения ≤ 1 с (AC-05.1). 0.9 с оставляет запас.
 const SUCCESS_TOAST_DURATION: float = 0.9
@@ -99,6 +95,10 @@ var _slot_hint: HBoxContainer
 var _toast_layer: CanvasLayer
 var _toast_row: HBoxContainer
 var _toast: AshenToast
+var _slot_heading: Label
+var _slot_label: Label
+var _accept_prompt: AshenPrompt
+var _cancel_prompt: AshenPrompt
 
 var _state: State = State.TALK
 var _answer_actions: Array[int] = []
@@ -130,6 +130,8 @@ func _ready() -> void:
 		EventBus.combat_state_changed.connect(_on_combat_state_changed)
 	if not Config.visual_accessibility_changed.is_connected(_apply_accessibility):
 		Config.visual_accessibility_changed.connect(_apply_accessibility)
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 
 
 func _exit_tree() -> void:
@@ -143,6 +145,8 @@ func _exit_tree() -> void:
 		EventBus.combat_state_changed.disconnect(_on_combat_state_changed)
 	if Config.visual_accessibility_changed.is_connected(_apply_accessibility):
 		Config.visual_accessibility_changed.disconnect(_apply_accessibility)
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 
 
 # ------------------------------------------------------------------------------
@@ -171,7 +175,7 @@ func open(bonfire: Bonfire = null) -> bool:
 	_toast_layer.visible = true
 	_set_state(State.TALK)
 	if GameState.in_combat:
-		_show_danger(COMBAT_TOAST)
+		_show_danger(tr(COMBAT_TOAST))
 	opened.emit()
 	return true
 
@@ -335,7 +339,8 @@ func _build_slots_panel() -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_PASS
 	_slots_panel.add_child(box)
 
-	var heading := _make_label(SLOT_HEADING, UITokens.GOLD_3)
+	_slot_heading = _make_label(tr(SLOT_HEADING), UITokens.GOLD_3)
+	var heading := _slot_heading
 	heading.name = "Heading"
 	heading.custom_minimum_size = Vector2(0, UITokens.LINE_BODY)
 	box.add_child(heading)
@@ -374,17 +379,17 @@ func _build_slot_hint(box: VBoxContainer) -> void:
 	down.action = &"ui_down"
 	_slot_hint.add_child(down)
 
-	var slot_label := _make_label("Слот", UITokens.STONE_5)
-	slot_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_slot_hint.add_child(slot_label)
+	_slot_label = _make_label(tr("ui.camp.slot_label"), UITokens.STONE_5)
+	_slot_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_slot_hint.add_child(_slot_label)
 
-	var accept := AshenPrompt.new()
-	accept.setup(&"ui_accept", "Сохранить")
-	_slot_hint.add_child(accept)
+	_accept_prompt = AshenPrompt.new()
+	_accept_prompt.setup(&"ui_accept", tr("ui.camp.save"))
+	_slot_hint.add_child(_accept_prompt)
 
-	var cancel := AshenPrompt.new()
-	cancel.setup(&"ui_cancel", "Назад")
-	_slot_hint.add_child(cancel)
+	_cancel_prompt = AshenPrompt.new()
+	_cancel_prompt.setup(&"ui_cancel", tr("ui.common.back"))
+	_slot_hint.add_child(_cancel_prompt)
 
 	# Подсказка не должна задавать ширину панели: при 200% UI текст переносится
 	# в настройках T-20, а сейчас важен порядок клавиш, не перенос.
@@ -442,9 +447,9 @@ func _set_state(state: State) -> void:
 		_answer_actions.append(int(action))
 
 	_dialog.setup(
-		SPEAKER_NAME,
-		str(view.get("text", TALK_TEXT)),
-		answers,
+		tr(SPEAKER_NAME),
+		tr(str(view.get("text", TALK_TEXT))),
+		_localized_answers(answers),
 		_speaker_faction()
 	)
 
@@ -454,6 +459,34 @@ func _set_state(state: State) -> void:
 		call_deferred(&"_focus_current_slot")
 	else:
 		_release_slot_focus()
+
+
+func _localized_answers(answers: Array) -> Array:
+	var result: Array = []
+	for raw: Variant in answers:
+		var answer: Dictionary = (raw as Dictionary).duplicate(true)
+		answer["text"] = tr(str(answer.get("text", "")))
+		if answer.has("reason"):
+			answer["reason"] = tr(str(answer.get("reason", "")))
+		result.append(answer)
+	return result
+
+
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+func _retranslate() -> void:
+	if not _built:
+		return
+	_slot_heading.text = tr(SLOT_HEADING)
+	_slot_label.text = tr("ui.camp.slot_label")
+	_accept_prompt.setup(&"ui_accept", tr("ui.camp.save"))
+	_cancel_prompt.setup(&"ui_cancel", tr("ui.common.back"))
+	if _showing:
+		_set_state(_state)
+	else:
+		_refresh_slot_cards()
 
 
 func _build_view(state: State) -> Dictionary:
@@ -545,7 +578,7 @@ func _on_answer_selected(index: int) -> void:
 		Action.SAVE:
 			_request_save()
 		Action.ABOUT:
-			_show_info(ABOUT_TEXT)
+			_show_info(tr(ABOUT_TEXT))
 		Action.OATH:
 			_take_oath()
 		Action.LEAVE, Action.CONTINUE:
@@ -568,17 +601,17 @@ func _request_save() -> void:
 
 func _take_oath() -> void:
 	if _oath_taken:
-		_show_info(OATH_ALREADY_TEXT)
+		_show_info(tr(OATH_ALREADY_TEXT))
 		return
 	_oath_taken = true
 	var results: Array[Dictionary] = FactionManager.apply_reputation_event(OATH_EVENT)
-	var message: String = "Клятва принята."
+	var message: String = tr("ui.camp.oath_taken")
 	for result: Dictionary in results:
 		if StringName(str(result.get("faction_id", ""))) != OATH_FACTION:
 			continue
 		var delta: int = int(result.get("delta", 0))
 		var sign_text: String = "+" if delta > 0 else ""
-		message = "Клятва принята · %s %s%d" % [_speaker_faction(), sign_text, delta]
+		message = tr("ui.camp.oath_taken_delta") % [_speaker_faction(), sign_text, delta]
 		break
 	_show_info(message)
 
@@ -762,10 +795,10 @@ static func build_slot_view(metadata: Dictionary, slot: int) -> Dictionary:
 			"occupied": false,
 			"empty": true,
 			"corrupted": false,
-			"title": EMPTY_SLOT_TEXT,
+			"title": LocaleText.current(EMPTY_SLOT_TEXT),
 			"details": "",
 			"overwrite": false,
-			"tooltip": "Слот %d: пусто" % slot,
+			"tooltip": LocaleText.current("ui.camp.slot_empty_tooltip") % slot,
 		}
 
 	if not valid:
@@ -775,21 +808,20 @@ static func build_slot_view(metadata: Dictionary, slot: int) -> Dictionary:
 			"occupied": true,
 			"empty": false,
 			"corrupted": true,
-			"title": DAMAGED_SLOT_TEXT,
-			"details": "Перезапись заменит запись",
+			"title": LocaleText.current(DAMAGED_SLOT_TEXT),
+			"details": LocaleText.current("ui.camp.overwrite_details"),
 			"overwrite": true,
-			"tooltip": "Слот %d: повреждён (%s)" % [slot, reason],
+			"tooltip": LocaleText.current("ui.camp.slot_corrupted_tooltip") % [slot, reason],
 		}
 
-	var zone_name: String = str(metadata.get("zone_name", ""))
 	var zone_id: String = str(metadata.get("zone_id", ""))
-	var zone_label: String = zone_name if not zone_name.is_empty() else zone_id
+	var zone_label: String = zone_display_name(StringName(zone_id))
 	if zone_label.is_empty():
-		zone_label = "Неизвестная зона"
-	var details: String = "УР%d · %s" % [
-		int(metadata.get("level", 0)),
-		format_play_time(float(metadata.get("play_time", 0.0))),
-	]
+		zone_label = str(metadata.get("zone_name", ""))
+	if zone_label.is_empty():
+		zone_label = LocaleText.current("ui.common.unknown_zone")
+	var details: String = LocaleText.current("ui.common.level") % int(metadata.get("level", 0))
+	details += " · " + format_play_time(float(metadata.get("play_time", 0.0)))
 	return {
 		"slot": slot,
 		"occupied": true,
@@ -798,7 +830,7 @@ static func build_slot_view(metadata: Dictionary, slot: int) -> Dictionary:
 		"title": zone_label,
 		"details": details,
 		"overwrite": true,
-		"tooltip": "Слот %d: %s, %s" % [slot, zone_label, details],
+		"tooltip": LocaleText.current("ui.camp.slot_details") % [slot, zone_label, details],
 	}
 
 
@@ -807,7 +839,7 @@ static func format_play_time(seconds: float) -> String:
 	var total: int = maxi(int(seconds), 0)
 	var hours: int = total / 3600
 	var minutes: int = (total % 3600) / 60
-	return "%dч %02dм" % [hours, minutes]
+	return LocaleText.current("ui.saves.hours_minutes", [hours, minutes])
 
 
 ## Читаемое имя зоны из `data/zones/*.tres` (метаданные сейва/T-23).
@@ -818,7 +850,7 @@ static func zone_display_name(zone_id: StringName) -> String:
 	if not ResourceLoader.exists(path):
 		return ""
 	var data: ZoneData = load(path) as ZoneData
-	return data.display_name if data != null else ""
+	return data.get_display_name() if data != null else ""
 
 
 func _find_bonfire() -> Bonfire:
@@ -856,18 +888,18 @@ func _apply_accessibility() -> void:
 
 func _show_success(slot: int) -> void:
 	_toast.show_message(
-		"СОХРАНЕНО · СЛОТ %d" % slot,
+		tr("ui.camp.saved_toast") % slot,
 		AshenToast.Kind.SUCCESS,
 		SUCCESS_TOAST_DURATION
 	)
 
 
 func _show_danger(message: String) -> void:
-	_toast.show_message(message, AshenToast.Kind.DANGER, DANGER_TOAST_DURATION)
+	_toast.show_message(tr(message), AshenToast.Kind.DANGER, DANGER_TOAST_DURATION)
 
 
 func _show_info(message: String) -> void:
-	_toast.show_message(message, AshenToast.Kind.INFO, DANGER_TOAST_DURATION)
+	_toast.show_message(tr(message), AshenToast.Kind.INFO, DANGER_TOAST_DURATION)
 
 
 # ------------------------------------------------------------------------------
@@ -877,7 +909,7 @@ func _show_info(message: String) -> void:
 class _SlotCard:
 	extends Button
 
-	const OVERWRITE_LABEL: String = "Перезапись"
+	const OVERWRITE_LABEL: String = "ui.camp.overwrite"
 
 	var slot_number: int = 1
 	var card_title: String = ""

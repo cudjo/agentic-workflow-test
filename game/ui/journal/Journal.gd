@@ -20,22 +20,22 @@ signal opened
 signal closed
 
 const LAYER: int = 20
-const TITLE_TEXT: String = "ЖУРНАЛ"
+const TITLE_TEXT: String = "ui.journal.title"
 const TAB_QUESTS: int = 0
 const TAB_EVENTS: int = 1
-const TAB_TITLES: Array[String] = ["КВЕСТЫ", "СОБЫТИЯ"]
+const TAB_TITLES: Array[String] = ["ui.journal.tab_quests", "ui.journal.tab_events"]
 
-const QUEST_STATUS_ACTIVE: String = "АКТИВЕН"
-const QUEST_STATUS_COMPLETED: String = "ЗАВЕРШЁН"
-const EVENT_STATUS_PREFIX: String = "СОБЫТИЕ"
-const EMPTY_ACTIVE: String = "— НЕТ АКТИВНЫХ КВЕСТОВ —"
-const EMPTY_COMPLETED: String = "— НЕТ ЗАВЕРШЁННЫХ КВЕСТОВ —"
-const EMPTY_EVENTS: String = "— СОБЫТИЙ ПОКА НЕТ —"
-const EMPTY_JOURNAL: String = "— ЖУРНАЛ ПУСТ —"
-const EMPTY_SELECTION: String = "— ВЫБЕРИТЕ ЗАПИСЬ —"
-const EMPTY_DESCRIPTION: String = "ОПИСАНИЕ НЕДОСТУПНО."
-const HINT_TEXT: String = "↑↓ — ВЫБОР · TAB/LB/RB — ВКЛАДКА"
-const CLOSE_TEXT: String = "Закрыть"
+const QUEST_STATUS_ACTIVE: String = "ui.journal.status_active"
+const QUEST_STATUS_COMPLETED: String = "ui.journal.status_completed"
+const EVENT_STATUS_PREFIX: String = "ui.journal.event_status"
+const EMPTY_ACTIVE: String = "ui.journal.empty_active"
+const EMPTY_COMPLETED: String = "ui.journal.empty_completed"
+const EMPTY_EVENTS: String = "ui.journal.empty_events"
+const EMPTY_JOURNAL: String = "ui.journal.empty_journal"
+const EMPTY_SELECTION: String = "ui.journal.empty_selection"
+const EMPTY_DESCRIPTION: String = "ui.journal.empty_description"
+const HINT_TEXT: String = "ui.journal.hint"
+const CLOSE_TEXT: String = "ui.common.close"
 
 const PANEL_RECT := Rect2(8, 8, 464, 254)
 const TAB_POSITION := Vector2(150, 10)
@@ -82,12 +82,16 @@ func _init() -> void:
 
 func _ready() -> void:
 	_ensure_built()
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	if not Journal.journal_changed.is_connected(_on_journal_changed):
 		Journal.journal_changed.connect(_on_journal_changed)
 	_refresh()
 
 
 func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 	if Journal.journal_changed.is_connected(_on_journal_changed):
 		Journal.journal_changed.disconnect(_on_journal_changed)
 	if _pause_owned:
@@ -248,7 +252,7 @@ func _ensure_built() -> void:
 	_panel.position = PANEL_RECT.position
 	_panel.size = PANEL_RECT.size
 
-	_title = _make_label(TITLE_TEXT, UITokens.GOLD_3, UITokens.FONT_H2)
+	_title = _make_label(tr(TITLE_TEXT), UITokens.GOLD_3, UITokens.FONT_H2)
 	_title.name = "Title"
 	_title.position = Vector2(16, 10)
 	_title.size = Vector2(128, UITokens.LINE_H2)
@@ -257,13 +261,13 @@ func _ensure_built() -> void:
 	_tab_bar = AshenTabBar.new()
 	_tab_bar.name = "Tabs"
 	_tab_bar.min_tab_width = 92
-	_tab_bar.set_tabs(PackedStringArray(TAB_TITLES))
+	_tab_bar.set_tabs(_localized_tabs())
 	_root.add_child(_tab_bar)
 	_tab_bar.position = TAB_POSITION
 	_tab_bar.size = Vector2(300, UITokens.TAB_HEIGHT)
 	_tab_bar.tab_changed.connect(_on_tab_changed)
 
-	_hint = _make_label(HINT_TEXT, UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_hint = _make_label(tr(HINT_TEXT), UITokens.STONE_5, UITokens.FONT_BODY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_hint.name = "Hint"
 	_hint.position = Vector2(140, FOOTER_Y)
 	_hint.size = Vector2(326, UITokens.LINE_BODY)
@@ -313,7 +317,7 @@ func _ensure_built() -> void:
 	_prompt.name = "ClosePrompt"
 	_root.add_child(_prompt)
 	_prompt.position = Vector2(14, FOOTER_Y)
-	_prompt.setup(&"ui_cancel", CLOSE_TEXT)
+	_prompt.setup(&"ui_cancel", tr(CLOSE_TEXT))
 
 
 func _make_label(
@@ -351,6 +355,27 @@ func _make_section(text: String, color: Color = UITokens.STEEL_3) -> Label:
 # Перестроение списка
 # ------------------------------------------------------------------------------
 
+func _localized_tabs() -> PackedStringArray:
+	var tabs := PackedStringArray()
+	for key: String in TAB_TITLES:
+		tabs.append(tr(key))
+	return tabs
+
+
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+func _retranslate() -> void:
+	if not _built:
+		return
+	_title.text = tr(TITLE_TEXT)
+	_tab_bar.set_tabs(_localized_tabs())
+	_hint.text = tr(HINT_TEXT)
+	_prompt.setup(&"ui_cancel", tr(CLOSE_TEXT))
+	_refresh()
+
+
 func _refresh() -> void:
 	_quest_entries.clear()
 	for entry: Dictionary in Journal.get_quest_entries(Config.language):
@@ -374,7 +399,7 @@ func _refresh() -> void:
 	if _rows.is_empty():
 		_selected_key = ""
 		_selected_entry = {}
-		_set_empty_detail(EMPTY_SELECTION if _has_any_entry() else EMPTY_JOURNAL)
+		_set_empty_detail(tr(EMPTY_SELECTION) if _has_any_entry() else tr(EMPTY_JOURNAL))
 		return
 
 	var target: AshenMenuItem = _find_row(_selected_key)
@@ -414,22 +439,22 @@ func _build_quest_rows() -> void:
 		else:
 			active.append(entry)
 
-	_list_box.add_child(_make_section("АКТИВНЫЕ · %d" % active.size(), UITokens.GOLD_3))
+	_list_box.add_child(_make_section(tr("ui.journal.section_active") % active.size(), UITokens.GOLD_3))
 	if active.is_empty():
-		_list_box.add_child(_make_section(EMPTY_ACTIVE, UITokens.STONE_5))
+		_list_box.add_child(_make_section(tr(EMPTY_ACTIVE), UITokens.STONE_5))
 	for entry: Dictionary in active:
 		_add_quest_row(entry)
 
-	_list_box.add_child(_make_section("ЗАВЕРШЁННЫЕ · %d" % completed.size()))
+	_list_box.add_child(_make_section(tr("ui.journal.section_completed") % completed.size()))
 	if completed.is_empty():
-		_list_box.add_child(_make_section(EMPTY_COMPLETED, UITokens.STONE_5))
+		_list_box.add_child(_make_section(tr(EMPTY_COMPLETED), UITokens.STONE_5))
 	for entry: Dictionary in completed:
 		_add_quest_row(entry)
 
 
 func _build_event_rows() -> void:
 	if _event_entries.is_empty():
-		_list_box.add_child(_make_section(EMPTY_EVENTS, UITokens.STONE_5))
+		_list_box.add_child(_make_section(tr(EMPTY_EVENTS), UITokens.STONE_5))
 		return
 
 	for index: int in _event_entries.size():
@@ -460,7 +485,7 @@ func _add_quest_row(entry: Dictionary) -> void:
 	row.name = "Quest_%s" % String(quest_id)
 	row.text = str(entry.get("title", String(quest_id)))
 	row.prefix_tag = (
-		(QUEST_STATUS_COMPLETED + " ") if completed else (QUEST_STATUS_ACTIVE + " ")
+		(tr(QUEST_STATUS_COMPLETED) + " ") if completed else (tr(QUEST_STATUS_ACTIVE) + " ")
 	)
 	row.font_size = UITokens.FONT_BODY
 	row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
@@ -538,19 +563,19 @@ func _set_detail(entry: Dictionary) -> void:
 	_selected_entry = entry.duplicate(true)
 	if String(entry.get("kind", "")) == "event":
 		var event_id: String = str(entry.get("id", ""))
-		_detail_status.text = "%s · %s" % [
-			EVENT_STATUS_PREFIX,
+		_detail_status.text = tr("ui.journal.event_prefix") % [
+			tr(EVENT_STATUS_PREFIX),
 			event_id if not event_id.is_empty() else "—",
 		]
 		_detail_status.add_theme_color_override("font_color", UITokens.STEEL_3)
 		var event_text: String = str(entry.get("text", ""))
-		_detail_text.text = event_text if not event_text.is_empty() else EMPTY_DESCRIPTION
+		_detail_text.text = event_text if not event_text.is_empty() else tr(EMPTY_DESCRIPTION)
 		_detail_text.add_theme_color_override("font_color", UITokens.BONE)
 		return
 
 	var completed: bool = StringName(entry.get("status", &"active")) == &"completed"
 	var faction: String = str(entry.get("faction_name", ""))
-	var status: String = QUEST_STATUS_COMPLETED if completed else QUEST_STATUS_ACTIVE
+	var status: String = tr(QUEST_STATUS_COMPLETED) if completed else tr(QUEST_STATUS_ACTIVE)
 	if not faction.is_empty():
 		status += " · " + faction
 	_detail_status.text = status
@@ -559,7 +584,7 @@ func _set_detail(entry: Dictionary) -> void:
 		UITokens.STEEL_3 if completed else UITokens.GOLD_3
 	)
 	var description: String = _quest_description(entry)
-	_detail_text.text = description if not description.is_empty() else EMPTY_DESCRIPTION
+	_detail_text.text = description if not description.is_empty() else tr(EMPTY_DESCRIPTION)
 	_detail_text.add_theme_color_override("font_color", UITokens.BONE)
 
 

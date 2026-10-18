@@ -144,6 +144,7 @@ var _prompt: AshenPrompt
 var _prompt_requested: bool = false
 var _ability_hint_panel: AshenPanel
 var _ability_hint_label: Label
+var _need_label: Label
 var _ability_hint_ability: StringName = &""
 var _boss_bar: AshenBossBar
 
@@ -211,7 +212,7 @@ func is_no_stamina_visible() -> bool:
 
 
 func get_no_stamina_text() -> String:
-	return _NoStaminaBadge.TEXT
+	return tr("ui.comp.no_stamina")
 
 
 ## Мигание HP разрешено только вне режима «Без мигания» (DESIGN §9.3).
@@ -282,7 +283,7 @@ func _refresh_abilities() -> void:
 		slot.state = AshenSlot.State.NORMAL if owned else AshenSlot.State.UNAVAILABLE
 		slot.item_icon = _ability_icon(ability_id)
 		var display: String = ability_display_name(ability_id)
-		slot.tooltip_text = display if owned else "Не открыто: %s" % display
+		slot.tooltip_text = display if owned else tr("ui.hud.not_unlocked") % display
 	_last_abilities = _abilities_signature()
 	_refresh_ability_hint_ownership()
 
@@ -348,6 +349,25 @@ func _on_bus_ability_cooldown_changed(
 	duration: float
 ) -> void:
 	set_ability_cooldown(ability_id, remaining, duration)
+
+
+func _on_locale_changed(_code: String) -> void:
+	_retranslate()
+
+
+## Пересобрать статичные подписи HUD после смены языка (без пересоздания).
+func _retranslate() -> void:
+	if _critical_label == null:
+		return
+	_critical_label.text = tr("ui.comp.critical")
+	_need_label.text = tr("ui.hud.need")
+	set_level(level)
+	set_training_points(training_points)
+	_update_currency()
+	_refresh_abilities()
+	_update_zone_from_state()
+	if _ability_hint_ability != &"":
+		_ability_hint_label.text = ability_display_name(_ability_hint_ability)
 
 
 ## Иконка способности: пиксельный паттерн из токенов (арт T-05 заменит позже).
@@ -425,20 +445,20 @@ func get_level_text() -> String:
 
 func set_level(new_level: int) -> void:
 	level = maxi(new_level, 1)
-	_level_plate.text = "УР%d" % level
+	_level_plate.text = tr("ui.common.level") % level
 	_level_plate.queue_redraw()
 
 
 func set_training_points(points: int) -> void:
 	training_points = maxi(points, 0)
-	_points_label.text = "ОП %d" % training_points
-	_points_label.tooltip_text = "Очки обучения: %d" % training_points
+	_points_label.text = tr("ui.hud.training_points") % training_points
+	_points_label.tooltip_text = tr("ui.hud.training_points_tooltip") % training_points
 
 
 func _update_currency() -> void:
 	_last_currency = maxi(GameState.currency, 0)
 	_currency_label.text = format_number(_last_currency)
-	_currency_label.tooltip_text = "Монеты: %d" % _last_currency
+	_currency_label.tooltip_text = tr("ui.hud.currency_tooltip") % _last_currency
 
 
 static func format_number(value_value: int) -> String:
@@ -557,8 +577,10 @@ func _minimap_snapshot_signature(snapshot: Dictionary) -> String:
 
 
 func _set_zone(zone_id: StringName, display_name: String) -> void:
-	if display_name.is_empty():
-		_zone_label.text = String(zone_id)
+	if zone_id != &"":
+		_zone_label.text = LocaleText.lookup("zone.%s.name" % String(zone_id), display_name)
+	elif display_name.is_empty():
+		_zone_label.text = tr("ui.common.unknown_zone")
 	else:
 		_zone_label.text = display_name
 
@@ -573,9 +595,9 @@ func _update_zone_from_state() -> void:
 	var data: Variant = load(path)
 	if data == null:
 		return
-	var name_value: Variant = data.get(&"display_name")
-	if name_value is String and not (name_value as String).is_empty():
-		_set_zone(GameState.current_zone_id, name_value as String)
+	var zone_data: ZoneData = data as ZoneData
+	if zone_data != null:
+		_set_zone(GameState.current_zone_id, zone_data.get_display_name())
 
 
 # ------------------------------------------------------------------------------
@@ -777,6 +799,8 @@ func _connect_event_bus() -> void:
 	if EventBus.has_signal(&"ability_hint_changed"):
 		if not EventBus.is_connected(&"ability_hint_changed", _on_bus_ability_hint_changed):
 			EventBus.connect(&"ability_hint_changed", _on_bus_ability_hint_changed)
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 
 
 func _disconnect_event_bus() -> void:
@@ -801,6 +825,8 @@ func _disconnect_event_bus() -> void:
 	if EventBus.has_signal(&"ability_hint_changed"):
 		if EventBus.is_connected(&"ability_hint_changed", _on_bus_ability_hint_changed):
 			EventBus.disconnect(&"ability_hint_changed", _on_bus_ability_hint_changed)
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 
 
 func _connect_signal(sig: Signal, callback: Callable) -> void:
@@ -893,7 +919,7 @@ func _build_player_block() -> void:
 	_portrait.add_child(face)
 
 	_level_plate = _Plate.new()
-	_level_plate.text = "УР1"
+	_level_plate.text = tr("ui.common.level") % 1
 	_add_at(_level_plate, LEVEL_RECT)
 	_level_plate.queue_redraw()
 
@@ -911,7 +937,7 @@ func _build_player_block() -> void:
 	_stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_stamina_bar)
 
-	_critical_label = _make_label("КРИТИЧНО", UITokens.BLOOD_5)
+	_critical_label = _make_label(tr("ui.comp.critical"), UITokens.BLOOD_5)
 	_critical_label.position = CRITICAL_POSITION
 	_critical_label.size = Vector2(72, 10)
 	_critical_label.visible = false
@@ -1072,8 +1098,8 @@ func _build_ability_hint() -> void:
 	var lock := _LockIcon.new()
 	header.add_child(lock)
 
-	var need := _make_label("Нужно:", UITokens.STONE_5)
-	header.add_child(need)
+	_need_label = _make_label(tr("ui.hud.need"), UITokens.STONE_5)
+	header.add_child(_need_label)
 
 	_ability_hint_label = _make_label("", UITokens.GOLD_3)
 	_ability_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1253,7 +1279,6 @@ class _Plate extends Control:
 ## «НЕТ СИЛ» + «!» (AC-03.3): состояние продублировано знаком и текстом.
 class _NoStaminaBadge extends Control:
 
-	const TEXT: String = "НЕТ СИЛ"
 	const SIZE := Vector2(80, 10)
 	const BANG_SIZE: int = 7
 
@@ -1280,7 +1305,7 @@ class _NoStaminaBadge extends Control:
 		UIStyle.draw_text(
 			self,
 			Vector2(float(BANG_SIZE + 3), baseline),
-			TEXT,
+			tr("ui.comp.no_stamina"),
 			UITokens.BONE,
 			UITokens.FONT_BODY
 		)

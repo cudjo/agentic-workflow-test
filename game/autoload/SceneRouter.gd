@@ -173,7 +173,7 @@ func bootstrap(zone_id: StringName = &"", entry_id: StringName = DEFAULT_ENTRY_I
 	_apply_zone(zone, root, entry_id)
 	transition_finished.emit(zone_id_actual, entry_id)
 	if EventBus.has_signal(&"zone_loaded"):
-		EventBus.zone_loaded.emit(zone_id_actual, zone.zone_data.display_name)
+		EventBus.zone_loaded.emit(zone_id_actual, zone.zone_data.get_display_name())
 	return true
 
 
@@ -198,7 +198,7 @@ func change_zone(zone_id: StringName, entry_id: StringName = DEFAULT_ENTRY_ID) -
 	_pending_entry_id = entry_id
 	_pending_scene_path = path
 	var zone_data: ZoneData = _load_zone_data(zone_id)
-	_pending_display_name = zone_data.display_name if zone_data != null else String(zone_id)
+	_pending_display_name = zone_data.get_display_name() if zone_data != null else String(zone_id)
 	_elapsed = 0.0
 	is_loading = true
 	set_process(true)
@@ -320,7 +320,7 @@ func _show_loading(zone_data: ZoneData) -> void:
 	if loading_screen == null:
 		return
 	var display_name: String = _pending_display_name
-	var epigraph: String = zone_data.epigraph if zone_data != null else ""
+	var epigraph: String = zone_data.get_epigraph() if zone_data != null else ""
 	loading_screen.show_loading(display_name, epigraph)
 
 

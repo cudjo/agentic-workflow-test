@@ -56,11 +56,11 @@ const SFX_POOL_SIZE: int = 8
 ## Описание публичных SFX: субтитр (DESIGN §9.4) и «опасность» для тоста.
 ## Идентификаторы — стабильный контракт для боевых систем (T-10/T-11/T-26).
 const SFX_SPECS: Dictionary = {
-	&"hit": {"subtitle": "УДАР", "danger": false},
-	&"parry": {"subtitle": "ПАРИРОВАНИЕ", "danger": false},
-	&"death": {"subtitle": "СМЕРТЬ", "danger": true},
-	&"phase": {"subtitle": "СМЕНА ФАЗЫ", "danger": true},
-	&"boss_near": {"subtitle": "БОСС РЯДОМ", "danger": true},
+	&"hit": {"subtitle": "ui.audio.hit", "danger": false},
+	&"parry": {"subtitle": "ui.audio.parry", "danger": false},
+	&"death": {"subtitle": "ui.audio.death", "danger": true},
+	&"phase": {"subtitle": "ui.audio.phase", "danger": true},
+	&"boss_near": {"subtitle": "ui.audio.boss_near", "danger": true},
 }
 
 ## Длительность кроссфейда текущего перехода; тесты могут уменьшать, но не
@@ -461,15 +461,16 @@ func _sfx_stream(sfx_id: StringName) -> AudioStream:
 func _emit_subtitle(text: String, danger: bool = false, force: bool = false) -> void:
 	if not Config.sound_subtitles:
 		return
+	var message: String = tr(text)
 	var now_ms: int = Time.get_ticks_msec()
-	if not force and _subtitle_last_ms.has(text):
-		var previous_ms: int = int(_subtitle_last_ms[text])
+	if not force and _subtitle_last_ms.has(message):
+		var previous_ms: int = int(_subtitle_last_ms[message])
 		if now_ms - previous_ms < SUBTITLE_REPEAT_MS:
 			return
-	_subtitle_last_ms[text] = now_ms
-	last_subtitle = text
+	_subtitle_last_ms[message] = now_ms
+	last_subtitle = message
 	subtitle_count += 1
-	subtitle_requested.emit(text, danger)
+	subtitle_requested.emit(message, danger)
 
 
 # ------------------------------------------------------------------------------
@@ -491,7 +492,7 @@ func _on_boss_fight_started(
 	_thresholds: PackedFloat32Array
 ) -> void:
 	play_sfx(&"boss_near", false)
-	_emit_subtitle("БОСС РЯДОМ · %s" % display_name, true, true)
+	_emit_subtitle(tr("ui.audio.boss_near_named") % display_name, true, true)
 
 
 func _on_boss_phase_changed(
@@ -500,7 +501,7 @@ func _on_boss_phase_changed(
 	phase_title: String
 ) -> void:
 	play_sfx(&"phase", false)
-	_emit_subtitle("СМЕНА ФАЗЫ · %s" % phase_title, true, true)
+	_emit_subtitle(tr("ui.audio.phase_named") % tr(phase_title), true, true)
 
 
 func _on_boss_defeated(
@@ -508,7 +509,7 @@ func _on_boss_defeated(
 	_zone_id: StringName,
 	_at_position: Vector2
 ) -> void:
-	_emit_subtitle("БОСС ПОВЕРЖЕН", false, true)
+	_emit_subtitle(tr("ui.audio.boss_defeated"), false, true)
 
 
 # ------------------------------------------------------------------------------

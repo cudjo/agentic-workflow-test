@@ -373,7 +373,7 @@ func test_journal_empty_state_is_explicit() -> void:
 	var view: Dictionary = screen.get_view_data()
 	assert_true(bool(view.get("empty", false)), "пустой журнал помечен")
 	assert_eq(screen.get_list_rows().size(), 0, "строк нет")
-	assert_eq(screen.get_detail_text_label().text, JournalScreen.EMPTY_JOURNAL, "пустое состояние текстом")
+	assert_eq(screen.get_detail_text_label().text, tr(JournalScreen.EMPTY_JOURNAL), "пустое состояние текстом")
 	assert_string_contains(
 		screen.get_detail_text_label().text,
 		"ЖУРНАЛ ПУСТ",

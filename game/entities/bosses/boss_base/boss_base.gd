@@ -136,7 +136,7 @@ func activate_fight() -> bool:
 	_enter_phase(phase_index, false)
 	EventBus.boss_fight_started.emit(
 		data.id,
-		data.display_name,
+		data.get_display_name(),
 		data.max_hp,
 		data.get_phase_thresholds()
 	)

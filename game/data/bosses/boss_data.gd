@@ -79,6 +79,10 @@ func get_phase_count() -> int:
 
 
 ## Метки фаз для панели босса HUD (T-19), от старшей к младшей.
+func get_display_name() -> String:
+	return LocaleText.lookup(display_name_key, display_name)
+
+
 func get_phase_thresholds() -> PackedFloat32Array:
 	var marks := PackedFloat32Array()
 	for index: int in range(1, phases.size()):

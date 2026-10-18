@@ -208,9 +208,9 @@ func is_empty() -> bool:
 func _update_tooltip() -> void:
 	match state:
 		State.REQUIREMENTS:
-			tooltip_text = "НЕТ · ещё %d" % requirement_delta if requirement_delta > 0 else "НЕТ"
+			tooltip_text = tr("ui.common.not_enough") % requirement_delta if requirement_delta > 0 else tr("ui.common.none")
 		State.UNAVAILABLE:
-			tooltip_text = "Недоступно"
+			tooltip_text = tr("ui.common.unavailable")
 		_:
 			tooltip_text = ""
 

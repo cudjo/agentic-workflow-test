@@ -78,15 +78,15 @@ static func format_missing(missing: Array[Dictionary], labels: Dictionary = {}) 
 		var stat_id: StringName = StringName(str(entry.get("stat_id", "")))
 		var label: String = str(labels.get(stat_id, stat_id))
 		parts.append(
-			"%s %d (у вас %d)" % [
+			LocaleText.current("ui.inv.requires_item", [
 				label.to_upper(),
 				int(entry.get("required", 0)),
 				int(entry.get("current", 0)),
-			]
+			])
 		)
 	if parts.is_empty():
 		return ""
-	return "ТРЕБУЕТСЯ: " + "; ".join(parts)
+	return LocaleText.current("ui.inv.requires") + "; ".join(parts)
 
 
 static func _stat_value(stats: Dictionary, stat_id: StringName) -> int:

@@ -13,17 +13,17 @@ const AUTO_SCROLL_TIME: float = 8.0
 const SCROLL_PIXELS_PER_SECOND: float = 18.0
 
 const CREDITS_LINES: Array[String] = [
-	"ПЕПЕЛЬНЫЙ БАСТИОН",
-	"ASHEN BASTION",
+	"ui.credits.title_line",
+	"ui.credits.english_title",
 	"",
-	"Финальная глава",
+	"ui.credits.chapter",
 	"",
-	"Разработка — команда «Пепельный Бастион»",
-	"Движок — Godot 4.4",
-	"Шрифт — Press Start 2P (OFL)",
-	"Звук — CC0 / временные заглушки",
+	"ui.credits.team",
+	"ui.credits.engine",
+	"ui.credits.font",
+	"ui.credits.sound",
 	"",
-	"Спасибо, что дошли до конца.",
+	"ui.credits.thanks",
 ]
 
 var _background: ColorRect
@@ -32,6 +32,7 @@ var _title: Label
 var _scroll: ScrollContainer
 var _column: VBoxContainer
 var _hint: AshenPrompt
+var _line_labels: Array[Label] = []
 var _elapsed: float = 0.0
 var _finished: bool = false
 
@@ -40,6 +41,16 @@ func _init() -> void:
 	name = "CreditsScreen"
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
+
+
+func _on_locale_changed(_code: String) -> void:
+	if _title == null:
+		return
+	_title.text = tr("ui.credits.title")
+	_hint.setup(&"ui_accept", tr("ui.credits.finish_hint"))
+	for index: int in _line_labels.size():
+		var key: String = CREDITS_LINES[index]
+		_line_labels[index].text = tr(key) if not key.is_empty() else ""
 
 
 func _ready() -> void:
@@ -132,7 +143,7 @@ func _build() -> void:
 	_panel.add_child(column)
 
 	_title = Label.new()
-	_title.text = "ТИТРЫ"
+	_title.text = tr("ui.credits.title")
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.add_theme_font_override("font", UIStyle.font())
 	_title.add_theme_font_size_override("font_size", UITokens.FONT_H2)
@@ -152,9 +163,11 @@ func _build() -> void:
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_scroll.add_child(_column)
 
+	_line_labels.clear()
 	for line: String in CREDITS_LINES:
 		var label := Label.new()
-		label.text = line
+		label.text = tr(line) if not line.is_empty() else ""
+		_line_labels.append(label)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.add_theme_font_override("font", UIStyle.font())
 		label.add_theme_font_size_override("font_size", UITokens.FONT_BODY)
@@ -165,8 +178,10 @@ func _build() -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_column.add_child(label)
 
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	_hint = AshenPrompt.new()
-	_hint.setup(&"ui_accept", "завершить")
+	_hint.setup(&"ui_accept", tr("ui.credits.finish_hint"))
 	_hint.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(_hint)
 

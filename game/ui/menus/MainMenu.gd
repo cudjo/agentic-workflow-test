@@ -207,12 +207,12 @@ func refresh_saves() -> void:
 	# отключения должна читаться с клавиатуры/геймпада (DESIGN §6.1/§9.2).
 	_continue_button.focus_mode = Control.FOCUS_ALL
 	_continue_button.disabled_reason = _continue_reason() if valid_slot <= 0 else ""
-	_continue_button.text = _t("Продолжить", "Continue")
+	_continue_button.text = tr("ui.menu.continue")
 	_continue_button.custom_minimum_size = Vector2(
 		MENU_WIDTH,
 		float(_continue_button.get_row_height())
 	)
-	_update_item_meta(_continue_button, _t("Продолжить", "Continue"))
+	_update_item_meta(_continue_button, tr("ui.menu.continue"))
 	if _continue_button.has_focus():
 		_update_status()
 
@@ -323,14 +323,14 @@ func _ensure_built() -> void:
 
 
 func _build_title() -> void:
-	_title_l1 = _make_label("ПЕПЕЛЬНЫЙ", UITokens.BONE, UITokens.FONT_H1)
+	_title_l1 = _make_label(tr("ui.menu.title1"), UITokens.BONE, UITokens.FONT_H1)
 	_title_l1.name = "TitleLine1"
 	_place(_title_l1, TITLE_POS, Vector2(416, UITokens.FONT_H1))
 	_title_l1.add_theme_color_override("font_shadow_color", UITokens.VOID)
 	_title_l1.add_theme_constant_override("shadow_offset_x", 2)
 	_title_l1.add_theme_constant_override("shadow_offset_y", 2)
 
-	_title_l2 = _make_label("БАСТИОН", UITokens.GOLD_3, UITokens.FONT_TITLE)
+	_title_l2 = _make_label(tr("ui.menu.title2"), UITokens.GOLD_3, UITokens.FONT_TITLE)
 	_title_l2.name = "TitleLine2"
 	_place(_title_l2, Vector2(TITLE_POS.x, 42), Vector2(416, UITokens.FONT_TITLE))
 	_title_l2.add_theme_color_override("font_shadow_color", UITokens.BROWN_9)
@@ -338,7 +338,7 @@ func _build_title() -> void:
 	_title_l2.add_theme_constant_override("shadow_offset_y", 2)
 
 	_subtitle = _make_label(
-		"ASHEN BASTION · рабочее название",
+		tr("ui.menu.subtitle"),
 		UITokens.STONE_5,
 		UITokens.FONT_BODY
 	)
@@ -371,11 +371,11 @@ func _build_menu() -> void:
 	_menu_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_menu_scroll.add_child(_menu_box)
 
-	_add_menu_item(&"continue", "Продолжить")
-	_add_menu_item(&"new", "Новая игра")
-	_add_menu_item(&"load", "Загрузить")
-	_add_menu_item(&"settings", "Настройки")
-	_add_menu_item(&"exit", "Выход")
+	_add_menu_item(&"continue", tr("ui.menu.continue"))
+	_add_menu_item(&"new", tr("ui.menu.new_game"))
+	_add_menu_item(&"load", tr("ui.menu.load"))
+	_add_menu_item(&"settings", tr("ui.menu.settings"))
+	_add_menu_item(&"exit", tr("ui.menu.exit"))
 
 
 func _add_menu_item(id: StringName, text: String) -> AshenMenuItem:
@@ -435,17 +435,17 @@ func _build_footer() -> void:
 
 	_prompt_move = AshenPrompt.new()
 	_prompt_move.name = "PromptMove"
-	_prompt_move.setup(&"ui_up", "Выбор")
+	_prompt_move.setup(&"ui_up", tr("ui.common.select"))
 	_footer.add_child(_prompt_move)
 
 	_prompt_ok = AshenPrompt.new()
 	_prompt_ok.name = "PromptOk"
-	_prompt_ok.setup(&"ui_accept", "Ок")
+	_prompt_ok.setup(&"ui_accept", tr("ui.common.ok"))
 	_footer.add_child(_prompt_ok)
 
 	_prompt_back = AshenPrompt.new()
 	_prompt_back.name = "PromptBack"
-	_prompt_back.setup(&"ui_cancel", "Назад")
+	_prompt_back.setup(&"ui_cancel", tr("ui.common.back"))
 	_footer.add_child(_prompt_back)
 
 	var spacer := Control.new()
@@ -474,7 +474,7 @@ func _make_lang_button(code: String) -> _LangButton:
 	button.lang_code = code
 	button.tooltip_text = "RU" if code == "ru" else "EN"
 	button.set_meta(&"a11y_role", "switch")
-	button.set_meta(&"a11y_name", "Русский" if code == "ru" else "English")
+	button.set_meta(&"a11y_name", tr("ui.common.russian") if code == "ru" else tr("ui.common.english"))
 	button.pressed.connect(_on_lang_pressed.bind(code))
 	button.focus_entered.connect(_on_focus_changed)
 	button.mouse_entered.connect(_on_focus_changed)
@@ -515,19 +515,11 @@ func _menu_font_size() -> int:
 	return UITokens.FONT_BODY * Config.ui_scale / 100
 
 
-func _t(ru: String, en: String) -> String:
-	return en if Config.is_english() else ru
-
-
 func _apply_language() -> void:
 	var english: bool = Config.is_english()
-	_title_l1.text = "ASHEN" if english else "ПЕПЕЛЬНЫЙ"
-	_title_l2.text = "BASTION" if english else "БАСТИОН"
-	_subtitle.text = (
-		"ПЕПЕЛЬНЫЙ БАСТИОН · working title"
-		if english
-		else "ASHEN BASTION · рабочее название"
-	)
+	_title_l1.text = tr("ui.menu.title1")
+	_title_l2.text = tr("ui.menu.title2")
+	_subtitle.text = tr("ui.menu.subtitle")
 
 	for index: int in _menu_items.size():
 		var item: AshenMenuItem = _menu_items[index]
@@ -538,9 +530,9 @@ func _apply_language() -> void:
 	_LangButton.set_active(_lang_ru, not english)
 	_LangButton.set_active(_lang_en, english)
 
-	_prompt_move.setup(&"ui_up", _t("Выбор", "Select"))
-	_prompt_ok.setup(&"ui_accept", _t("Ок", "OK"))
-	_prompt_back.setup(&"ui_cancel", _t("Назад", "Back"))
+	_prompt_move.setup(&"ui_up", tr("ui.common.select"))
+	_prompt_ok.setup(&"ui_accept", tr("ui.common.ok"))
+	_prompt_back.setup(&"ui_cancel", tr("ui.common.back"))
 
 	refresh_saves()
 	_update_status()
@@ -553,30 +545,30 @@ func _apply_language() -> void:
 func _menu_text(id: StringName) -> String:
 	match id:
 		&"continue":
-			return _t("Продолжить", "Continue")
+			return tr("ui.menu.continue")
 		&"new":
-			return _t("Новая игра", "New game")
+			return tr("ui.menu.new_game")
 		&"load":
-			return _t("Загрузить", "Load")
+			return tr("ui.menu.load")
 		&"settings":
-			return _t("Настройки", "Settings")
+			return tr("ui.menu.settings")
 		&"exit":
-			return _t("Выход", "Exit")
+			return tr("ui.menu.exit")
 	return ""
 
 
 func _hint_for(id: StringName) -> String:
 	match id:
 		&"continue":
-			return _t("Загрузить последнее сохранение", "Load the latest save")
+			return tr("ui.menu.hint_continue")
 		&"new":
-			return _t("Начать новое путешествие", "Start a new journey")
+			return tr("ui.menu.hint_new")
 		&"load":
-			return _t("Выбрать сохранение", "Choose a save")
+			return tr("ui.menu.hint_load")
 		&"settings":
-			return _t("Язык, масштаб, доступность", "Language, scale, accessibility")
+			return tr("ui.menu.hint_settings")
 		&"exit":
-			return _t("Выйти из игры", "Quit the game")
+			return tr("ui.menu.hint_exit")
 	return ""
 
 
@@ -601,7 +593,7 @@ func _update_status() -> void:
 	var is_reason: bool = false
 	if owner != null:
 		if owner == _lang_ru or owner == _lang_en:
-			text = _t("Язык интерфейса", "Interface language")
+			text = tr("ui.common.language")
 		else:
 			for index: int in _menu_items.size():
 				var item: AshenMenuItem = _menu_items[index]
@@ -824,8 +816,8 @@ func _scan_saves() -> Dictionary:
 
 func _continue_reason() -> String:
 	if bool(_scan.get("invalid", false)):
-		return _t("Сохранения повреждены", "Saves are corrupted")
-	return _t("Нет сохранений", "No saves")
+		return tr("ui.menu.saves_corrupted")
+	return tr("ui.menu.no_saves")
 
 
 func _has_world_root() -> bool:

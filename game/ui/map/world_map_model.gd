@@ -23,9 +23,9 @@ const FALLBACK_ROOM_ID: StringName = &"room"
 const FALLBACK_WORLD_RECT := Rect2(0, 0, 480, 270)
 
 const ABILITY_LABELS: Dictionary = {
-	&"double_jump": "ДВОЙНОЙ ПРЫЖОК",
-	&"dash": "РЫВОК",
-	&"wall_climb": "КАРАБКАНЬЕ",
+	&"double_jump": "ability.double_jump.name",
+	&"dash": "ability.dash.name",
+	&"wall_climb": "ability.wall_climb.name",
 }
 
 var zones: Array[ZoneData] = []
@@ -130,7 +130,7 @@ func build(
 			continue
 		var entry: Dictionary = {
 			"zone_id": data.id,
-			"zone_name": data.display_name,
+			"zone_name": data.get_display_name(),
 			"room_id": room.id,
 			"cell": room.grid_position,
 			"world_rect": room.world_rect,
@@ -253,11 +253,15 @@ static func entry_position(data: ZoneData, entry_id: StringName) -> Vector2:
 static func ability_label(ability_id: StringName) -> String:
 	if ability_id == &"":
 		return ""
+	var key: String = "ability.%s.name" % String(ability_id)
+	var translated: String = TranslationServer.translate(key)
+	if translated != key:
+		return translated.to_upper()
 	if AbilityRegistry.has_ability(ability_id):
 		var ability: AbilityBase = AbilityRegistry.get_ability(ability_id)
 		if ability != null and not ability.display_name.is_empty():
 			return ability.display_name.to_upper()
-	return ABILITY_LABELS.get(ability_id, String(ability_id).to_upper())
+	return TranslationServer.translate(str(ABILITY_LABELS.get(ability_id, String(ability_id)))).to_upper()
 
 
 # ------------------------------------------------------------------------------

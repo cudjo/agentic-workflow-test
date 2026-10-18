@@ -23,7 +23,7 @@ const VIEW_HEIGHT := 270.0
 const FADE_STEPS := UITokens.FADE_STEPS
 
 @export var zone_id: StringName = &""
-@export var subtitle: String = "Зона 1 · Хаб"
+@export var subtitle: String = ""
 @export var fade_in_time: float = 0.2
 @export var hold_time: float = 1.8
 @export var fade_out_time: float = 0.3

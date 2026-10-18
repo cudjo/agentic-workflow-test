@@ -17,9 +17,10 @@ const PADDING_Y: float = 2.0
 const ICON_WIDTH: float = 7.0
 const ICON_GAP: float = 3.0
 const BORDER: float = 1.0
-const HINT_PREFIX: String = "Нужно:"
+const HINT_PREFIX: String = "ui.ability_hint.need"
 
 var _ability_id: StringName = &""
+var _label_override: String = ""
 var _text: String = ""
 var _shown: bool = false
 var _label: Label
@@ -32,9 +33,16 @@ func _ready() -> void:
 	visible = false
 
 
+func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
+
+
 func _ensure_label() -> void:
 	if _label != null:
 		return
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	_label = Label.new()
 	_label.name = "HintLabel"
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -54,16 +62,28 @@ func show_required(ability_id: StringName, label_override: String = "") -> void:
 		hide_hint()
 		return
 	_ability_id = ability_id
-	var display: String = label_override.strip_edges()
+	_label_override = label_override.strip_edges()
+	var display: String = _label_override
 	if display.is_empty():
 		var ability: AbilityBase = AbilityRegistry.get_ability(ability_id)
 		if ability != null and not ability.display_name.is_empty():
 			display = ability.display_name
 		else:
 			display = String(ability_id)
-	_text = "%s %s" % [HINT_PREFIX, display.to_upper()]
+		display = LocaleText.lookup("ability.%s.name" % String(ability_id), display)
+	_text = "%s %s" % [tr(HINT_PREFIX), display.to_upper()]
 	_shown = true
 	_apply()
+
+
+func _refresh_text() -> void:
+	if _ability_id == &"" or not _shown:
+		return
+	show_required(_ability_id, _label_override)
+
+
+func _on_locale_changed(_code: String) -> void:
+	_refresh_text()
 
 
 func hide_hint() -> void:

@@ -35,7 +35,7 @@ func _build_hud() -> void:
 	portrait.position = Vector2.ZERO
 	portrait.size = Vector2(UITokens.PORTRAIT_HUD, UITokens.PORTRAIT_HUD)
 	inner.add_child(portrait)
-	var level := _make_label("УР7", "GoldLabel")
+	var level := _make_label(tr("ui.showcase.level"), "GoldLabel")
 	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	level.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	portrait.add_child(level)
@@ -80,9 +80,9 @@ func _build_hud() -> void:
 	var wallet_column := VBoxContainer.new()
 	wallet_column.add_theme_constant_override("separation", UITokens.SP_1)
 	wallet.add_child(wallet_column)
-	wallet_column.add_child(_make_label("МОНЕТЫ 1 240", "GoldLabel"))
-	wallet_column.add_child(_make_label("ОП 3", "MutedLabel"))
-	wallet_column.add_child(_make_label("ЗОНА 1 · ХАБ", "MutedLabel"))
+	wallet_column.add_child(_make_label(tr("ui.showcase.coins"), "GoldLabel"))
+	wallet_column.add_child(_make_label(tr("ui.showcase.points"), "MutedLabel"))
+	wallet_column.add_child(_make_label(tr("ui.showcase.zone"), "MutedLabel"))
 
 
 func _build_menu() -> void:
@@ -91,23 +91,23 @@ func _build_menu() -> void:
 	column.add_theme_constant_override("separation", 0)
 	menu.add_child(column)
 
-	var continue_item := _make_menu_item("Продолжить", true, "Нет сохранений")
+	var continue_item := _make_menu_item(tr("ui.menu.continue"), true, tr("ui.menu.no_saves"))
 	column.add_child(continue_item)
 
-	_focus_target = _make_menu_item("Новая игра")
+	_focus_target = _make_menu_item(tr("ui.menu.new_game"))
 	column.add_child(_focus_target)
 
-	column.add_child(_make_menu_item("Загрузить"))
-	column.add_child(_make_menu_item("Настройки"))
+	column.add_child(_make_menu_item(tr("ui.menu.load")))
+	column.add_child(_make_menu_item(tr("ui.menu.settings")))
 
-	var toggle := _make_menu_item("Субтитры звуков")
+	var toggle := _make_menu_item(tr("ui.settings.row_subtitles"))
 	toggle.is_toggle = true
 	toggle.button_pressed = true
 	column.add_child(toggle)
 
-	column.add_child(_make_menu_item("Выход"))
+	column.add_child(_make_menu_item(tr("ui.menu.exit")))
 
-	var hint := _make_label("↑ ↓ · выбрать    Enter · ок", "MutedLabel")
+	var hint := _make_label(tr("ui.showcase.hint"), "MutedLabel")
 	column.add_child(hint)
 
 
@@ -116,13 +116,13 @@ func _build_toasts() -> void:
 	saved.position = Vector2(488, 8)
 	saved.custom_minimum_size = Vector2(300, UITokens.TOAST_MIN_HEIGHT)
 	add_child(saved)
-	saved.show_message("СОХРАНЕНО · СЛОТ 1", AshenToast.Kind.SUCCESS, 0.0)
+	saved.show_message(tr("ui.showcase.saved"), AshenToast.Kind.SUCCESS, 0.0)
 
 	var danger := AshenToast.new()
 	danger.position = Vector2(488, 36)
 	danger.custom_minimum_size = Vector2(300, UITokens.TOAST_MIN_HEIGHT)
 	add_child(danger)
-	danger.show_message("Сохранение в бою запрещено", AshenToast.Kind.DANGER, 0.0)
+	danger.show_message(tr("ui.camp.combat_reason_full"), AshenToast.Kind.DANGER, 0.0)
 
 
 func _build_inventory() -> void:
@@ -134,7 +134,7 @@ func _build_inventory() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", UITokens.SP_1)
 	column.add_child(tabs)
-	var tab_titles := ["ЭКИПИРОВКА", "ИНВЕНТАРЬ", "ФРАКЦИИ"]
+	var tab_titles := [tr("ui.showcase.tab_equipment"), tr("ui.showcase.tab_inventory"), tr("ui.showcase.tab_factions")]
 	for index in tab_titles.size():
 		var tab := AshenTab.new()
 		tab.text = tab_titles[index]
@@ -166,35 +166,35 @@ func _build_inventory() -> void:
 		slot.count = index + 1 if states[index] == AshenSlot.State.NORMAL else -1
 		grid.add_child(slot)
 
-	column.add_child(_make_label("Требования: НЕТ · ещё 2", "DangerLabel"))
-	column.add_child(_make_label("Надето: меч · 12 урона", "SteelLabel"))
+	column.add_child(_make_label(tr("ui.showcase.requirements"), "DangerLabel"))
+	column.add_child(_make_label(tr("ui.showcase.equipped"), "SteelLabel"))
 
 
 func _build_dialogs() -> void:
 	var first := _add_dialog(
 		Vector2(488, 72),
-		"Хранитель Огня",
-		"Пламя помнит тех, кто возвращается. Дать ему запомнить и тебя?",
+		tr("ui.showcase.speaker"),
+		tr("ui.camp.talk"),
 		[
-			{"text": "Сохранить игру"},
-			{"text": "О Болоте"},
-			{"text": "Клятва", "tag": "[Орден+1]"},
-			{"text": "Уйти", "tag": "", "disabled": false},
+			{"text": tr("ui.showcase.answer_save")},
+			{"text": tr("ui.showcase.answer_about")},
+			{"text": tr("ui.showcase.answer_oath"), "tag": tr("ui.showcase.oath_tag")},
+			{"text": tr("ui.showcase.answer_leave"), "tag": "", "disabled": false},
 		],
-		"Орден Пепла"
+		tr("ui.showcase.faction")
 	)
 
 	var second := _add_dialog(
 		Vector2(488, 184),
-		"Хранитель Огня",
-		"Не здесь, путник. Пока рядом враги, пламя не примет клятву.",
+		tr("ui.showcase.speaker"),
+		tr("ui.showcase.camp_text"),
 		[
-			{"text": "Сохранить игру", "disabled": true, "reason": "Рядом враги"},
-			{"text": "Повторить"},
-			{"text": "Другой слот"},
-			{"text": "Отмена"},
+			{"text": tr("ui.showcase.answer_save"), "disabled": true, "reason": tr("ui.showcase.enemy_near")},
+			{"text": tr("ui.showcase.answer_retry")},
+			{"text": tr("ui.showcase.answer_another")},
+			{"text": tr("ui.showcase.answer_cancel")},
 		],
-		"Орден Пепла"
+		tr("ui.showcase.faction")
 	)
 	second.instant_text = true
 
@@ -202,12 +202,12 @@ func _build_prompts() -> void:
 	var prompt_one := AshenPrompt.new()
 	prompt_one.position = Vector2(488, 300)
 	add_child(prompt_one)
-	prompt_one.setup(&"interact", "Осмотреть")
+	prompt_one.setup(&"interact", tr("ui.common.observe"))
 
 	var prompt_two := AshenPrompt.new()
 	prompt_two.position = Vector2(488, 320)
 	add_child(prompt_two)
-	prompt_two.setup(&"jump", "Прыжок")
+	prompt_two.setup(&"jump", tr("ui.common.jump"))
 
 	var raw_kbd := AshenKbd.new()
 	raw_kbd.position = Vector2(488, 344)

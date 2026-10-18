@@ -92,11 +92,7 @@ func get_interact_info(language: String = "ru") -> Dictionary:
 	var can_interact: bool = data != null and data.is_valid()
 	var reason: String = ""
 	if not can_interact:
-		reason = (
-			"No dialogue is configured for this NPC."
-			if DialogueText.is_english(language)
-			else "У NPC не настроен диалог."
-		)
+		reason = LocaleText.translate_for(language, "npc.dialogue.missing")
 	return {
 		"npc_id": get_npc_id(),
 		"display_name": get_display_name(language),

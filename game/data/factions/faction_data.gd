@@ -55,6 +55,30 @@ extends Resource
 
 
 ## Δ репутации за событие/квест; 0 — событие на фракцию не влияет.
+func get_display_name() -> String:
+	return LocaleText.lookup(display_name_key, display_name)
+
+
+func get_lore() -> String:
+	return LocaleText.lookup("faction.%s.lore" % String(id), lore)
+
+
+func get_territory_name() -> String:
+	return LocaleText.lookup("faction.%s.territory" % String(id), territory_name)
+
+
+func get_territory_denied_reason() -> String:
+	return LocaleText.lookup("faction.%s.territory_denied" % String(id), territory_denied_reason)
+
+
+func get_trade_denied_reason() -> String:
+	return LocaleText.lookup("faction.%s.trade_denied" % String(id), trade_denied_reason)
+
+
+func get_quest_denied_reason() -> String:
+	return LocaleText.lookup("faction.%s.quest_denied" % String(id), quest_denied_reason)
+
+
 func get_reputation_delta(event_id: StringName) -> int:
 	if event_id == &"":
 		return 0

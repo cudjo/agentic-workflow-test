@@ -37,6 +37,10 @@ window/stretch/mode="viewport"
 window/stretch/scale_mode="integer"
 window/stretch/aspect="keep"
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://assets/locale/ru.ru.translation", "res://assets/locale/en.en.translation")
+
 [input]
 
 move_left={

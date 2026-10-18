@@ -202,7 +202,7 @@ func _toggle_width() -> float:
 		UITokens.TOGGLE_TRACK.x
 		if not show_toggle_text
 		else UITokens.TOGGLE_TRACK.x + float(UITokens.SP_1)
-		+ UIStyle.text_width("ВЫКЛ", UITokens.FONT_BODY)
+		+ UIStyle.text_width(tr("ui.common.off"), UITokens.FONT_BODY)
 	)
 
 
@@ -233,10 +233,10 @@ func _draw_toggle(rect: Rect2, on: bool) -> void:
 		UIStyle.draw_text(
 			self,
 			Vector2(
-				track_x - UIStyle.text_width("ВКЛ", UITokens.FONT_BODY) - float(UITokens.SP_1),
+				track_x - UIStyle.text_width(tr("ui.common.on"), UITokens.FONT_BODY) - float(UITokens.SP_1),
 				rect.size.y * 0.5 + UIStyle.baseline_y(UITokens.FONT_BODY) * 0.5 - 1.0
 			),
-			"ВКЛ" if on else "ВЫКЛ",
+			tr("ui.common.on") if on else tr("ui.common.off"),
 			UITokens.STEEL_3 if on else UITokens.STONE_5,
 			UITokens.FONT_BODY
 		)

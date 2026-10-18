@@ -38,6 +38,7 @@ var _notice_title: Label
 var _notice_subtitle: Label
 var _notice_left: float = 0.0
 var _phase_marks: PackedFloat32Array = PackedFloat32Array(UITokens.BOSS_PHASE_MARKS)
+var _name_key: String = ""
 var _built: bool = false
 
 
@@ -52,6 +53,13 @@ func _init() -> void:
 func _ready() -> void:
 	_ensure_built()
 	visible = false
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
+
+
+func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 
 
 # ------------------------------------------------------------------------------
@@ -69,7 +77,8 @@ func begin_fight(
 ) -> void:
 	_ensure_built()
 	boss_id = new_boss_id
-	display_name = new_display_name
+	_name_key = "boss.%s.name" % String(new_boss_id)
+	display_name = LocaleText.lookup(_name_key, new_display_name)
 	max_hp = maxf(new_max_hp, 1.0)
 	phase_index = 0
 	phase_title = ""
@@ -222,17 +231,26 @@ func _ensure_built() -> void:
 func _refresh_phase_label() -> void:
 	if _phase_label == null:
 		return
-	_phase_label.text = "ФАЗА %s / %s" % [
+	_phase_label.text = tr("ui.hud.phase_of") % [
 		_phase_at(phase_index),
 		_phase_at(maxi(get_phase_count() - 1, 0)),
 	]
 
 
 func _show_notice(title: String) -> void:
-	_notice_title.text = "ФАЗА %s" % _phase_at(phase_index)
-	_notice_subtitle.text = title
+	_notice_title.text = tr("ui.hud.phase") % _phase_at(phase_index)
+	_notice_subtitle.text = tr(title) if not title.is_empty() else ""
 	_notice_panel.visible = true
 	_notice_left = NOTICE_TIME
+
+
+func _on_locale_changed(_code: String) -> void:
+	if boss_id != &"":
+		display_name = LocaleText.lookup(_name_key, display_name)
+		_name_label.text = display_name
+	_refresh_phase_label()
+	if is_notice_visible() and not phase_title.is_empty():
+		_notice_subtitle.text = tr(phase_title)
 
 
 func _phase_at(index: int) -> String:

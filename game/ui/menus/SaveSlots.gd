@@ -90,7 +90,7 @@ func is_open() -> bool:
 func refresh() -> void:
 	if not _built:
 		return
-	_heading.text = _t("ЗАГРУЗИТЬ ИГРУ", "LOAD GAME")
+	_heading.text = tr("ui.saves.heading")
 	var font: int = _card_font_size()
 	for slot: int in range(SLOT_MIN, SLOT_MAX + 1):
 		var card: _SlotCard = _cards[slot - 1]
@@ -299,15 +299,15 @@ func _card_state(meta: Dictionary) -> CardState:
 func _card_title(slot: int, meta: Dictionary) -> String:
 	match _card_state(meta):
 		CardState.EMPTY:
-			return _t("— Пусто —", "— Empty —")
+			return tr("ui.saves.empty")
 		CardState.CORRUPTED:
 			if bool(meta.get("corrupted", false)):
-				return _t("Файл повреждён", "File corrupted")
-			return _t("Файл несовместим", "Unsupported save")
+				return tr("ui.saves.file_corrupted")
+			return tr("ui.saves.file_unsupported")
 		_:
 			var zone_name: String = _zone_name(meta)
 			if zone_name.is_empty():
-				return _t("Сохранение %d" % slot, "Save %d" % slot)
+				return tr("ui.saves.save_number") % slot
 			return zone_name
 
 
@@ -317,7 +317,7 @@ func _card_meta(meta: Dictionary) -> String:
 	var level: int = maxi(1, int(meta.get("level", 1)))
 	var play_time: float = float(meta.get("play_time", 0.0))
 	var parts: Array[String] = []
-	parts.append(_t("УР%d" % level, "LV%d" % level))
+	parts.append(tr("ui.common.level") % level)
 	parts.append(format_play_time(play_time, Config.is_english()))
 	var saved_at: String = format_saved_at(int(meta.get("saved_at_unix", 0)))
 	if not saved_at.is_empty():
@@ -334,23 +334,23 @@ func _card_detail(meta: Dictionary) -> String:
 func _card_tooltip(slot: int, meta: Dictionary) -> String:
 	match _card_state(meta):
 		CardState.EMPTY:
-			return _t("Слот %d пуст" % slot, "Slot %d is empty" % slot)
+			return tr("ui.saves.slot_empty") % slot
 		CardState.CORRUPTED:
 			return "%s: %s" % [
-				_t("Слот %d повреждён" % slot, "Slot %d is corrupted" % slot),
+				tr("ui.saves.slot_corrupted") % slot,
 				_card_detail(meta),
 			]
 		_:
-			return _t("Загрузить слот %d" % slot, "Load slot %d" % slot)
+			return tr("ui.saves.load_slot") % slot
 
 
 func _slot_a11y_name(slot: int, meta: Dictionary) -> String:
 	var state: CardState = _card_state(meta)
 	if state == CardState.VALID:
-		return _t("Слот %d, %s" % [slot, _card_title(slot, meta)], "Slot %d, %s" % [slot, _card_title(slot, meta)])
+		return tr("ui.saves.a11y_valid") % [slot, _card_title(slot, meta)]
 	if state == CardState.EMPTY:
-		return _t("Слот %d, пусто" % slot, "Slot %d, empty" % slot)
-	return _t("Слот %d, повреждён" % slot, "Slot %d, corrupted" % slot)
+		return tr("ui.saves.a11y_empty") % slot
+	return tr("ui.saves.a11y_corrupted") % slot
 
 
 func _state_label(state: CardState) -> String:
@@ -364,17 +364,15 @@ func _state_label(state: CardState) -> String:
 
 
 func _zone_name(meta: Dictionary) -> String:
-	var zone_name: String = str(meta.get("zone_name", "")).strip_edges()
-	if not zone_name.is_empty():
-		return zone_name
 	var zone_id: String = str(meta.get("zone_id", "")).strip_edges()
-	if zone_id.is_empty():
-		return ""
-	var path: String = "res://data/zones/%s.tres" % zone_id
-	if not ResourceLoader.exists(path):
-		return ""
-	var data: ZoneData = load(path) as ZoneData
-	return data.display_name if data != null else ""
+	if not zone_id.is_empty():
+		var path: String = "res://data/zones/%s.tres" % zone_id
+		if ResourceLoader.exists(path):
+			var data: ZoneData = load(path) as ZoneData
+			if data != null:
+				return data.get_display_name()
+	var zone_name: String = str(meta.get("zone_name", "")).strip_edges()
+	return zone_name
 
 
 func _card_font_size() -> int:
@@ -387,8 +385,8 @@ static func format_play_time(seconds: float, english: bool = false) -> String:
 	var hours: int = total / 3600
 	var minutes: int = (total % 3600) / 60
 	if hours > 0:
-		return ("%dч %02dм" if not english else "%dh %02dm") % [hours, minutes]
-	return ("%dм" if not english else "%dm") % minutes
+		return LocaleText.translate_for("en" if english else "ru", "ui.saves.hours_minutes", [hours, minutes])
+	return LocaleText.translate_for("en" if english else "ru", "ui.saves.minutes", [minutes])
 
 
 ## Дата сохранения «14.10.2026»; 0 — пустая строка.
@@ -407,17 +405,17 @@ static func format_saved_at(unix_time: int) -> String:
 static func reason_text(reason: String, english: bool = false) -> String:
 	match reason:
 		SaveManager.LOAD_CORRUPTED:
-			return "Checksum mismatch" if english else "Контрольная сумма не совпала"
+			return LocaleText.translate_for("en" if english else "ru", "ui.saves.reason_corrupted")
 		SaveManager.LOAD_SCHEMA_TOO_NEW:
-			return "Save is newer than the game" if english else "Сохранение новее игры"
+			return LocaleText.translate_for("en" if english else "ru", "ui.saves.reason_newer")
 		SaveManager.LOAD_SCHEMA_UNSUPPORTED:
-			return "Unsupported save version" if english else "Неподдерживаемая версия"
+			return LocaleText.translate_for("en" if english else "ru", "ui.saves.reason_unsupported")
 		SaveManager.LOAD_IO_ERROR:
-			return "Cannot read the file" if english else "Не удалось прочитать файл"
+			return LocaleText.translate_for("en" if english else "ru", "ui.saves.reason_io")
 		SaveManager.LOAD_INVALID_SLOT:
-			return "Invalid slot" if english else "Неверный слот"
+			return LocaleText.translate_for("en" if english else "ru", "ui.saves.reason_invalid_slot")
 		_:
-			return "Corrupted data" if english else "Данные повреждены"
+			return LocaleText.translate_for("en" if english else "ru", "ui.saves.reason_corrupted_data")
 
 
 static func elide(text: String, max_width: float, font_size: int) -> String:
@@ -430,10 +428,6 @@ static func elide(text: String, max_width: float, font_size: int) -> String:
 		if UIStyle.text_width(result + suffix, font_size) <= max_width:
 			return result + suffix
 	return suffix
-
-
-func _t(ru: String, en: String) -> String:
-	return en if Config.is_english() else ru
 
 
 # ------------------------------------------------------------------------------
@@ -529,20 +523,11 @@ func _render_alert() -> void:
 	var text: String = ""
 	if _alert_slot > 0:
 		if _alert_empty:
-			text = _t(
-				"Слот %d пуст — выберите другой." % _alert_slot,
-				"Slot %d is empty — choose another." % _alert_slot
-			)
+			text = tr("ui.saves.alert_empty") % _alert_slot
 		elif _is_corruption(_alert_reason):
-			text = _t(
-				"Слот %d повреждён — выберите другой." % _alert_slot,
-				"Slot %d is corrupted — choose another." % _alert_slot
-			)
+			text = tr("ui.saves.alert_corrupted") % _alert_slot
 		else:
-			text = _t(
-				"Слот %d: ошибка загрузки — другой слот." % _alert_slot,
-				"Slot %d: load error — choose another." % _alert_slot
-			)
+			text = tr("ui.saves.alert_error") % _alert_slot
 	_alert_label.text = text
 	_alert_box.visible = not text.is_empty()
 

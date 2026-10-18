@@ -27,9 +27,9 @@ const MAP_RECT := Rect2(174, 30, 298, 170)
 const DETAIL_RECT := Rect2(174, 206, 298, 56)
 const MAP_CELL := Vector2(23, 17)
 const LEGEND_LINES: Array[String] = [
-	"ЗАМОК = СПОСОБН.",
-	"ОГОНЁК = КОСТЁР",
-	"РОМБ = ТЫ",
+	"ui.map.legend_lock",
+	"ui.map.legend_bonfire",
+	"ui.map.legend_you",
 ]
 
 ## Пауза при открытии. QA/тесты выключают, чтобы не останавливать GUT.
@@ -48,6 +48,9 @@ var _detail_name: Label
 var _detail_state: Label
 var _detail_gates: Label
 var _prompt: AshenPrompt
+var _header: Label
+var _zones_title: Label
+var _legend_box: VBoxContainer
 var _model: WorldMapModel
 var _data: Dictionary = {}
 var _selected_index: int = -1
@@ -66,11 +69,15 @@ func _ready() -> void:
 	layer = LAYER
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
+	if not Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.connect(_on_locale_changed)
 	_connect_event_bus()
 	_refresh_data()
 
 
 func _exit_tree() -> void:
+	if Locale.language_changed.is_connected(_on_locale_changed):
+		Locale.language_changed.disconnect(_on_locale_changed)
 	_disconnect_event_bus()
 	if _pause_owned:
 		get_tree().paused = _pause_previous
@@ -208,7 +215,8 @@ func get_detail_texts() -> Dictionary:
 
 func get_legend_lines() -> Array[String]:
 	var copy: Array[String] = []
-	copy.assign(LEGEND_LINES)
+	for key: String in LEGEND_LINES:
+		copy.append(tr(key))
 	return copy
 
 
@@ -222,6 +230,20 @@ func get_zone_button_texts() -> Array[String]:
 # ------------------------------------------------------------------------------
 # Данные
 # ------------------------------------------------------------------------------
+
+func _on_locale_changed(_code: String) -> void:
+	if not is_inside_tree():
+		return
+	_header.text = tr("ui.map.title")
+	_zones_title.text = tr("ui.map.visited_zones")
+	_prompt.setup(&"map", tr("ui.map.close"))
+	var index: int = 0
+	for child: Node in _legend_box.get_children():
+		if index < LEGEND_LINES.size():
+			(child as Label).text = tr(LEGEND_LINES[index])
+		index += 1
+	_refresh_data()
+
 
 func _refresh_data() -> void:
 	var visited: Array[StringName] = []
@@ -336,8 +358,8 @@ func _update_detail() -> void:
 		return
 	var selected: StringName = get_selected_zone_id()
 	if selected == &"":
-		_detail_name.text = "НЕТ ПОСЕЩЁННЫХ ЗОН"
-		_detail_state.text = "ИССЛЕДУЙТЕ МИР"
+		_detail_name.text = tr("ui.map.no_zones")
+		_detail_state.text = tr("ui.map.explore")
 		_detail_gates.text = ""
 		return
 
@@ -355,9 +377,9 @@ func _update_detail() -> void:
 	]
 	var current: bool = bool(room.get("current", false))
 	var has_bonfire: bool = _zone_has_bonfire(selected)
-	_detail_state.text = "%s · КОСТЁР: %s" % [
-		"ТЕКУЩАЯ ЗОНА" if current else "ПОСЕЩЕНА",
-		"ЕСТЬ" if has_bonfire else "НЕТ",
+	_detail_state.text = tr("ui.map.state_bonfire") % [
+		tr("ui.map.current_zone") if current else tr("ui.map.visited"),
+		tr("ui.map.yes") if has_bonfire else tr("ui.map.no"),
 	]
 	_detail_gates.text = _gate_summary(selected)
 
@@ -383,10 +405,10 @@ func _gate_summary(zone_id: StringName) -> String:
 		elif not bool(gate.get("target_visited", false)):
 			unknown_pass = true
 	if not locked.is_empty():
-		return "ЗАКРЫТО: %s" % ", ".join(locked)
+		return tr("ui.map.locked") % ", ".join(locked)
 	if unknown_pass:
-		return "НЕИЗВЕДАННЫЙ ПРОХОД"
-	return "ПРОХОДОВ НЕТ"
+		return tr("ui.map.unknown_pass")
+	return tr("ui.map.no_passes")
 
 
 # ------------------------------------------------------------------------------
@@ -406,11 +428,11 @@ func _build() -> void:
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(_dim)
 
-	var header := _make_label("КАРТА МИРА", UITokens.GOLD_3, UITokens.FONT_H2)
-	_add_at(header, HEADER_RECT)
+	_header = _make_label(tr("ui.map.title"), UITokens.GOLD_3, UITokens.FONT_H2)
+	_add_at(_header, HEADER_RECT)
 
 	_prompt = AshenPrompt.new()
-	_prompt.setup(&"map", "ЗАКРЫТЬ")
+	_prompt.setup(&"map", tr("ui.map.close"))
 	_add_at(_prompt, PROMPT_RECT)
 
 	_build_zone_panel()
@@ -428,8 +450,8 @@ func _build_zone_panel() -> void:
 	column.add_theme_constant_override("separation", UITokens.SP_2)
 	_zone_panel.add_child(column)
 
-	var title := _make_label("ПОСЕЩЁННЫЕ ЗОНЫ", UITokens.STONE_5, UITokens.FONT_BODY)
-	column.add_child(title)
+	_zones_title = _make_label(tr("ui.map.visited_zones"), UITokens.STONE_5, UITokens.FONT_BODY)
+	column.add_child(_zones_title)
 
 	_zone_list = VBoxContainer.new()
 	_zone_list.add_theme_constant_override("separation", UITokens.SP_1)
@@ -439,11 +461,11 @@ func _build_zone_panel() -> void:
 	spacer.custom_minimum_size = Vector2(0, UITokens.SP_2)
 	column.add_child(spacer)
 
-	var legend := VBoxContainer.new()
-	legend.add_theme_constant_override("separation", UITokens.SP_1)
-	column.add_child(legend)
+	_legend_box = VBoxContainer.new()
+	_legend_box.add_theme_constant_override("separation", UITokens.SP_1)
+	column.add_child(_legend_box)
 	for line_text: String in LEGEND_LINES:
-		legend.add_child(_make_label(line_text, UITokens.STONE_5, UITokens.FONT_BODY))
+		_legend_box.add_child(_make_label(tr(line_text), UITokens.STONE_5, UITokens.FONT_BODY))
 
 
 func _build_map_panel() -> void:

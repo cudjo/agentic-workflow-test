@@ -87,11 +87,7 @@ func buy(item_id: StringName, language: String = "ru") -> Dictionary:
 			"price": 0,
 			"currency": GameState.currency,
 			"reason": "not_in_stock",
-			"message": (
-				"The trader does not sell this."
-				if DialogueText.is_english(language)
-				else "Такого товара у торговца нет."
-			),
+			"message": LocaleText.translate_for(language, "npc.trader.no_item"),
 		}
 
 	var price: int = get_price(item_id)
@@ -102,11 +98,7 @@ func buy(item_id: StringName, language: String = "ru") -> Dictionary:
 			"price": price,
 			"currency": GameState.currency,
 			"reason": "not_enough_currency",
-			"message": (
-				"Not enough coin: %d required." % price
-				if DialogueText.is_english(language)
-				else "Не хватает монет: нужно %d." % price
-			),
+			"message": LocaleText.translate_for(language, "npc.trader.no_money", [price]),
 		}
 
 	GameState.currency -= price

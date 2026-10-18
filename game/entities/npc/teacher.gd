@@ -83,7 +83,7 @@ func get_training_info() -> Dictionary:
 			"can_afford": false,
 			"maxed": true,
 			"available": false,
-			"reason": "УЧИТЕЛЬ НЕ НАЙДЕН",
+			"reason": tr("npc.teacher.not_found"),
 		}
 
 	var stat_id: StringName = data.stat_id
@@ -93,9 +93,9 @@ func get_training_info() -> Dictionary:
 	var can_afford: bool = not maxed and GameState.learning_points >= cost
 	var reason: String = ""
 	if maxed:
-		reason = "ХАРАКТЕРИСТИКА НА МАКСИМУМЕ"
+		reason = tr("npc.teacher.maxed")
 	elif not can_afford:
-		reason = "НЕ ХВАТАЕТ ОЧКОВ ОБУЧЕНИЯ: нужно %d, у вас %d" % [
+		reason = tr("npc.teacher.not_enough_points") % [
 			cost,
 			GameState.learning_points,
 		]
@@ -146,10 +146,10 @@ func get_skill_ids() -> Array[StringName]:
 func get_skill_info(skill_id: StringName) -> Dictionary:
 	var data: TeacherData = get_data()
 	if data == null:
-		return _unavailable_skill(skill_id, "УЧИТЕЛЬ НЕ НАЙДЕН")
+		return _unavailable_skill(skill_id, tr("npc.teacher.not_found"))
 	var skill: Dictionary = data.get_skill(skill_id)
 	if skill.is_empty():
-		return _unavailable_skill(skill_id, "НАВЫК НЕ НАЙДЕН")
+		return _unavailable_skill(skill_id, tr("npc.teacher.skill_not_found"))
 
 	var ability_id: StringName = skill.get("ability_id", skill_id)
 	var cost: int = int(skill.get("cost", 0))
@@ -161,11 +161,11 @@ func get_skill_info(skill_id: StringName) -> Dictionary:
 
 	var reason: String = ""
 	if learned:
-		reason = "НАВЫК УЖЕ ИЗУЧЕН"
+		reason = tr("npc.teacher.skill_learned")
 	elif not prerequisites_met:
 		reason = str(checks.get("reason", ""))
 	elif not affordable:
-		reason = "НЕ ХВАТАЕТ ОЧКОВ ОБУЧЕНИЯ: нужно %d, у вас %d" % [
+		reason = tr("npc.teacher.not_enough_points") % [
 			cost,
 			GameState.learning_points,
 		]

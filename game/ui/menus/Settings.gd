@@ -152,7 +152,7 @@ func adjust_row(index: int, step: int) -> bool:
 func refresh() -> void:
 	if not _built:
 		return
-	_heading.text = _t("НАСТРОЙКИ · ДОСТУПНОСТЬ", "SETTINGS · ACCESSIBILITY")
+	_heading.text = tr("ui.settings.heading")
 
 	for index: int in _rows.size():
 		var row: _SettingRow = _rows[index]
@@ -163,7 +163,7 @@ func refresh() -> void:
 		# должна оставаться доступной с клавиатуры/геймпада (DESIGN §9.2).
 		row.focus_mode = Control.FOCUS_ALL
 		row.disabled_reason = (
-			_t("Ремап появится в T-24", "Remapping arrives in T-24")
+			tr("ui.settings.remap_soon")
 			if id == ROW_REMAP
 			else ""
 		)
@@ -171,7 +171,7 @@ func refresh() -> void:
 		row.font_size = _row_font_size()
 		match id:
 			ROW_LANGUAGE:
-				row.value_text = _t("Русский", "English")
+				row.value_text = tr("ui.settings.language_value")
 			ROW_UI_SCALE:
 				row.value_text = "%d%%" % Config.ui_scale
 			ROW_WINDOW_MODE:
@@ -184,19 +184,19 @@ func refresh() -> void:
 				row.toggle_value = Config.sound_subtitles
 			ROW_REMAP:
 				row.value_text = (
-					_t("Клавиатура · Геймпад", "Keyboard · Gamepad")
+					tr("ui.settings.remap_input")
 					if Config.ui_scale <= Config.UI_SCALE_100
 					else (
 						"T-24"
 						if Config.ui_scale >= Config.UI_SCALE_200
-						else _t("Ремап · T-24", "Remap · T-24")
+						else tr("ui.settings.remap_short")
 					)
 				)
-		row.toggle_text_on = _t("ВКЛ", "ON")
-		row.toggle_text_off = _t("ВЫКЛ", "OFF")
+		row.toggle_text_on = tr("ui.common.on")
+		row.toggle_text_off = tr("ui.common.off")
 		row.apply_layout()
 		row.set_meta(&"a11y_label", row.label_text)
-		row.set_meta(&"a11y_value", row.value_text if not row.is_toggle else ("ON" if row.toggle_value else "OFF"))
+		row.set_meta(&"a11y_value", row.value_text if not row.is_toggle else (tr("ui.common.on") if row.toggle_value else tr("ui.common.off")))
 		row.set_meta(&"a11y_disabled_reason", row.disabled_reason)
 
 
@@ -298,54 +298,50 @@ func _make_label(text: String, color: Color, size: int) -> Label:
 # Тексты
 # ------------------------------------------------------------------------------
 
-func _t(ru: String, en: String) -> String:
-	return en if Config.is_english() else ru
-
-
 func _row_label(id: String) -> String:
 	if Config.ui_scale >= Config.UI_SCALE_200:
 		match id:
 			ROW_LANGUAGE:
-				return _t("Язык", "Language")
+				return tr("ui.settings.row_language_short")
 			ROW_UI_SCALE:
-				return _t("Масштаб", "Scale")
+				return tr("ui.settings.row_scale_short")
 			ROW_WINDOW_MODE:
-				return _t("Окно", "Window")
+				return tr("ui.settings.row_window_short")
 			ROW_SILHOUETTE:
-				return _t("Силуэты", "Silhouettes")
+				return tr("ui.settings.row_silhouette_short")
 			ROW_NO_FLASH:
-				return _t("Без мигания", "No flashing")
+				return tr("ui.settings.row_no_flash_short")
 			ROW_SUBTITLES:
-				return _t("Субтитры", "Subtitles")
+				return tr("ui.settings.row_subtitles_short")
 			ROW_REMAP:
-				return _t("Ремап", "Remap")
+				return tr("ui.settings.row_remap_short")
 		return ""
 	match id:
 		ROW_LANGUAGE:
-			return _t("Язык / Language", "Language / Язык")
+			return tr("ui.settings.row_language")
 		ROW_UI_SCALE:
-			return _t("Масштаб интерфейса", "Interface scale")
+			return tr("ui.settings.row_scale")
 		ROW_WINDOW_MODE:
-			return _t("Режим окна", "Window mode")
+			return tr("ui.settings.row_window")
 		ROW_SILHOUETTE:
-			return _t("Читаемость силуэтов", "Silhouette readability")
+			return tr("ui.settings.row_silhouette")
 		ROW_NO_FLASH:
-			return _t("Без мигания экрана", "No screen flashing")
+			return tr("ui.settings.row_no_flash")
 		ROW_SUBTITLES:
-			return _t("Субтитры звуков", "Sound subtitles")
+			return tr("ui.settings.row_subtitles")
 		ROW_REMAP:
-			return _t("Управление", "Controls")
+			return tr("ui.settings.row_remap")
 	return ""
 
 
 func _window_mode_text(mode: int) -> String:
 	match mode:
 		Config.WINDOW_FULLSCREEN:
-			return _t("Полный экран", "Fullscreen")
+			return tr("ui.settings.window_fullscreen")
 		Config.WINDOW_BORDERLESS:
-			return _t("Без рамки", "Borderless")
+			return tr("ui.settings.window_borderless")
 		_:
-			return _t("В окне", "Windowed")
+			return tr("ui.settings.window_windowed")
 
 
 func _is_toggle(id: String) -> bool:
@@ -513,8 +509,8 @@ class _SettingRow extends Button:
 		set(value):
 			toggle_value = value
 			queue_redraw()
-	var toggle_text_on: String = "ВКЛ"
-	var toggle_text_off: String = "ВЫКЛ"
+	var toggle_text_on: String = "ui.common.on"
+	var toggle_text_off: String = "ui.common.off"
 	var font_size: int = UITokens.FONT_BODY:
 		set(value):
 			font_size = value
@@ -544,7 +540,7 @@ class _SettingRow extends Button:
 
 	func get_value_text() -> String:
 		if is_toggle:
-			return toggle_text_on if toggle_value else toggle_text_off
+			return tr(toggle_text_on) if toggle_value else tr(toggle_text_off)
 		return value_text
 
 	func is_focus_visible() -> bool:

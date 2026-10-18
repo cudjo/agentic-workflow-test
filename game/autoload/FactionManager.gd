@@ -90,7 +90,7 @@ func get_faction_count() -> int:
 ## Читаемое имя для UI/концовки (T-32 `EndingCatalog`).
 func get_faction_name(faction_id: StringName) -> String:
 	var data: FactionData = get_faction(faction_id)
-	return data.display_name if data != null else ""
+	return data.get_display_name() if data != null else ""
 
 
 ## Алиас для безопасного чтения имени из UI (`get_display_name`).
@@ -100,7 +100,7 @@ func get_display_name(faction_id: StringName) -> String:
 
 func get_faction_lore(faction_id: StringName) -> String:
 	var data: FactionData = get_faction(faction_id)
-	return data.lore if data != null else ""
+	return data.get_lore() if data != null else ""
 
 
 func get_faction_color(faction_id: StringName) -> Color:
@@ -265,7 +265,7 @@ func get_access_info(
 			"reputation": get_reputation(faction_id),
 			"threshold": 0,
 			"territory_name": "",
-			"reason": "Неизвестная фракция: %s" % String(faction_id),
+			"reason": tr("faction.unknown") % String(faction_id),
 			"alternative_faction_id": &"",
 			"alternative_allowed": false,
 		}
@@ -289,7 +289,7 @@ func get_access_info(
 		"allowed": allowed,
 		"reputation": reputation,
 		"threshold": data.access_threshold,
-		"territory_name": data.territory_name,
+		"territory_name": data.get_territory_name(),
 		"reason": reason,
 		"alternative_faction_id": alternative_id,
 		"alternative_allowed": alternative_allowed,
@@ -330,7 +330,7 @@ func get_quest_access(quest_id: StringName) -> Dictionary:
 			"faction_id": &"",
 			"available": false,
 			"allowed": false,
-			"reason": "Квест «%s» не принадлежит ни одной фракции." % String(quest_id),
+			"reason": tr("faction.quest_unowned") % String(quest_id),
 			"reputation": 0,
 			"threshold": 0,
 			"alternative_faction_id": &"",
@@ -487,20 +487,20 @@ func _load_factions() -> void:
 
 
 func _format_denial(data: FactionData, kind: AccessKind, reputation: int) -> String:
-	var template: String = DEFAULT_DENIED_REASON
+	var template: String = LocaleText.lookup("faction.default_denied", DEFAULT_DENIED_REASON)
 	match kind:
 		AccessKind.TRADER:
 			if not data.trade_denied_reason.is_empty():
-				template = data.trade_denied_reason
+				template = data.get_trade_denied_reason()
 		AccessKind.QUEST:
 			if not data.quest_denied_reason.is_empty():
-				template = data.quest_denied_reason
+				template = data.get_quest_denied_reason()
 		_:
 			if not data.territory_denied_reason.is_empty():
-				template = data.territory_denied_reason
+				template = data.get_territory_denied_reason()
 	return template.format({
-		"faction": data.display_name,
+		"faction": data.get_display_name(),
 		"reputation": reputation,
 		"threshold": data.access_threshold,
-		"territory": data.territory_name,
+		"territory": data.get_territory_name(),
 	})
