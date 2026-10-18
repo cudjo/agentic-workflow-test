@@ -65,6 +65,14 @@ extends Resource
 ## Конец активной фазы хитбокса как доля длительности удара.
 @export var combo_hit_end_ratio: float = 0.66
 
+@export_group("Enemies")
+## Длительность анимации смерти врага (fade/squash), s (T-12).
+@export var enemy_death_duration: float = 0.7
+## Торможение отбрасывания врага в состоянии Hurt, px/s² (T-12).
+@export var enemy_knockback_friction: float = 600.0
+## Watchdog «AI не залипает»: сколько враг может стоять без движения, s (T-12).
+@export var enemy_stuck_timeout: float = 1.2
+
 @export_group("Stamina")
 ## Максимальная выносливость.
 @export var stamina_max: float = 100.0

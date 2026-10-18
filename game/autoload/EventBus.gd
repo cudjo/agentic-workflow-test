@@ -25,3 +25,8 @@ signal save_failed(slot: int, reason: String)
 ## Слот повреждён/обрезан/несовместим по schema_version и НЕ загружен (EC-07).
 ## UI предлагает выбрать другой слот; причина — `SaveManager.LOAD_*`.
 signal slot_corrupted(slot: int, reason: String)
+
+## Враг погиб окончательно (T-12). Потребители: EnemySpawner (encounter clear),
+## прогрессия/опыт (T-29), звук/субтитры (T-34). Возрождение нежити событие
+## не отправляет — только окончательная смерть.
+signal enemy_died(enemy_id: StringName, at_position: Vector2)

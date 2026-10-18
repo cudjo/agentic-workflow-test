@@ -40,6 +40,9 @@ func _ready() -> void:
 		push_error("Player: balancing resource is missing at %s" % BALANCE_PATH)
 	attack_hitbox = get_node_or_null("Hitbox") as Hitbox
 	_configure_combo()
+	var hurtbox: Hurtbox = get_node_or_null("Hurtbox") as Hurtbox
+	if hurtbox != null and not hurtbox.damaged.is_connected(_on_hurtbox_damaged):
+		hurtbox.damaged.connect(_on_hurtbox_damaged)
 	state_machine = get_node_or_null("StateMachine")
 	if state_machine == null:
 		push_error("Player: StateMachine child node is missing")
@@ -194,6 +197,13 @@ func apply_hurt() -> void:
 	if is_dead:
 		return
 	state_machine.request_state(&"hurt")
+
+
+## Входящий урон врага переводит игрока в Hurt (T-12): отбрасывание из
+## `Hurtbox` больше не «уносит» игрока в idle без реакции. HP/блок — T-26/T-11.
+func _on_hurtbox_damaged(_damage: Damage) -> void:
+	if state_machine != null:
+		apply_hurt()
 
 
 ## Terminal death: interrupts any action immediately (EC-01).
