@@ -27,6 +27,10 @@ const PLAYER_GROUP: StringName = &"player"
 @export var start_on_ready: bool = false
 
 @export_group("Placeholder art")
+## Рисовать фон/пол/стены заглушки собственным `_draw()` арены. В собранных
+## зонах 1–4 фон уже нарисован слоями зоны, поэтому заглушка скрывается этим
+## флагом, а не `self_modulate` — иначе вместе с ней пропадает и босс-ребёнок.
+@export var show_placeholder_art: bool = true
 @export var arena_size: Vector2 = Vector2(480.0, 270.0)
 @export var sky_color: Color = Color(0.101961, 0.121569, 0.180392, 1.0)
 @export var ground_color: Color = Color(0.231373, 0.180392, 0.133333, 1.0)
@@ -157,12 +161,15 @@ func _barrier_nodes() -> Array[Node]:
 
 
 func _draw() -> void:
-	# Фон и пол — программные заглушки за тем же контрактом сцены.
-	draw_rect(Rect2(Vector2.ZERO, arena_size), sky_color)
+	# Фон и пол — программные заглушки за тем же контрактом сцены. В зонах 1–4
+	# фон уже есть в слоях зоны: флаг скрывает только рисунок арены, дети
+	# (босс, барьеры, триггер) остаются видимыми.
 	var floor_y: float = arena_size.y - floor_height
-	draw_rect(Rect2(0.0, floor_y, arena_size.x, floor_height), ground_color)
-	draw_rect(Rect2(0.0, 0.0, 8.0, floor_y), ground_color.darkened(0.25))
-	draw_rect(Rect2(arena_size.x - 8.0, 0.0, 8.0, floor_y), ground_color.darkened(0.25))
+	if show_placeholder_art:
+		draw_rect(Rect2(Vector2.ZERO, arena_size), sky_color)
+		draw_rect(Rect2(0.0, floor_y, arena_size.x, floor_height), ground_color)
+		draw_rect(Rect2(0.0, 0.0, 8.0, floor_y), ground_color.darkened(0.25))
+		draw_rect(Rect2(arena_size.x - 8.0, 0.0, 8.0, floor_y), ground_color.darkened(0.25))
 	# Золотые створки барьера видны только когда выход закрыт.
 	if _barriers_closed:
 		draw_rect(Rect2(0.0, 0.0, 8.0, floor_y), barrier_color)

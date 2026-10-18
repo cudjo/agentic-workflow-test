@@ -940,3 +940,17 @@
 - **Найденное:** полноэкранные заглушки арен закрывали арт однокомнатных зон и триггерили бой на спавне (trigger сужен, отрисовка арены скрыта); арены 1–4 не включали EC-06 `in_combat`; `-s`-смоук не видит autoload-имена (переделан в сцену-раннер); observer для смены сцен добавляется в root отложенно.
 - **Ограничения:** арены живут в комнате зоны (отдельных босс-комнат/камеры нет), визуальные створки барьеров не рисуются (физика работает); «Продолжить» ставит на точку входа зоны, не на чекпоинт. Подробности — `docs/features/integration-02/WORKFLOW_LOG.md`. Независимые QA/Guardian не выполнялись.
 - **Коммит:** «Integration-02: финальная сборка — флоу/монтаж/interact/арены/NPC/reset».
+
+## 2026-10-19 — Fix-1: блокеры QA 1–4, EC-13 (tasker-backend)
+
+- **Skills:** загружен `godot` (GDScript 4.4, `.tscn`/PackedScene, `Area2D`/`CharacterBody2D`, autoload/`EventBus`, GUT/headless). Другие skills не требовались: нет React/PostgreSQL/Docker/Go/Python-контекста.
+- **Действие:** исправлены блокеры QA 1–4 и 9 по `docs/QA.md` (Fix-1), без изменения требований и статусов `docs/TASKS.json`.
+- **Сделано:**
+  - `AbilityPickup` размещены в зонах по прогрессии: `double_jump` — зона 1 (x=180), `dash` — зона 2 (x=112, до hazard/gate), `wall_climb` — зона 3 (x=64, до wall-gate/шахты). Подбор по контакту проверен: способность выдаётся, точка скрывается.
+  - `EnemySpawner` размещены в зонах 1–4: зона 1 — swift×2/heavy/ranged (4), зона 2 — swift×2/undead×2/ranged (5), зона 3 — swift×2/heavy/ranged (4), зона 4 — undead×2/heavy/ranged/swift (5). Спавн идёт через `EnemySpawnEntry` из `data/enemies/*.tres`-сцен.
+  - Арены 1–4: вместо `self_modulate = Color(1,1,1,0)` (скрывал и босса) добавлен `BossArena.show_placeholder_art = false`; флаг скрывает только `_draw`-заглушку фона/пола, босс-ребёнок и барьеры остаются видимыми.
+  - `Main.gd`: после завершения квеста (`EventBus.quest_completed`) и закрытия диалога однократно эмитится `EventBus.faction_choice_requested` (если фракция ещё не выбрана) — `FactionChoice` открывается в игровом потоке.
+  - EC-13: `NOTIFICATION_APPLICATION_FOCUS_OUT` → `get_tree().paused = true` + меню `PauseMenu` (CanvasLayer 50, `PROCESS_MODE_ALWAYS`, «Продолжить» снимает паузу); при уже открытом меню/экране повторно не открывается.
+- **Проверки (portable Godot 4.4.1-stable, `GODOT_PATH`, worktree `fix-1-world`):** `--headless --path game --import` — exit 0, без parse/script-ошибок; GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **518/518 passed, 7047 asserts** (без регрессий); smoke-проба (untracked) — у зон 1–4 pickups/spawners/enemies/arena/boss visible, контактный подбор `double_jump`, триггер фракции открывает `FactionChoice`, EC-13 `paused=true` + `PauseMenu`, resume снимает паузу; `--headless --path game --quit-after 180` — exit 0 без SCRIPT ERROR.
+- **Кросс-файловые правки (на контроль Guardian):** `entities/bosses/boss_base/boss_arena.gd` (+`show_placeholder_art`), `Main.gd` (+сигналы/пауза), сцены зон 1–4 (`world/zones/**`, добавлены pickup/spawner/entries, арены). `ui/**`, `assets/locale/`, `MainMenu.gd`, `docs/TASKS.json`, `game/tests/_probe.gd`, `opencode.jsonc` не трогались.
+- **Ограничения:** `wall_climb` в зоне 3 стоит в левой ветке (доступна со входа с уступа зоны 1); вход из зоны 2 в зону 3 ведёт в правую ветку — туда игрок возвращается через зону 2/1. Это следует из текущей геометрии зоны, новых проходов не добавлялось. Независимые QA/Guardian не выполнялись.

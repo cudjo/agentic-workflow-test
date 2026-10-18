@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=4]
+[gd_scene load_steps=36 format=4]
 
 [ext_resource type="Script" path="res://world/zones/zone_04_ruins/zone_04_scene.gd" id="1_yywuo"]
 [ext_resource type="Resource" path="res://data/zones/zone_04_ruins.tres" id="2_v7hlj"]
@@ -18,6 +18,12 @@
 [ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="16_ciisd"]
 [ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="17_2wfwk"]
 [ext_resource type="PackedScene" path="res://entities/bosses/zone_04/boss_arena_zone_04.tscn" id="18_arena"]
+[ext_resource type="PackedScene" path="res://entities/enemies/base/enemy_spawner.tscn" id="19_spawner"]
+[ext_resource type="Script" path="res://entities/enemies/base/enemy_spawn_entry.gd" id="20_spawn_entry"]
+[ext_resource type="PackedScene" path="res://entities/enemies/undead/undead_enemy.tscn" id="21_undead"]
+[ext_resource type="PackedScene" path="res://entities/enemies/heavy/heavy_enemy.tscn" id="22_heavy"]
+[ext_resource type="PackedScene" path="res://entities/enemies/ranged/ranged_enemy.tscn" id="23_ranged"]
+[ext_resource type="PackedScene" path="res://entities/enemies/swift/swift_enemy.tscn" id="24_swift"]
 
 [sub_resource type="Gradient" id="Gradient_4o48h"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
@@ -44,6 +50,31 @@ size = Vector2(480, 2)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_arena_entry"]
 size = Vector2(228, 200)
+
+[sub_resource type="Resource" id="Resource_spawn_undead"]
+script = ExtResource("20_spawn_entry")
+enemy_scene = ExtResource("21_undead")
+count = 2
+offset = Vector2(0, 0)
+spacing = 10.0
+
+[sub_resource type="Resource" id="Resource_spawn_heavy"]
+script = ExtResource("20_spawn_entry")
+enemy_scene = ExtResource("22_heavy")
+count = 1
+offset = Vector2(20, 0)
+
+[sub_resource type="Resource" id="Resource_spawn_ranged"]
+script = ExtResource("20_spawn_entry")
+enemy_scene = ExtResource("23_ranged")
+count = 1
+offset = Vector2(32, 0)
+
+[sub_resource type="Resource" id="Resource_spawn_swift"]
+script = ExtResource("20_spawn_entry")
+enemy_scene = ExtResource("24_swift")
+count = 1
+offset = Vector2(44, 0)
 
 [node name="Zone04Ruins" type="Node2D"]
 script = ExtResource("1_yywuo")
@@ -113,6 +144,12 @@ script = ExtResource("6_c7gfi")
 position = Vector2(432, 224)
 script = ExtResource("8_wwarx")
 
+[node name="Enemies" type="Node2D" parent="."]
+
+[node name="EnemySpawner" type="Node2D" parent="Enemies" instance=ExtResource("19_spawner")]
+position = Vector2(160, 220)
+entries = Array[ExtResource("20_spawn_entry")]([SubResource("Resource_spawn_undead"), SubResource("Resource_spawn_heavy"), SubResource("Resource_spawn_ranged"), SubResource("Resource_spawn_swift")])
+
 [node name="Puzzle" type="Node2D" parent="."]
 script = ExtResource("9_0i7g2")
 
@@ -161,7 +198,7 @@ position = Vector2(240, 214)
 metadata/role = &"boss_arena_entrance"
 
 [node name="BossArenaZone04" parent="Arena" instance=ExtResource("18_arena")]
-self_modulate = Color(1, 1, 1, 0)
+show_placeholder_art = false
 
 [node name="Trigger" parent="Arena/BossArenaZone04" index="5"]
 position = Vector2(354, 120)
