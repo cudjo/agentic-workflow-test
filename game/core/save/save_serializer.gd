@@ -65,6 +65,25 @@ static func serialize_state(state: Node) -> Dictionary:
 		data["weapon_id"] = ""
 		data["weapon_path"] = ""
 
+	# T-30: прогресс боссов и отложенные награды (EC-09).
+	var boss_list: Array[String] = []
+	var defeated_value: Variant = state.get("bosses_defeated")
+	if defeated_value is Array:
+		for value: Variant in defeated_value:
+			boss_list.append(String(value))
+	data["bosses_defeated"] = boss_list
+
+	var pending_value: Variant = state.get("boss_rewards_pending")
+	data["boss_rewards_pending"] = (
+		_json_safe(pending_value) if pending_value is Dictionary else {}
+	)
+
+	var currency_value: Variant = state.get("currency")
+	if currency_value is int or currency_value is float:
+		data["currency"] = int(currency_value)
+	else:
+		data["currency"] = 0
+
 	return data
 
 
@@ -83,6 +102,19 @@ static func apply_state(state: Node, state_data: Dictionary) -> bool:
 		var weapon: WeaponData = resolve_weapon(weapon_id, weapon_path)
 		if weapon != null:
 			state.set("weapon", weapon)
+
+	# T-30: прогресс боссов и отложенные награды (EC-09). Старые сейвы без
+	# этих ключей получают пустой прогресс — загрузка не ломается (v1→v2).
+	if state.has_method("restore_boss_progress"):
+		var defeated_value: Variant = state_data.get("bosses_defeated", [])
+		var defeated: Array = defeated_value if defeated_value is Array else []
+		var pending_value: Variant = state_data.get("boss_rewards_pending", {})
+		var pending: Dictionary = pending_value if pending_value is Dictionary else {}
+		var currency_value: Variant = state_data.get("currency", 0)
+		var currency_amount: int = 0
+		if currency_value is int or currency_value is float:
+			currency_amount = int(currency_value)
+		state.call("restore_boss_progress", defeated, pending, currency_amount)
 
 	return true
 

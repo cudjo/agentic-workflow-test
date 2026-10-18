@@ -1,0 +1,95 @@
+[gd_resource type="Resource" script_class="BossData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://data/bosses/boss_phase_data.gd" id="1_phase"]
+[ext_resource type="Script" path="res://data/bosses/boss_reward_data.gd" id="2_reward"]
+[ext_resource type="Script" path="res://data/bosses/boss_data.gd" id="3_boss"]
+
+[sub_resource type="Resource" id="Resource_phase_cleave"]
+script = ExtResource("1_phase")
+title = "ФАЗА I"
+pattern_id = &"cleave"
+hp_threshold_ratio = 1.0
+move_speed = 34.0
+preferred_distance = 0.0
+lunge_speed = 0.0
+attack_range = 34.0
+attack_cooldown = 1.5
+windup = 0.55
+active = 0.16
+recovery = 0.35
+attack_damage = 9.0
+attack_knockback = 130.0
+attack_size = Vector2(30, 26)
+attack_offset = Vector2(18, 0)
+projectile_count = 0
+projectile_speed = 100.0
+projectile_lifetime = 2.0
+projectile_spread_degrees = 0.0
+summon_count = 0
+
+[sub_resource type="Resource" id="Resource_phase_lunge"]
+script = ExtResource("1_phase")
+title = "ФАЗА II"
+pattern_id = &"lunge"
+hp_threshold_ratio = 0.66
+move_speed = 46.0
+preferred_distance = 0.0
+lunge_speed = 120.0
+attack_range = 54.0
+attack_cooldown = 1.25
+windup = 0.45
+active = 0.2
+recovery = 0.3
+attack_damage = 12.0
+attack_knockback = 160.0
+attack_size = Vector2(34, 30)
+attack_offset = Vector2(22, 0)
+projectile_count = 0
+projectile_speed = 100.0
+projectile_lifetime = 2.0
+projectile_spread_degrees = 0.0
+summon_count = 0
+
+[sub_resource type="Resource" id="Resource_phase_frenzy"]
+script = ExtResource("1_phase")
+title = "ФАЗА III"
+pattern_id = &"frenzy"
+hp_threshold_ratio = 0.33
+move_speed = 62.0
+preferred_distance = 0.0
+lunge_speed = 170.0
+attack_range = 40.0
+attack_cooldown = 0.85
+windup = 0.3
+active = 0.18
+recovery = 0.22
+attack_damage = 14.0
+attack_knockback = 180.0
+attack_size = Vector2(38, 32)
+attack_offset = Vector2(20, 0)
+projectile_count = 0
+projectile_speed = 100.0
+projectile_lifetime = 2.0
+projectile_spread_degrees = 0.0
+summon_count = 0
+
+[sub_resource type="Resource" id="Resource_reward"]
+script = ExtResource("2_reward")
+id = &"warden_ember"
+display_name = "Уголёк Стража"
+gold = 120
+
+[resource]
+script = ExtResource("3_boss")
+id = &"zone_01_warden"
+display_name_key = "boss.zone_01_warden.name"
+display_name = "Пепельный Страж"
+zone_id = &"zone_01_village"
+max_hp = 260.0
+knockback_resistance = 0.85
+poise = 6.0
+body_size = Vector2(26, 40)
+hurtbox_size = Vector2(24, 38)
+body_color = Color(0.62, 0.42, 0.27, 1)
+phases = Array[ExtResource("1_phase")]([SubResource("Resource_phase_cleave"), SubResource("Resource_phase_lunge"), SubResource("Resource_phase_frenzy")])
+reward = SubResource("Resource_reward")

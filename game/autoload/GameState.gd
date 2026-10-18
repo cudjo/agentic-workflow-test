@@ -23,6 +23,15 @@ var stamina_state: Stamina
 ## Типизированный набор; дубликаты невозможны (см. `add_ability`).
 var abilities: Array[StringName] = []
 
+## Побеждённые боссы (id, T-30). Источник истины для «босс остаётся мёртвым»
+## (EC-09) и персистентности через SaveManager.
+var bosses_defeated: Array[StringName] = []
+## Отложенные награды: boss_id -> {zone_id, reward_id, gold}. Награда ждёт
+## следующего входа в зону, если игрок погиб до её получения (EC-09).
+var boss_rewards_pending: Dictionary = {}
+## Валюта игрока; награды боссов добавляются сюда.
+var currency: int = 0
+
 ## Текущий максимум выносливости (из balancing.tres).
 var stamina_max: float:
 	get:
@@ -116,6 +125,111 @@ func get_abilities() -> Array[StringName]:
 ## Флаги на живом игроке снимаются через `AbilityBase.deactivate()`.
 func clear_abilities() -> void:
 	abilities.clear()
+
+
+# ------------------------------------------------------------------------------
+# Boss progress and rewards (T-30, EC-09)
+# ------------------------------------------------------------------------------
+
+## Побеждён ли босс в этом забеге/сохранении (EC-09).
+func is_boss_defeated(boss_id: StringName) -> bool:
+	return bosses_defeated.has(boss_id)
+
+
+## Фиксирует победу один раз. Возвращает true только при первом вызове.
+func mark_boss_defeated(boss_id: StringName) -> bool:
+	if boss_id == &"" or bosses_defeated.has(boss_id):
+		return false
+	bosses_defeated.append(boss_id)
+	return true
+
+
+func get_bosses_defeated() -> Array[StringName]:
+	var copy: Array[StringName] = []
+	copy.assign(bosses_defeated)
+	return copy
+
+
+## Ставит награду в очередь. Идемпотентно: повторная запись того же босса
+## не дублирует награду (важно при повторном входе в зону, EC-09).
+func queue_boss_reward(
+	boss_id: StringName,
+	zone_id: StringName,
+	reward_id: StringName,
+	gold: int
+) -> void:
+	if boss_id == &"" or boss_rewards_pending.has(boss_id):
+		return
+	boss_rewards_pending[boss_id] = {
+		"zone_id": String(zone_id),
+		"reward_id": String(reward_id),
+		"gold": maxi(gold, 0),
+	}
+
+
+## Выдаёт отложенную награду: добавляет золото и эмитит
+## `EventBus.boss_reward_granted`. Возвращает false, если награды нет.
+func claim_boss_reward(boss_id: StringName) -> bool:
+	if not boss_rewards_pending.has(boss_id):
+		return false
+	var entry: Variant = boss_rewards_pending[boss_id]
+	boss_rewards_pending.erase(boss_id)
+	var data: Dictionary = entry if entry is Dictionary else {}
+	var gold: int = maxi(int(data.get("gold", 0)), 0)
+	var reward_id: StringName = StringName(str(data.get("reward_id", "")))
+	currency += gold
+	EventBus.boss_reward_granted.emit(boss_id, reward_id, gold)
+	return true
+
+
+## Выдаёт все награды, ожидающие указанной зоны (вход в зону, EC-09).
+## Возвращает число выданных наград.
+func claim_pending_boss_rewards(zone_id: StringName) -> int:
+	var pending_ids: Array[StringName] = []
+	for key: Variant in boss_rewards_pending.keys():
+		var entry: Variant = boss_rewards_pending[key]
+		var data: Dictionary = entry if entry is Dictionary else {}
+		if StringName(str(data.get("zone_id", ""))) == zone_id:
+			pending_ids.append(StringName(str(key)))
+	var claimed: int = 0
+	for boss_id: StringName in pending_ids:
+		if claim_boss_reward(boss_id):
+			claimed += 1
+	return claimed
+
+
+## Копия очереди наград (тесты/сейв): мутация результата не меняет забег.
+func get_pending_boss_rewards() -> Dictionary:
+	return boss_rewards_pending.duplicate(true)
+
+
+## Очищает прогресс боссов (новая игра/тесты).
+func reset_boss_progress() -> void:
+	bosses_defeated.clear()
+	boss_rewards_pending.clear()
+	currency = 0
+
+
+## Восстанавливает прогресс из сейва без побочных сигналов (T-25/T-30).
+func restore_boss_progress(
+	defeated: Array,
+	pending: Dictionary,
+	currency_value: int
+) -> void:
+	bosses_defeated.clear()
+	for value: Variant in defeated:
+		var boss_id: StringName = StringName(str(value))
+		if boss_id != &"" and not bosses_defeated.has(boss_id):
+			bosses_defeated.append(boss_id)
+
+	boss_rewards_pending.clear()
+	for key: Variant in pending.keys():
+		var entry: Variant = pending[key]
+		if not entry is Dictionary:
+			continue
+		boss_rewards_pending[StringName(str(key))] = (entry as Dictionary).duplicate(true)
+
+	currency = maxi(currency_value, 0)
 
 
 func set_weapon(new_weapon: WeaponData) -> void:

@@ -62,7 +62,7 @@ func test_round_trip_restores_state_and_slot_metadata() -> void:
 
 	var raw: String = _read_text(SaveManager.get_slot_path(1))
 	assert_true(
-		raw.begins_with("{\"schema_version\":1,\"checksum\":\""),
+		raw.begins_with("{\"schema_version\":%d,\"checksum\":\"" % SaveMigrations.CURRENT_VERSION),
 		"file starts with the {schema_version, checksum} header"
 	)
 	assert_gt(raw.find("\"body\":{"), 0, "header is followed by the body object")

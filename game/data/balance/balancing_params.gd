@@ -95,6 +95,12 @@ extends Resource
 ## Watchdog «AI не залипает»: сколько враг может стоять без движения, s (T-12).
 @export var enemy_stuck_timeout: float = 1.2
 
+@export_group("Bosses")
+## Длительность анимации смерти босса до выдачи награды, s (T-30, EC-09).
+@export var boss_death_duration: float = 1.1
+## Неуязвимость и смена паттерна при переходе фазы, s (T-30, AC-03.4).
+@export var boss_phase_transition_time: float = 0.45
+
 @export_group("Stamina")
 ## Максимальная выносливость.
 @export var stamina_max: float = 100.0

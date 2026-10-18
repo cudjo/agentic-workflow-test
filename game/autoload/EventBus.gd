@@ -35,3 +35,22 @@ signal slot_corrupted(slot: int, reason: String)
 ## прогрессия/опыт (T-29), звук/субтитры (T-34). Возрождение нежити событие
 ## не отправляет — только окончательная смерть.
 signal enemy_died(enemy_id: StringName, at_position: Vector2)
+
+## Бой с боссом начался (T-30). HUD (T-19) строит панель босса: имя, HP и
+## метки фаз (`phase_thresholds` — пороги 66%/33% из данных босса).
+signal boss_fight_started(
+	boss_id: StringName,
+	display_name: String,
+	max_hp: float,
+	phase_thresholds: PackedFloat32Array
+)
+## HP босса изменился (T-30). Потребитель: панель босса HUD (T-19).
+signal boss_health_changed(boss_id: StringName, current: float, maximum: float)
+## Босс перешёл в новую фазу (T-30, AC-03.4). `phase_title` — «ФАЗА II» и т.п.
+## для уведомления HUD; `phase_index` — 0-based индекс новой фазы.
+signal boss_phase_changed(boss_id: StringName, phase_index: int, phase_title: String)
+## Босс побеждён (T-30, EC-09). Флаг и награда уже учтены в GameState.
+signal boss_defeated(boss_id: StringName, zone_id: StringName, at_position: Vector2)
+## Награда за босса выдана игроку (T-30, EC-09). Потребители: тост/журнал,
+## прогрессия (T-29).
+signal boss_reward_granted(boss_id: StringName, reward_id: StringName, gold: int)

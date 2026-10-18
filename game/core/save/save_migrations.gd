@@ -19,10 +19,10 @@ extends RefCounted
 ##    версии загружается и восстанавливает состояние.
 ##
 ## Версия 0 — прототип до T-25: поля состояния лежали на верхнем уровне тела
-## (`{"stamina": ..., "weapon_id": ...}`). Сейвов в проде не было, но миграция
-## сохранена как живой пример шага и проверяется тестами.
+## (`{"stamina": ..., "weapon_id": ...}`). Версия 1 — T-25 (stamina/weapon).
+## Версия 2 — T-30: прогресс боссов, отложенные награды и валюта.
 
-const CURRENT_VERSION: int = 1
+const CURRENT_VERSION: int = 2
 
 const REASON_OK: String = "ok"
 const REASON_SCHEMA_TOO_NEW: String = "schema_too_new"
@@ -62,6 +62,10 @@ static func migrate(schema_version: int, body: Dictionary) -> Dictionary:
 		migrated = _v0_to_v1(migrated)
 		version = 1
 
+	if version == 1:
+		migrated = _v1_to_v2(migrated)
+		version = 2
+
 	if version != CURRENT_VERSION:
 		return {
 			"ok": false,
@@ -91,3 +95,19 @@ static func _v0_to_v1(body: Dictionary) -> Dictionary:
 		"state": state,
 		"meta": meta,
 	}
+
+
+## v1 → v2: прогресс боссов T-30 (EC-09). Старые сейвы получают пустые
+## значения; существующие поля состояния не меняются.
+static func _v1_to_v2(body: Dictionary) -> Dictionary:
+	var migrated: Dictionary = body.duplicate(true)
+	var state_value: Variant = migrated.get("state", {})
+	var state: Dictionary = state_value if state_value is Dictionary else {}
+	if not state.has("bosses_defeated"):
+		state["bosses_defeated"] = []
+	if not state.has("boss_rewards_pending"):
+		state["boss_rewards_pending"] = {}
+	if not state.has("currency"):
+		state["currency"] = 0
+	migrated["state"] = state
+	return migrated
