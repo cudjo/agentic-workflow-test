@@ -26,12 +26,17 @@ extends Node
 ##
 ## Узел ставится в постоянную сцену (Main/Overlay или рядом с игроком).
 ## Тесты вызывают `tick(delta)` напрямую с выключенным `_physics_process`.
+##
+## T-22: узел регистрируется в группе `death_handler`, чтобы экран смерти
+## (`ui/death/DeathScreen.gd`) нашёл его, выключил `auto_respawn` и вызвал
+## `respawn()` из кнопки «Возродиться у костра».
 
 const BALANCE_PATH: String = "res://data/balance/balancing.tres"
 const CORPSE_SCENE: PackedScene = preload("res://world/props/corpse.tscn")
 const PLAYER_GROUP: StringName = &"player"
 const CORPSE_GROUP: StringName = &"corpses"
 const WORLD_ZONE_GROUP: StringName = &"world_zone"
+const SCREEN_GROUP: StringName = &"death_handler"
 
 ## idle — смерть не обрабатывается; dying — идёт бюджет t_death;
 ## dead — бюджет истёк, ждём `respawn()` (T-22, auto_respawn = false).
@@ -64,6 +69,7 @@ var _corpse_node: Corpse = null
 
 
 func _ready() -> void:
+	add_to_group(SCREEN_GROUP)
 	if balance == null:
 		balance = GameState.balance
 	if balance == null:

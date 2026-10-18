@@ -16,6 +16,17 @@ const SIZE := UITokens.MINIMAP_SIZE
 ## в снимке (`player.cell`/`player.local`); поле остаётся для внешних вызовов.
 var player_room: Vector2i = Vector2i(1, 0)
 
+## Кратность миникарты: 1 — HUD 96x54, 2 — экран смерти 192x108 (T-22).
+## Комната и маркеры масштабируются вместе, поэтому карта остаётся той же.
+@export_range(1, 4, 1) var zoom: int = 1:
+	set(value):
+		zoom = clampi(value, 1, 4)
+		custom_minimum_size = SIZE * float(zoom)
+		if _renderer != null:
+			_renderer.cell_size = UITokens.MINIMAP_ROOM * float(zoom)
+			_renderer.marker_scale = float(zoom)
+		queue_redraw()
+
 var _renderer: MapRenderer
 var _data: Dictionary = {}
 
@@ -25,6 +36,7 @@ func _init() -> void:
 	custom_minimum_size = SIZE
 	_renderer = MapRenderer.new()
 	_renderer.cell_size = UITokens.MINIMAP_ROOM
+	_renderer.marker_scale = 1.0
 	_renderer.show_labels = false
 	_renderer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_renderer)

@@ -13,6 +13,23 @@ extends Control
 ##   * посещённая комната — заливка + контур (неизведанная не рисуется).
 
 const CELL_MINIMAP := Vector2(8, 6)
+## Пиктограммы метки гибели (T-22): мешок «твои вещи» и череп «утрачено».
+const CORPSE_BAG: Array[String] = [
+	".####.",
+	"#....#",
+	"#.##.#",
+	"######",
+	"######",
+	"######",
+]
+const CORPSE_SKULL: Array[String] = [
+	".####.",
+	"######",
+	"#.##.#",
+	"######",
+	".####.",
+	".#..#.",
+]
 const ABILITY_COLORS: Dictionary = {
 	&"double_jump": UITokens.GOLD_3,
 	&"dash": UITokens.STEEL_3,
@@ -52,9 +69,28 @@ const ABILITY_PATTERNS: Dictionary = {
 	set(value):
 		show_labels = value
 		queue_redraw()
+## Сетка карты в клетках. Полная карта/HUD — 12x9 мира; экран смерти (T-22)
+## рисует одну зону крупно: 1x1 при клетке 192x108.
+@export var grid_size: Vector2i = WorldMapModel.GRID_SIZE:
+	set(value):
+		grid_size = Vector2i(maxi(value.x, 1), maxi(value.y, 1))
+		_update_minimum_size()
+		queue_redraw()
 @export var selected_zone_id: StringName = &"":
 	set(value):
 		selected_zone_id = value
+		queue_redraw()
+## Масштаб пиктограмм относительно миникарты 8x6 (T-22: экран смерти рисует
+## ту же карту в ×2 — маркеры тоже ×2, иначе теряются).
+@export var marker_scale: float = 1.0:
+	set(value):
+		marker_scale = maxf(value, 0.5)
+		queue_redraw()
+## Заливка комнаты. Мир/HUD — steel-9; экран смерти затемняет карту (T-22),
+## чтобы маркеры костра и гибели читались на большой локальной карте.
+@export var room_fill: Color = UITokens.STEEL_9:
+	set(value):
+		room_fill = value
 		queue_redraw()
 
 var _data: Dictionary = {}
@@ -126,6 +162,16 @@ func get_marker_specs() -> Array[Dictionary]:
 			"owned": true,
 			"target_visited": true,
 		})
+	var corpse: Variant = _data.get("corpse", {})
+	if corpse is Dictionary and not (corpse as Dictionary).is_empty():
+		var corpse_data: Dictionary = corpse
+		result.append({
+			"kind": "corpse_skull" if bool(corpse_data.get("lost", false)) else "corpse_bag",
+			"zone_id": corpse_data.get("zone_id", &""),
+			"required_ability": &"",
+			"owned": true,
+			"target_visited": true,
+		})
 	var player: Dictionary = _data.get("player", {})
 	if bool(player.get("valid", false)):
 		result.append({
@@ -158,6 +204,9 @@ func _draw() -> void:
 		_draw_link(link)
 	for room: Dictionary in _rooms():
 		_draw_room(room)
+	# Метка гибели рисуется до костра: если они в одной клетке мира, огонёк
+	# сдвигается к правому краю и остаётся видимым (метки не «съедают» друг друга).
+	_draw_corpse()
 	for bonfire: Dictionary in _bonfires():
 		_draw_bonfire(bonfire)
 	for gate: Dictionary in _gates():
@@ -169,13 +218,13 @@ func _draw() -> void:
 
 ## Сетка неизведанных клеток: карта читается как карта, а не пустое поле.
 func _draw_grid() -> void:
-	for y: int in WorldMapModel.GRID_SIZE.y:
-		for x: int in WorldMapModel.GRID_SIZE.x:
+	for y: int in grid_size.y:
+		for x: int in grid_size.x:
 			var center: Vector2 = cell_rect(Vector2i(x, y)).get_center().floor()
 			draw_rect(Rect2(center, Vector2(1, 1)), UITokens.NIGHT_3)
 	UIStyle.draw_frame(
 		self,
-		Rect2(Vector2.ZERO, Vector2(WorldMapModel.GRID_SIZE) * cell_size).grow(-1),
+		Rect2(Vector2.ZERO, Vector2(grid_size) * cell_size).grow(-1),
 		1,
 		UITokens.STONE_9
 	)
@@ -199,7 +248,7 @@ func _draw_room(room: Dictionary) -> void:
 		return
 
 	var current: bool = bool(room.get("current", false))
-	draw_rect(rect.grow(-1), UITokens.STEEL_9)
+	draw_rect(rect.grow(-1), room_fill)
 	UIStyle.draw_frame(self, rect.grow(-1), 1, UITokens.GOLD_3 if current else UITokens.STEEL)
 	if current:
 		UIStyle.draw_frame(self, rect.grow(-2), 1, UITokens.GOLD_9)
@@ -225,20 +274,47 @@ func _draw_room(room: Dictionary) -> void:
 
 
 func _draw_bonfire(bonfire: Dictionary) -> void:
-	var marker := Vector2(3, 4) if not show_labels else Vector2(5, 6)
+	var marker := Vector2(5, 6) * marker_scale if not show_labels else Vector2(5, 6)
+	var cell: Vector2i = bonfire.get("cell", Vector2i(-1, -1))
 	var pos: Vector2 = _marker_position(
-		bonfire.get("cell", Vector2i(-1, -1)),
+		cell,
 		bonfire.get("local", Vector2(0.5, 0.5)),
 		marker
 	)
+	var corpse_rect := _corpse_marker_rect()
+	if corpse_rect.size.x > 0.0 and Rect2(pos, marker).intersects(corpse_rect.grow(1.0)):
+		# Метка гибели закрывает костёр (тесная клетка мира): прижимаем огонёк
+		# к правому краю комнаты, чтобы оба маркера читались.
+		pos.x = minf(pos.x + marker.x * 2.0, cell_rect(cell).end.x - marker.x)
 	var base := Rect2(pos + Vector2(0, marker.y - 2), Vector2(marker.x, 2))
 	draw_rect(base, UITokens.GOLD_9)
-	draw_rect(Rect2(pos + Vector2(floor(marker.x * 0.5), 0), Vector2(1, marker.y - 1)), UITokens.GOLD_3)
-	draw_rect(Rect2(pos + Vector2(floor(marker.x * 0.5) - 1, 1), Vector2(1, 2)), UITokens.GOLD)
+	# Пламя: 3 px у основания, 1 px сердцевина — форма, а не только цвет.
+	var flame_x: float = pos.x + floor(marker.x * 0.5) - 1.0
+	draw_rect(Rect2(flame_x, pos.y, 3, marker.y - 1), UITokens.GOLD_3)
+	draw_rect(Rect2(flame_x + 1.0, pos.y + 2, 1, marker.y - 3), UITokens.GOLD)
+
+
+## Прямоугольник метки гибели в координатах карты; пустой Rect2 — метки нет.
+func _corpse_marker_rect() -> Rect2:
+	var corpse: Variant = _data.get("corpse", {})
+	if not (corpse is Dictionary):
+		return Rect2()
+	var corpse_data: Dictionary = corpse
+	if corpse_data.is_empty():
+		return Rect2()
+	var marker := Vector2(6, 6) * marker_scale
+	return Rect2(
+		_marker_position(
+			corpse_data.get("cell", Vector2i(-1, -1)),
+			corpse_data.get("local", Vector2(0.5, 0.5)),
+			marker
+		),
+		marker
+	)
 
 
 func _draw_gate(gate: Dictionary) -> void:
-	var marker := Vector2(5, 4) if not show_labels else Vector2(12, 12)
+	var marker := Vector2(5, 4) * marker_scale if not show_labels else Vector2(12, 12)
 	var pos: Vector2 = _marker_position(
 		gate.get("cell", Vector2i(-1, -1)),
 		gate.get("local", Vector2(0.5, 0.5)),
@@ -251,9 +327,13 @@ func _draw_gate(gate: Dictionary) -> void:
 	if not show_labels:
 		# Миникарта: маленький замок в углу комнаты, без плашки на всю клетку —
 		# заливка/рамка комнаты и метка игрока остаются читаемыми.
-		_draw_lock(Rect2(pos, Vector2(3, 3)), UITokens.GOLD_3)
+		var scale: float = marker_scale
+		_draw_lock(Rect2(pos, Vector2(3, 3) * scale), UITokens.GOLD_3)
 		if ability != &"":
-			draw_rect(Rect2(pos + Vector2(4, 0), Vector2(1, 3)), color)
+			draw_rect(
+				Rect2(pos + Vector2(4, 0) * scale, Vector2(1, 3) * scale),
+				color
+			)
 		return
 
 	var border: Color = UITokens.BLOOD_3 if locked else UITokens.STONE_3
@@ -268,11 +348,39 @@ func _draw_gate(gate: Dictionary) -> void:
 		)
 
 
+## Метка гибели (T-22): мешок «Твои вещи» или череп «Утрачено навсегда».
+## Форма отличается от костра/игрока, поэтому состояние читается без цвета.
+func _draw_corpse() -> void:
+	var corpse: Variant = _data.get("corpse", {})
+	if not (corpse is Dictionary):
+		return
+	var corpse_data: Dictionary = corpse
+	if corpse_data.is_empty():
+		return
+	var marker := Vector2(6, 6) * marker_scale
+	var pos: Vector2 = _marker_position(
+		corpse_data.get("cell", Vector2i(-1, -1)),
+		corpse_data.get("local", Vector2(0.5, 0.5)),
+		marker
+	)
+	var lost: bool = bool(corpse_data.get("lost", false))
+	_draw_pattern(
+		Rect2(pos, marker),
+		CORPSE_SKULL if lost else CORPSE_BAG,
+		UITokens.BONE if lost else UITokens.GOLD_3
+	)
+	if not lost:
+		draw_rect(
+			Rect2(pos + Vector2(floor(marker.x * 0.5) - 1, marker.y * 0.5), Vector2(2, 2)),
+			UITokens.VOID
+		)
+
+
 func _draw_player() -> void:
 	var player: Dictionary = _data.get("player", {})
 	if not bool(player.get("valid", false)):
 		return
-	var marker := Vector2(3, 3) if not show_labels else Vector2(5, 5)
+	var marker := Vector2(3, 3) * marker_scale if not show_labels else Vector2(5, 5)
 	var pos: Vector2 = _marker_position(
 		player.get("cell", Vector2i(-1, -1)),
 		player.get("local", Vector2(0.5, 0.5)),
@@ -352,7 +460,7 @@ func _marker_position(cell: Vector2i, local: Vector2, marker_size: Vector2) -> V
 
 
 func _update_minimum_size() -> void:
-	custom_minimum_size = Vector2(WorldMapModel.GRID_SIZE) * cell_size
+	custom_minimum_size = Vector2(grid_size) * cell_size
 
 
 func _rooms() -> Array:
