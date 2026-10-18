@@ -36,6 +36,28 @@ extends Resource
 ## Конец i-frames переката (кадр 5), s.
 @export var roll_iframe_end: float = 0.35
 
+@export_group("Animation timings")
+## Кадр idle, s (DESIGN §7: 150 мс/кадр).
+@export var anim_idle_frame: float = 0.15
+## Кадр бега, s (DESIGN §7: 80 мс/кадр).
+@export var anim_run_frame: float = 0.08
+## Кадр прыжка/падения/wall slide, s (DESIGN §7: 2 кадра на фазу).
+@export var anim_air_frame: float = 0.1
+## Кадр апекса прыжка, s (DESIGN §7: ≈ 80 мс).
+@export var anim_apex_frame: float = 0.08
+## Длительность анимации double jump, s (DESIGN §7: ≈ 360 мс).
+@export var anim_double_jump_time: float = 0.36
+## Кадр удержания блока, s (DESIGN §7: 2 кадра + удержание).
+@export var anim_block_frame: float = 0.12
+## Кадр анимации смерти, s (DESIGN §7: 100 мс/кадр).
+@export var anim_death_frame: float = 0.1
+## Кадр idle-варианта «тяжело дышит» при 0 выносливости, s (AC-03.3).
+@export var anim_out_of_stamina_frame: float = 0.2
+## Кадр анимации сидения у костра, s (DESIGN §7).
+@export var anim_sit_frame: float = 0.2
+## Интервал пыли/брызг во время бега, s (DESIGN §7).
+@export var anim_dust_interval: float = 0.18
+
 @export_group("Combat timings")
 ## Длительность удара (6 кадров по 60 мс).
 @export var t_attack: float = 0.36
