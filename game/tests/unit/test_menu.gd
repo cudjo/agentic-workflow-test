@@ -7,7 +7,7 @@ extends GutTest
 ##     только клавиатурой и только геймпадом (ui_* в InputMap);
 ##   * «Продолжить» отключено без валидных сохранений, причина видна;
 ##   * `Settings.tscn`: язык, масштаб 100/150/200, режим окна, a11y-тумблеры,
-##     ремап-disabled (T-24); всё пишется в settings.cfg и перечитывается
+##     ремап открывает Remap (T-24); всё пишется в settings.cfg и перечитывается
 ##     «после перезапуска»;
 ##   * `SaveSlots.tscn`: занят/пуст/повреждён (EC-07) — ошибка, предложение
 ##     другого слота, без вылета и без сигнала загрузки.
@@ -436,25 +436,31 @@ func test_settings_a11y_toggles_apply_signals_and_persist() -> void:
 	assert_eq(settings.get_row(4).get_value_text(), "ВКЛ")
 
 
-func test_settings_remap_is_disabled_with_reason_t24() -> void:
+func test_settings_remap_opens_remap_screen() -> void:
 	var settings: AshenSettingsView = menu.get_settings_view()
 	menu.show_view(MainMenu.View.SETTINGS)
 	await wait_process_frames(1)
-	var remap: Control = settings.get_row(6)
-	assert_true(remap.disabled, "ремап — заглушка до T-24")
-	assert_string_contains(remap.tooltip_text, "T-24")
-	assert_gt(remap.get_row_height(), UITokens.ROW_MENU_BODY, "причина нарисована inline")
+	var remap_row: Control = settings.get_row(6)
+	assert_false(remap_row.disabled, "ремап доступен после T-24")
+	assert_eq(remap_row.tooltip_text, "")
+	assert_eq(remap_row.get_row_height(), UITokens.ROW_MENU_BODY)
 
 	settings.focus_row(6)
 	await wait_process_frames(1)
-	assert_true(remap.has_focus(), "disabled-строка доступна фокусу ради причины")
-	assert_eq(remap.focus_mode, Control.FOCUS_ALL)
+	assert_true(remap_row.has_focus(), "строка ремапа доступна фокусу")
+	assert_eq(remap_row.focus_mode, Control.FOCUS_ALL)
 
 	watch_signals(settings)
 	settings.adjust_row(6, 1)
-	await wait_process_frames(1)
+	await wait_process_frames(2)
 	assert_signal_emitted(settings, "remap_requested")
-	assert_eq(Config.ui_scale, 100, "disabled-строка ничего не меняет")
+	assert_true(menu.get_remap_view().is_open(), "открывается экран Remap")
+	assert_false(settings.visible, "настройки скрыты под ремапом")
+	assert_eq(Config.ui_scale, 100, "ремап не меняет масштаб UI")
+
+	menu.get_remap_view().close()
+	await wait_process_frames(2)
+	assert_true(settings.visible, "после закрытия ремапа возвращаемся в настройки")
 
 
 func test_slot_formatters_cover_time_date_and_elide() -> void:

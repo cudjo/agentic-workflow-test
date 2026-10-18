@@ -42,6 +42,9 @@ const ACTION_ORDER: Array[StringName] = [
 	&"dash",
 	&"interact",
 	&"map",
+	&"inventory",
+	&"journal",
+	&"factions",
 ]
 
 const ACTION_LABELS: Dictionary = {
@@ -57,6 +60,8 @@ const ACTION_LABELS: Dictionary = {
 	&"interact": "ui.remap.action_interact",
 	&"map": "ui.remap.action_map",
 	&"inventory": "ui.remap.action_inventory",
+	&"journal": "ui.remap.action_journal",
+	&"factions": "ui.remap.action_factions",
 }
 
 ## Клавиши-модификаторы сами по себе не назначаются.

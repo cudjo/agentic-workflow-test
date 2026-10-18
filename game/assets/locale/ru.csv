@@ -321,9 +321,11 @@ ui.menu.title2,БАСТИОН
 ui.remap.action_attack,АТАКА
 ui.remap.action_block,БЛОК
 ui.remap.action_dash,РЫВОК
+ui.remap.action_factions,ФРАКЦИИ
 ui.remap.action_interact,ДЕЙСТВИЕ
 ui.remap.action_inventory,ИНВЕНТАРЬ
 ui.remap.action_jump,ПРЫЖОК
+ui.remap.action_journal,ЖУРНАЛ
 ui.remap.action_map,КАРТА
 ui.remap.action_move_down,ВНИЗ
 ui.remap.action_move_left,ВЛЕВО
@@ -375,7 +377,7 @@ ui.saves.slot_empty,Слот %d пуст
 ui.settings.heading,НАСТРОЙКИ · ДОСТУПНОСТЬ
 ui.settings.language_value,Русский
 ui.settings.remap_input,Клавиатура · Геймпад
-ui.settings.remap_short,Ремап · T-24
+ui.settings.remap_short,Ремап
 ui.settings.remap_soon,Ремап появится в T-24
 ui.settings.row_language,Язык / Language
 ui.settings.row_language_short,Язык

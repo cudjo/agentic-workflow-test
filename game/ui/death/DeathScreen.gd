@@ -401,11 +401,13 @@ func _build_left_panel() -> void:
 
 	var coins: Dictionary = _make_loss_row(tr(COINS_LABEL), _DeathIcon.Kind.COIN)
 	box.add_child(coins["row"])
+	_coins_row_label = coins["label"] as Label
 	_currency_label = coins["value"] as Label
 	_currency_label.add_theme_color_override("font_color", UITokens.GOLD_3)
 
 	var items: Dictionary = _make_loss_row(tr(ITEMS_LABEL), _DeathIcon.Kind.BAG)
 	box.add_child(items["row"])
+	_items_row_label = items["label"] as Label
 	_items_label = items["value"] as Label
 
 	_preview_box = HBoxContainer.new()
@@ -612,11 +614,18 @@ func _retranslate() -> void:
 	if _title_label == null:
 		return
 	_title_label.text = tr(TITLE_TEXT)
-	_respawn_button.text = tr(ACTION_RESPAWN)
-	_menu_button.text = tr(ACTION_MENU)
-	_coins_row_label.text = tr(COINS_LABEL)
-	_items_row_label.text = tr(ITEMS_LABEL)
-	_fire_label.text = tr(LEGEND_BONFIRE)
+	if _respawn_button != null:
+		_respawn_button.text = tr(ACTION_RESPAWN)
+	if _menu_button != null:
+		_menu_button.text = tr(ACTION_MENU)
+	# Строки потерь создаются в `_build_left_panel`; null-safe на случай
+	# смены языка до построения/после освобождения узлов (QA T-37 B7).
+	if _coins_row_label != null:
+		_coins_row_label.text = tr(COINS_LABEL)
+	if _items_row_label != null:
+		_items_row_label.text = tr(ITEMS_LABEL)
+	if _fire_label != null:
+		_fire_label.text = tr(LEGEND_BONFIRE)
 	_confirm_prompt.setup(&"ui_accept", tr(KEYS_HINT))
 	if _showing:
 		_apply_view(_view)

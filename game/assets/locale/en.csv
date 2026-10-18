@@ -321,9 +321,11 @@ ui.menu.title2,BASTION
 ui.remap.action_attack,ATTACK
 ui.remap.action_block,BLOCK
 ui.remap.action_dash,DASH
+ui.remap.action_factions,FACTIONS
 ui.remap.action_interact,INTERACT
 ui.remap.action_inventory,INVENTORY
 ui.remap.action_jump,JUMP
+ui.remap.action_journal,JOURNAL
 ui.remap.action_map,MAP
 ui.remap.action_move_down,DOWN
 ui.remap.action_move_left,LEFT
@@ -375,7 +377,7 @@ ui.saves.slot_empty,Slot %d is empty
 ui.settings.heading,SETTINGS · ACCESSIBILITY
 ui.settings.language_value,English
 ui.settings.remap_input,Keyboard · Gamepad
-ui.settings.remap_short,Remap · T-24
+ui.settings.remap_short,Remap
 ui.settings.remap_soon,Remapping arrives in T-24
 ui.settings.row_language,Language / Язык
 ui.settings.row_language_short,Language

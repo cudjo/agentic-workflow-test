@@ -10,7 +10,7 @@ extends Control
 ##   Читаемость силуэтов    тумблер           (Config.silhouette_readability)
 ##   Без мигания экрана     тумблер           (Config.no_flash)
 ##   Субтитры звуков        тумблер           (Config.sound_subtitles)
-##   Управление (ремап)     disabled + причина «T-24» (макет ещё не нарисован)
+##   Управление (ремап)     Enter/A → экран Remap (T-24)
 ##
 ## Любое изменение сразу пишется в `user://settings.cfg` через Config
 ## (`save_settings`) и применяется в рантайме. Управление без мыши:
@@ -158,15 +158,10 @@ func refresh() -> void:
 		var row: _SettingRow = _rows[index]
 		var id: String = ROW_ORDER[index]
 		row.label_text = _row_label(id)
-		row.disabled = id == ROW_REMAP
-		# Button.disabled сбрасывает focus_mode (Godot 4.4): причина T-24
-		# должна оставаться доступной с клавиатуры/геймпада (DESIGN §9.2).
+		# Ремап — обычная активная строка: экран Remap готов (T-24).
+		row.disabled = false
 		row.focus_mode = Control.FOCUS_ALL
-		row.disabled_reason = (
-			tr("ui.settings.remap_soon")
-			if id == ROW_REMAP
-			else ""
-		)
+		row.disabled_reason = ""
 		row.is_toggle = _is_toggle(id)
 		row.font_size = _row_font_size()
 		match id:
@@ -186,11 +181,7 @@ func refresh() -> void:
 				row.value_text = (
 					tr("ui.settings.remap_input")
 					if Config.ui_scale <= Config.UI_SCALE_100
-					else (
-						"T-24"
-						if Config.ui_scale >= Config.UI_SCALE_200
-						else tr("ui.settings.remap_short")
-					)
+					else tr("ui.settings.remap_short")
 				)
 		row.toggle_text_on = tr("ui.common.on")
 		row.toggle_text_off = tr("ui.common.off")
@@ -375,7 +366,6 @@ func _activate(id: String) -> void:
 		ROW_SUBTITLES:
 			Config.set_sound_subtitles(not Config.sound_subtitles)
 		ROW_REMAP:
-			# Пункт disabled: причина уже видна в строке (T-24).
 			remap_requested.emit()
 			return
 		_:

@@ -152,6 +152,15 @@ func get_tab_index() -> int:
 
 func _input(event: InputEvent) -> void:
 	if not visible:
+		# Вход в игре: `journal` (N / L3). Не открываемся поверх другой
+		# модальной паузы/диалога — иначе экраны наложатся.
+		if event.is_action_pressed(&"journal") and not _other_modal_open():
+			open()
+			_consume()
+		return
+	if event.is_action_pressed(&"journal"):
+		close()
+		_consume()
 		return
 	if _tab_bar.handle_tab_input(event):
 		_consume()
@@ -159,6 +168,16 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_cancel"):
 		close()
 		_consume()
+
+
+func _other_modal_open() -> bool:
+	if get_tree().paused:
+		return true
+	for group: StringName in [&"dialogue_ui", &"campfire_ui"]:
+		var node: Node = get_tree().get_first_node_in_group(group)
+		if node is CanvasItem and (node as CanvasItem).visible:
+			return true
+	return false
 
 
 func _consume() -> void:

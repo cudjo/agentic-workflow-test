@@ -22,9 +22,12 @@ signal zone_selected(zone_id: StringName)
 const LAYER: int = 20
 const HEADER_RECT := Rect2(8, 8, 300, 18)
 const PROMPT_RECT := Rect2(356, 8, 116, 12)
-const LEFT_RECT := Rect2(8, 30, 160, 232)
-const MAP_RECT := Rect2(174, 30, 298, 170)
-const DETAIL_RECT := Rect2(174, 206, 298, 56)
+## 164 (а не 160): кнопки зон растягиваются до 160 px, EN «1. BASTION
+## VILLAGE» = 144 px при доступных 146 px (a11y §9.6 п.6). Панель занимает
+## x=8…180, карта начинается с 184 — зазор 4 px.
+const LEFT_RECT := Rect2(8, 30, 164, 232)
+const MAP_RECT := Rect2(184, 30, 288, 170)
+const DETAIL_RECT := Rect2(184, 206, 288, 56)
 const MAP_CELL := Vector2(23, 17)
 const LEGEND_LINES: Array[String] = [
 	"ui.map.legend_lock",
@@ -310,7 +313,9 @@ func _rebuild_zone_list() -> void:
 		var room: Dictionary = rooms[index]
 		var button := AshenMenuItem.new()
 		button.text = "%d. %s" % [int(room.get("index", index + 1)), String(room.get("zone_name", "")).to_upper()]
-		button.custom_minimum_size = Vector2(144, UITokens.ROW_MENU_BODY)
+		# Ширина — по доступной области панели; перенос/обрезка текста не нужны,
+		# т.к. кнопка растягивается на всю колонку (a11y §9.6 п.6).
+		button.custom_minimum_size = Vector2(160, UITokens.ROW_MENU_BODY)
 		button.focus_entered.connect(_on_zone_focus.bind(index))
 		button.pressed.connect(_on_zone_pressed.bind(index))
 		_zone_list.add_child(button)
@@ -443,7 +448,10 @@ func _build() -> void:
 func _build_zone_panel() -> void:
 	_zone_panel = AshenPanel.new()
 	_zone_panel.variant = UIStyle.PanelVariant.SOLID
-	_zone_panel.padding = UITokens.SP_1
+	# 0 (а не SP_1): кнопка зоны 160 px помещается в панель, EN-название
+	# «1. BASTION VILLAGE» (144 px) влезает с запасом (a11y §9.6 п.6).
+	# Внутренний отступ рамки (6 px) остаётся.
+	_zone_panel.padding = 0
 	_add_at(_zone_panel, LEFT_RECT)
 
 	var column := VBoxContainer.new()

@@ -163,12 +163,89 @@ func _ready() -> void:
 	layer = HUD_LAYER
 	_build()
 	_connect_event_bus()
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
+	apply_ui_scale()
 	sync_from_game_state()
 	_sync_minimap_data()
 
 
 func _exit_tree() -> void:
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 	_disconnect_event_bus()
+
+
+# ------------------------------------------------------------------------------
+# Масштаб UI (T-20/Config, a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+## Размер текста HUD с учётом `Config.ui_scale` (100/150/200 %).
+func _font_size(base: int = UITokens.FONT_BODY) -> int:
+	return maxi(1, int(round(float(base) * float(Config.ui_scale) / 100.0)))
+
+
+func get_ui_font_size() -> int:
+	return _font_size()
+
+
+## Пересчитывает шрифты и геометрию текстовых блоков. Иконки/рамки остаются
+## пиксельными; 100 % не меняет ни один размер.
+func apply_ui_scale() -> void:
+	if _root == null:
+		return
+	var factor: float = float(Config.ui_scale) / 100.0
+	var font: int = _font_size()
+	_apply_label_font(_critical_label, font)
+	_apply_label_font(_zone_label, font)
+	_apply_label_font(_currency_label, font)
+	_apply_label_font(_points_label, font)
+	_apply_label_font(_need_label, font)
+	_apply_label_font(_ability_hint_label, font)
+
+	if _critical_label != null:
+		_critical_label.size = Vector2(
+			maxf(72.0 * factor, UIStyle.text_width(_critical_label.text, font) + 4.0),
+			maxf(float(UITokens.LINE_BODY) * factor, float(font))
+		)
+	if _zone_label != null:
+		var width: int = clampi(
+			int(ceil(maxf(140.0 * factor, UIStyle.text_width(_zone_label.text, font) + 4.0))),
+			1,
+			460
+		)
+		_resize_top_right(_zone_label, width, int(ceil(float(UITokens.LINE_BODY) * factor)))
+	if _wallet != null:
+		_resize_bottom_right(_wallet, int(round(96.0 * factor)), int(round(44.0 * factor)))
+	if _ability_hint_panel != null:
+		_resize_top_right(
+			_ability_hint_panel,
+			int(round(128.0 * factor)),
+			int(round(48.0 * factor))
+		)
+	if _boss_bar != null:
+		_boss_bar.pivot_offset = Vector2(_boss_bar.size.x * 0.5, _boss_bar.size.y)
+		_boss_bar.scale = Vector2(factor, factor)
+
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+func _apply_label_font(label: Label, font: int) -> void:
+	if label == null:
+		return
+	label.add_theme_font_size_override("font_size", font)
+
+
+func _resize_top_right(control: Control, width: int, height: int) -> void:
+	control.offset_left = control.offset_right - float(width)
+	control.offset_bottom = control.offset_top + float(height)
+
+
+func _resize_bottom_right(control: Control, width: int, height: int) -> void:
+	control.offset_left = control.offset_right - float(width)
+	control.offset_top = control.offset_bottom - float(height)
 
 
 func _process(delta: float) -> void:
@@ -583,6 +660,8 @@ func _set_zone(zone_id: StringName, display_name: String) -> void:
 		_zone_label.text = tr("ui.common.unknown_zone")
 	else:
 		_zone_label.text = display_name
+	# Ширина строки зависит от языка/масштаба (a11y §9.6 п.6).
+	apply_ui_scale()
 
 
 func _update_zone_from_state() -> void:
@@ -1176,7 +1255,7 @@ func _make_label(
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_font_override("font", UIStyle.font())
-	label.add_theme_font_size_override("font_size", UITokens.FONT_BODY)
+	label.add_theme_font_size_override("font_size", _font_size())
 	label.add_theme_color_override("font_color", color)
 	# Тень void 1 px — 8-px текст читается поверх сцены (DESIGN §9.1).
 	label.add_theme_color_override("font_shadow_color", UITokens.VOID)

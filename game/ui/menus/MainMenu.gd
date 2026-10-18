@@ -36,6 +36,7 @@ enum View { MAIN, LOAD, SETTINGS }
 
 const SETTINGS_SCENE: PackedScene = preload("res://ui/menus/Settings.tscn")
 const SLOTS_SCENE: PackedScene = preload("res://ui/menus/SaveSlots.tscn")
+const REMAP_SCENE: PackedScene = preload("res://ui/remap/Remap.tscn")
 
 const GAME_VERSION: String = "0.1.0"
 const SLOT_MIN: int = 1
@@ -78,6 +79,7 @@ var _continue_button: AshenMenuItem
 
 var _settings_view: AshenSettingsView
 var _slots_view: AshenSaveSlots
+var _remap_view: RemapScreen
 var _view: View = View.MAIN
 var _return_focus_index: int = 0
 
@@ -134,6 +136,8 @@ func open() -> void:
 
 
 func close() -> void:
+	if _remap_view != null and _remap_view.is_open():
+		_remap_view.close()
 	visible = false
 	if _root != null:
 		_root.visible = false
@@ -163,6 +167,8 @@ func show_view(view: View, return_index: int = -1) -> void:
 func _apply_view_visibility() -> void:
 	var main: bool = _view == View.MAIN
 	var large: bool = _is_large_scale()
+	if main and _remap_view != null and _remap_view.is_open():
+		_remap_view.close()
 	_menu_scroll.visible = main
 	_status_label.visible = main
 	_subtitle.visible = main
@@ -243,6 +249,10 @@ func get_settings_view() -> AshenSettingsView:
 
 func get_slots_view() -> AshenSaveSlots:
 	return _slots_view
+
+
+func get_remap_view() -> RemapScreen:
+	return _remap_view
 
 
 func get_title_text() -> String:
@@ -421,6 +431,14 @@ func _build_views() -> void:
 	_slots_view.visible = false
 	_slots_view.closed.connect(_on_subview_closed)
 	_slots_view.slot_selected.connect(_on_slot_selected)
+
+	# T-24/AC-01.3: экран ремапа открывается из строки «Управление».
+	# В меню не ставим дерево на паузу — меню и так не игровой процесс.
+	_remap_view = REMAP_SCENE.instantiate() as RemapScreen
+	_remap_view.name = "Remap"
+	_remap_view.pause_on_open = false
+	add_child(_remap_view)
+	_remap_view.closed.connect(_on_remap_closed)
 
 
 func _build_footer() -> void:
@@ -759,8 +777,19 @@ func _on_subview_closed() -> void:
 
 
 func _on_remap_requested() -> void:
-	# T-24: экран ремапа ещё не нарисован — пункт disabled с пояснением.
-	pass
+	_ensure_built()
+	if _remap_view == null or _remap_view.is_open():
+		return
+	# Пока открыт ремап, настройки скрыты: оба экрана занимают весь кадр.
+	if _settings_view != null:
+		_settings_view.visible = false
+	_remap_view.open()
+
+
+func _on_remap_closed() -> void:
+	# Возвращаемся в настройки с фокусом на строке «Управление».
+	if _settings_view != null and _view == View.SETTINGS:
+		_settings_view.open()
 
 
 func _on_settings_changed(_key: String) -> void:

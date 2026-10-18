@@ -61,3 +61,50 @@
 - **Параллельность:** не тронуты `game/project.godot` (inventory-action T-21),
   `ui/inventory/`, `tests/unit/test_inventory.gd`, `opencode.jsonc` и `docs/WORKFLOW_LOG.md`.
   Изменены только пути T-24 + `Main.tscn` + `EventBus.gd`.
+
+## 2026-10-19 — Tasker (frontend): Fix-2 (QA-блокеры 5–8)
+
+- **Skills:** загружен `godot` — правки GDScript/`CanvasLayer`/`Control`, InputMap,
+  масштаб UI и headless GUT/QA. Другие стек-скиллы не нужны: фронтенд Godot + существующие
+  autoload-контракты; `N/A` для внешних стеков.
+- **Задача:** `docs/QA.md` блокеры 5, 6, 7, 8; DESIGN §9.6 п.6; TASKS T-20/T-24. Статусы в
+  `docs/TASKS.json` не менялись. Чистый worktree `fix2-nav-a11y`, коммит Fix-2.
+- **Сделано:**
+  1. **Ремап (B5):** `Settings.gd` — строка «Управление» больше не `disabled`, без причины
+     «T-24»; `MainMenu.gd` инстансирует `Remap.tscn`, `_on_remap_requested()` скрывает
+     настройки и вызывает `Remap.open()`, `closed` возвращает в настройки с фокусом;
+     закрытие меню/переход в MAIN закрывает ремап. `Remap.ACTION_ORDER` дополнен
+     `inventory`/`journal`/`factions`.
+  2. **Журнал/фракции (B6):** в `project.godot` добавлены InputMap-действия `journal`
+     (`N` / L3) и `factions` (`F` / R3); `Journal._input`/`Factions._input` открывают и
+     закрывают экраны по этим действиям, блокируются при паузе другой модалки и при
+     видимых `dialogue_ui`/`campfire_ui` (не ломают существующую навигацию).
+  3. **A11y п.6 (B7):** `WorldMap` — колонка зон расширена (кнопка 160 px, доступно 146 px)
+     при сохранении 480×270, карта/детали сдвинуты на 184; `HUD.apply_ui_scale()` реагирует
+     на `Config.ui_scale` (шрифт 8→12 при 150 %, геометрия подписей/кошелька/подсказки/босса),
+     `ui_scale_changed` подключён; `DeathScreen` присваивает `_coins_row_label`/`_items_row_label`
+     и `_retranslate()` сделан null-safe.
+  4. **AC-02.4 (B8):** `AbilityHint` считает экранный clamp панели (canvas transform) и
+     сдвигает текст/иконку/рамку внутрь 480×270 с отступом 2 px.
+- **Кросс-файловые правки:** `game/assets/locale/{ru,en}.csv` + регенерированные
+  `.translation` (подписи новых действий ремапа, убран текст «T-24»);
+  `game/tests/unit/test_menu.gd` — устаревший тест «ремап disabled до T-24» заменён на
+  проверку открытия `Remap` и возврата в настройки. `world/zones/`, `entities/bosses/`,
+  `Main.gd`, `autoload/` не тронуты.
+- **Evidence (portable Godot 4.4.1-stable, этот worktree):**
+  - `--headless --import`: без script/parse-ошибок (known RID leaks at exit).
+  - Полный GUT `-gdir=res://tests -ginclude_subdirs -gexit`: **518/518 passed, 7060 asserts,
+    0 failing** (exit code 1 только из-за известных RID/resource leak at exit).
+  - `qa_a11y.tscn`: **105 PASS / 1 FAIL**; единственный fail — контур врагов (D10, вне Fix-2).
+    Новые PASS: `переполнение панелей RU/150%`, `EN/150%`, `масштаб UI 150% применяется к HUD —
+    шрифт HUD 8 → 12 px`; runtime-ошибок `DeathScreen._retranslate` нет.
+  - `qa_e2e.tscn` на чистом `user://saves`: **83 PASS / 7 FAIL** — ровно исходные блокеры
+    B1–B4 (способности/враги/видимость арен/эмиттер фракций), вне Fix-2; меню/навигация PASS.
+  - Smoke `Main.tscn`: `journal open=true paused=true` → `closed paused=false`,
+    `factions open=true paused=true` → `closed paused=false`; ремап из настроек
+    `open=true`, после закрытия настройки снова видимы.
+  - Probe 480×270: EN `1. BASTION VILLAGE` — 144 px при доступных 146; подсказка
+    `Нужно: ДВОЙНОЙ ПРЫЖОК` — правый край 478 < 480; DeathScreen RU `[Монеты, Предметы]`,
+    EN `[Coins, Items]` без ошибок.
+- **Ограничения:** визуальный рендер (скриншоты) не снимался — проверка headless + геометрия
+  Control; независимые QA/Guardian не заменяются этим smoke.

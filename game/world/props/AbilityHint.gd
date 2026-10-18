@@ -17,6 +17,8 @@ const PADDING_Y: float = 2.0
 const ICON_WIDTH: float = 7.0
 const ICON_GAP: float = 3.0
 const BORDER: float = 1.0
+## Отступ от края экрана при clamp (AC-02.4: подсказка не обрезается).
+const SCREEN_MARGIN: float = 2.0
 const HINT_PREFIX: String = "ui.ability_hint.need"
 
 var _ability_id: StringName = &""
@@ -25,6 +27,9 @@ var _text: String = ""
 var _shown: bool = false
 var _label: Label
 var _panel_size: Vector2 = Vector2.ZERO
+## Смещение панели в мировых координатах, чтобы она целиком оставалась
+## в пределах 480×270 (узел стоит над завалом у правого края).
+var _offset: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -111,6 +116,10 @@ func get_ability_id() -> StringName:
 func set_world_position(world_position: Vector2) -> void:
 	top_level = true
 	global_position = world_position
+	if _shown:
+		_update_offset()
+		_position_label()
+		queue_redraw()
 
 
 func _apply() -> void:
@@ -124,19 +133,50 @@ func _apply() -> void:
 		PADDING_X * 2.0 + ICON_WIDTH + ICON_GAP + text_size.x,
 		PADDING_Y * 2.0 + text_size.y
 	)
+	_label.size = Vector2(text_size.x + 1.0, text_size.y + 2.0)
+	_update_offset()
+	_position_label()
+	visible = _shown
+	queue_redraw()
+
+
+func _position_label() -> void:
 	_label.position = Vector2(
 		-_panel_size.x * 0.5 + PADDING_X + ICON_WIDTH + ICON_GAP,
 		-_panel_size.y * 0.5 + PADDING_Y - 1.0
-	)
-	_label.size = Vector2(text_size.x + 1.0, text_size.y + 2.0)
-	visible = _shown
-	queue_redraw()
+	) + _offset
+
+
+## Держит панель внутри видимой области: у завала в зоне 1 центр подсказки
+## стоит на x≈448, поэтому без сдвига правый край уходил за 480 px (B9).
+func _update_offset() -> void:
+	_offset = Vector2.ZERO
+	var viewport: Viewport = get_viewport()
+	if viewport == null or _panel_size == Vector2.ZERO:
+		return
+	var canvas: Transform2D = viewport.get_canvas_transform()
+	var scale: Vector2 = canvas.get_scale()
+	var half: Vector2 = _panel_size * 0.5 * scale + Vector2(SCREEN_MARGIN, SCREEN_MARGIN)
+	var visible_rect: Rect2 = viewport.get_visible_rect()
+	var screen_center: Vector2 = canvas * global_position
+	var target: Vector2 = screen_center
+	var lo: Vector2 = visible_rect.position + half
+	var hi: Vector2 = visible_rect.end - half
+	if lo.x <= hi.x:
+		target.x = clampf(target.x, lo.x, hi.x)
+	else:
+		target.x = visible_rect.get_center().x
+	if lo.y <= hi.y:
+		target.y = clampf(target.y, lo.y, hi.y)
+	else:
+		target.y = visible_rect.get_center().y
+	_offset = (canvas.affine_inverse() * target) - global_position
 
 
 func _draw() -> void:
 	if not _shown or _panel_size == Vector2.ZERO:
 		return
-	var rect: Rect2 = Rect2(-_panel_size * 0.5, _panel_size)
+	var rect: Rect2 = Rect2(-_panel_size * 0.5 + _offset, _panel_size)
 	draw_rect(rect, Color(UITokens.NIGHT_9, 0.92))
 	draw_rect(rect, UITokens.STONE_5, false, BORDER)
 
