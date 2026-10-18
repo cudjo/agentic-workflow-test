@@ -1,0 +1,98 @@
+[gd_resource type="Resource" script_class="BossData" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://data/bosses/boss_phase_data.gd" id="1_phase"]
+[ext_resource type="Script" path="res://data/bosses/boss_reward_data.gd" id="2_reward"]
+[ext_resource type="Script" path="res://data/bosses/boss_data.gd" id="3_boss"]
+[ext_resource type="PackedScene" path="res://entities/enemies/ranged/enemy_projectile.tscn" id="4_projectile"]
+[ext_resource type="PackedScene" path="res://entities/enemies/swift/swift_enemy.tscn" id="5_summon"]
+
+[sub_resource type="Resource" id="Resource_phase_cleave"]
+script = ExtResource("1_phase")
+title = "ФАЗА I"
+pattern_id = &"ash_cleave"
+hp_threshold_ratio = 1.0
+move_speed = 44.0
+preferred_distance = 0.0
+lunge_speed = 0.0
+attack_range = 38.0
+attack_cooldown = 1.5
+windup = 0.5
+active = 0.18
+recovery = 0.35
+attack_damage = 10.0
+attack_knockback = 140.0
+attack_size = Vector2(34, 30)
+attack_offset = Vector2(20, 0)
+projectile_count = 0
+projectile_speed = 120.0
+projectile_lifetime = 2.2
+projectile_spread_degrees = 0.0
+summon_count = 0
+
+[sub_resource type="Resource" id="Resource_phase_fan"]
+script = ExtResource("1_phase")
+title = "ФАЗА II"
+pattern_id = &"pyre_fan"
+hp_threshold_ratio = 0.66
+move_speed = 56.0
+preferred_distance = 0.0
+lunge_speed = 30.0
+attack_range = 48.0
+attack_cooldown = 1.15
+windup = 0.38
+active = 0.16
+recovery = 0.3
+attack_damage = 13.0
+attack_knockback = 160.0
+attack_size = Vector2(36, 30)
+attack_offset = Vector2(20, 0)
+projectile_count = 3
+projectile_speed = 120.0
+projectile_lifetime = 2.2
+projectile_spread_degrees = 12.0
+summon_count = 0
+
+[sub_resource type="Resource" id="Resource_phase_rites"]
+script = ExtResource("1_phase")
+title = "ФАЗА III"
+pattern_id = &"last_rites"
+hp_threshold_ratio = 0.33
+move_speed = 72.0
+preferred_distance = 0.0
+lunge_speed = 48.0
+attack_range = 60.0
+attack_cooldown = 0.85
+windup = 0.28
+active = 0.16
+recovery = 0.25
+attack_damage = 17.0
+attack_knockback = 190.0
+attack_size = Vector2(40, 32)
+attack_offset = Vector2(22, 0)
+projectile_count = 5
+projectile_speed = 140.0
+projectile_lifetime = 2.4
+projectile_spread_degrees = 9.0
+summon_count = 2
+
+[sub_resource type="Resource" id="Resource_reward"]
+script = ExtResource("2_reward")
+id = &"sovereign_crown"
+gold = 300
+
+[resource]
+script = ExtResource("3_boss")
+id = &"zone_05_sovereign"
+display_name_key = "boss.zone_05_sovereign.name"
+display_name = "Пепельный Государь"
+zone_id = &"zone_05_finale"
+max_hp = 360.0
+knockback_resistance = 0.9
+poise = 4.0
+body_size = Vector2(28, 44)
+hurtbox_size = Vector2(26, 42)
+body_color = Color(0.55, 0.52, 0.5, 1)
+phases = Array[ExtResource("1_phase")]([SubResource("Resource_phase_cleave"), SubResource("Resource_phase_fan"), SubResource("Resource_phase_rites")])
+projectile_scene = ExtResource("4_projectile")
+summon_scene = ExtResource("5_summon")
+reward = SubResource("Resource_reward")

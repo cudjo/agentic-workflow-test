@@ -52,7 +52,7 @@ func clear_hits() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if not active or _damage == null:
+	if not active or _damage == null or not monitoring:
 		return
 	for area: Area2D in get_overlapping_areas():
 		if not area is Hurtbox:

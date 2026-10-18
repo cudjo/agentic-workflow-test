@@ -23,6 +23,18 @@ const PLAYER_HALF_HEIGHT := 10.0
 const PLAYER_LAYER := 1 << 1
 const WORLD_LAYER := 1
 const BOSS_SPAWN := Vector2(360.0, 224.0)
+const FINAL_BOSS_ID: StringName = &"zone_05_sovereign"
+
+
+func before_each() -> void:
+	# T-32: арена финала пишет прогресс босса в GameState; тесты изолированы.
+	GameState.reset_boss_progress()
+	GameState.set_in_combat(false)
+
+
+func after_each() -> void:
+	GameState.reset_boss_progress()
+	GameState.set_in_combat(false)
 
 
 func _spawn(scene_path: String) -> ZoneScene:
@@ -286,7 +298,7 @@ func test_ruins_puzzle_opens_the_sealed_passage() -> void:
 
 # --- Арена финального босса (T-32) ------------------------------------------
 
-func test_finale_has_empty_boss_arena_and_spawn_point() -> void:
+func test_finale_arena_spawns_boss_at_marker_and_keeps_exits_open() -> void:
 	var finale := await _spawn(ZONE_05_SCENE)
 	if finale == null:
 		return
@@ -299,7 +311,6 @@ func test_finale_has_empty_boss_arena_and_spawn_point() -> void:
 	assert_not_null(spawn, "T-32 spawn marker exists")
 	if spawn != null:
 		assert_eq(spawn.position, BOSS_SPAWN, "boss spawns on the arena floor")
-	assert_eq(arena.get_child_count(), 1, "arena is empty until T-32 (only the spawn marker)")
 
 	var spawn_position: Vector2 = arena.call(&"get_boss_spawn_position")
 	assert_eq(spawn_position, BOSS_SPAWN)
@@ -307,10 +318,29 @@ func test_finale_has_empty_boss_arena_and_spawn_point() -> void:
 	assert_eq(bounds.size, Vector2(432.0, 184.0))
 	assert_almost_eq(bounds.position.x + bounds.size.x, 456.0, 0.1)
 	assert_almost_eq(bounds.position.y + bounds.size.y, FLOOR_TOP, 0.1)
-	assert_true(bool(arena.call(&"is_empty")), "no boss or barriers before T-32")
-	assert_eq(get_tree().get_nodes_in_group(&"arena_barrier").size(), 0, "no arena barriers yet")
 
-	# Декор финала — обломки монолитов, без коллизий (арена свободна для T-32).
+	# T-32: босс уже стоит на арене и ждёт входа игрока.
+	assert_false(bool(arena.call(&"is_empty")), "T-32 spawned the final boss")
+	var boss := arena.get(&"boss") as BossBase
+	assert_not_null(boss, "arena exposes a BossBase instance")
+	if boss != null:
+		assert_eq(boss.data.id, FINAL_BOSS_ID)
+		assert_almost_eq(boss.global_position.x, BOSS_SPAWN.x, 0.1)
+		assert_almost_eq(
+			boss.global_position.y + boss.data.body_size.y * 0.5,
+			FLOOR_TOP,
+			0.5,
+			"boss feet stand on the arena floor"
+		)
+		assert_true(boss.is_in_group(&"bosses"))
+
+	# Барьеры созданы, но открыты до начала боя.
+	var barriers := _arena_barriers(arena)
+	assert_eq(barriers.size(), 2, "final arena owns two barriers")
+	for barrier: StaticBody2D in barriers:
+		assert_eq(barrier.collision_layer, 0, "arena is open before the fight")
+
+	# Декор финала — обломки монолитов, без коллизий (арена свободна для боя).
 	var props := finale.get_node_or_null("Props")
 	assert_not_null(props, "finale has decorative props")
 	if props != null:
@@ -322,9 +352,17 @@ func test_finale_has_empty_boss_arena_and_spawn_point() -> void:
 				assert_false(rubble.blocking, "decor never blocks the arena")
 
 
+func _arena_barriers(arena: Node) -> Array[StaticBody2D]:
+	var result: Array[StaticBody2D] = []
+	for node: Node in get_tree().get_nodes_in_group(&"arena_barrier"):
+		if arena.is_ancestor_of(node) and node is StaticBody2D:
+			result.append(node as StaticBody2D)
+	return result
+
+
 # --- Хук концовки и фракция (T-27/T-32) -------------------------------------
 
-func test_ending_exit_is_a_faction_aware_hook() -> void:
+func test_ending_exit_is_a_faction_aware_hook_gated_by_boss() -> void:
 	var finale := await _spawn(ZONE_05_SCENE)
 	if finale == null:
 		return
@@ -339,10 +377,21 @@ func test_ending_exit_is_a_faction_aware_hook() -> void:
 	assert_true(EventBus != null)
 	assert_true(hook.has_signal(&"ending_requested"))
 
-	# FactionManager пока заглушка (T-27): хук не падает и отдаёт пустую фракцию.
-	assert_eq(hook.get(&"gate_on_boss_id"), &"", "boss gating is wired later by T-32")
-	assert_true(bool(hook.call(&"is_unlocked")))
+	# T-32: выход заперт до победы над финальным боссом (EC-09/GameState).
+	assert_eq(
+		hook.get(&"gate_on_boss_id"),
+		FINAL_BOSS_ID,
+		"T-32 gates the ending on the final boss"
+	)
+	assert_false(bool(hook.call(&"is_unlocked")), "ending is locked before the boss dies")
 	watch_signals(hook)
+	assert_eq(hook.call(&"request_ending"), &"", "locked exit rejects the request")
+	assert_signal_emit_count(hook, "ending_requested", 0)
+
+	# Победа открывает выход; FactionManager пока заглушка (T-27) -> &"".
+	GameState.mark_boss_defeated(FINAL_BOSS_ID)
+	assert_true(bool(hook.call(&"is_unlocked")), "ending unlocks after victory")
+	hook.call(&"reset_hook")
 	var faction: StringName = hook.call(&"request_ending")
 	assert_eq(faction, &"", "stub FactionManager yields no faction")
 	assert_signal_emitted_with_parameters(

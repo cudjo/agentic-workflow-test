@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=4]
+[gd_scene load_steps=20 format=4]
 
 [ext_resource type="Script" path="res://world/zones/zone_scene.gd" id="1_b2k28"]
 [ext_resource type="Resource" path="res://data/zones/zone_05_finale.tres" id="2_i4ic7"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://world/zones/zone_05_finale/zone_05_foreground.gd" id="9_d6r1h"]
 [ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="10_3wssx"]
 [ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="11_cjwc5"]
+[ext_resource type="Script" path="res://ui/ending/ending_sequence.gd" id="12_endseq"]
 
 [sub_resource type="Gradient" id="Gradient_is8b3"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
@@ -106,6 +107,7 @@ collision_layer = 0
 collision_mask = 2
 monitorable = false
 script = ExtResource("6_b1ovx")
+gate_on_boss_id = &"zone_05_sovereign"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EndingExit"]
 shape = SubResource("RectangleShape2D_7yj0n")
@@ -163,3 +165,7 @@ layer = 15
 script = ExtResource("11_cjwc5")
 zone_id = &"zone_05_finale"
 subtitle = "Зона 5 · Финал"
+
+[node name="EndingSequence" type="CanvasLayer" parent="."]
+layer = 20
+script = ExtResource("12_endseq")
