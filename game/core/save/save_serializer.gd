@@ -9,12 +9,17 @@ extends RefCounted
 ## (сырое тело). Поэтому проверка не зависит от того, как JSON парсит/печатает
 ## числа и в каком порядке лежат ключи: тело сверяется байт в байт.
 ##
-## Тело (schema_version = 1):
-##   state: {stamina: float, weapon_id: String, weapon_path: String}
+## Тело (schema_version = 3):
+##   state: {stamina, weapon_id, weapon_path,
+##           bosses_defeated, boss_rewards_pending, currency,
+##           hp, inventory, abilities,
+##           death_active, death_corpse_active, death_zone_id, death_position,
+##           death_items, death_currency, death_lost,
+##           respawn_bonfire, respawn_zone_id, respawn_position}
 ##   meta:  {zone_id, zone_name, level, play_time, saved_at_unix} + extras
-## `state` — только реально существующие поля `GameState` на момент T-25.
-## HP/инвентарь/способности/фракции/квесты появятся в T-26/T-06/T-27/T-29;
-## контракт добавления полей и версии описан в `save_migrations.gd`.
+## `state` — только реально существующие поля `GameState`. T-26 (v3) добавил
+## HP, инвентарь, способности, corpse-метку/флаг смерти (EC-04) и чекпоинт
+## костра. Контракт добавления полей и версии описан в `save_migrations.gd`.
 ##
 ## `meta` — данные для UI (зона, уровень, время) и задел под будущие поля:
 ## известные ключи нормализуются, незнакомые проходят через `_json_safe()`.
@@ -84,6 +89,33 @@ static func serialize_state(state: Node) -> Dictionary:
 	else:
 		data["currency"] = 0
 
+	# T-26 (schema v3): HP, инвентарь и способности (AC-05.1/AC-05.2).
+	var hp_value: Variant = state.get("hp")
+	if hp_value is int or hp_value is float:
+		data["hp"] = float(hp_value)
+	data["inventory"] = _string_array(state.get("inventory"))
+	data["abilities"] = _string_array(state.get("abilities"))
+
+	# T-26: смерть/corpse run. `death_active` нужен для EC-04 (выход из игры
+	# в бюджете смерти = обычная смерть при загрузке), corpse-поля — AC-05.3.
+	data["death_active"] = bool(state.get("death_active"))
+	data["death_corpse_active"] = bool(state.get("corpse_active"))
+	data["death_zone_id"] = String(state.get("corpse_zone_id"))
+	data["death_position"] = _vector2_to_dict(state.get("corpse_position"))
+	data["death_items"] = _string_array(state.get("corpse_items"))
+	var corpse_currency_value: Variant = state.get("corpse_currency")
+	if corpse_currency_value is int or corpse_currency_value is float:
+		data["death_currency"] = int(corpse_currency_value)
+	else:
+		data["death_currency"] = 0
+	data["death_lost"] = bool(state.get("corpse_lost"))
+
+	# T-26: точка возрождения — id зоны/костра и позиция спавна.
+	data["respawn_bonfire"] = String(state.get("respawn_bonfire"))
+	data["respawn_zone_id"] = String(state.get("respawn_zone_id"))
+	# Поля есть только у GameState T-26+; у старого/чужого state — дефолты.
+	data["respawn_position"] = _vector2_to_dict(state.get("respawn_position"))
+
 	return data
 
 
@@ -115,6 +147,54 @@ static func apply_state(state: Node, state_data: Dictionary) -> bool:
 		if currency_value is int or currency_value is float:
 			currency_amount = int(currency_value)
 		state.call("restore_boss_progress", defeated, pending, currency_amount)
+
+	# T-26 (v3): HP, инвентарь и способности (AC-05.1). У state без этих
+	# методов (старые заглушки/тесты) поля просто пропускаются.
+	if state_data.has("hp") and state.has_method("restore_hp"):
+		var hp_value: Variant = state_data["hp"]
+		if hp_value is int or hp_value is float:
+			state.call("restore_hp", float(hp_value))
+
+	if state.has_method("restore_inventory"):
+		var inventory_value: Variant = state_data.get("inventory", [])
+		var inventory_items: Array = inventory_value if inventory_value is Array else []
+		state.call("restore_inventory", inventory_items)
+
+	if state.has_method("restore_abilities"):
+		var abilities_value: Variant = state_data.get("abilities", [])
+		var ability_items: Array = abilities_value if abilities_value is Array else []
+		state.call("restore_abilities", ability_items)
+
+	# T-26: смерть/corpse run и чекпоинт костра. Старые сейвы после миграции
+	# содержат дефолты (v2→v3), поэтому загрузка не ломается.
+	if state.has_method("restore_death_state"):
+		var zone_value: Variant = state_data.get("death_zone_id", "")
+		var items_value: Variant = state_data.get("death_items", [])
+		var death_items: Array = items_value if items_value is Array else []
+		var death_currency_value: Variant = state_data.get("death_currency", 0)
+		var death_currency_amount: int = 0
+		if death_currency_value is int or death_currency_value is float:
+			death_currency_amount = int(death_currency_value)
+		state.call(
+			"restore_death_state",
+			bool(state_data.get("death_active", false)),
+			bool(state_data.get("death_corpse_active", false)),
+			StringName(str(zone_value)),
+			_as_vector2(state_data.get("death_position", {})),
+			death_items,
+			death_currency_amount,
+			bool(state_data.get("death_lost", false))
+		)
+
+	if state.has_method("restore_respawn_bonfire"):
+		var bonfire_value: Variant = state_data.get("respawn_bonfire", "")
+		var respawn_zone_value: Variant = state_data.get("respawn_zone_id", "")
+		state.call(
+			"restore_respawn_bonfire",
+			StringName(str(bonfire_value)),
+			StringName(str(respawn_zone_value)),
+			_as_vector2(state_data.get("respawn_position", {}))
+		)
 
 	return true
 
@@ -263,6 +343,41 @@ static func _json_safe(value: Variant) -> Variant:
 			return {"x": value.x, "y": value.y}
 		_:
 			return str(value)
+
+
+## StringName/строки → JSON-массив строк (способности, инвентарь, corpse).
+static func _string_array(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if value is Array:
+		for item: Variant in value:
+			result.append(String(item))
+	return result
+
+
+static func _vector2_to_dict(value: Variant) -> Dictionary:
+	if value is Vector2:
+		return {"x": value.x, "y": value.y}
+	if value is Dictionary:
+		return {"x": _as_float(value.get("x", 0.0), 0.0), "y": _as_float(value.get("y", 0.0), 0.0)}
+	return {"x": 0.0, "y": 0.0}
+
+
+## Позиция из сейва: `{x, y}` (основной формат) или строка "x,y" (терпимость
+## к старым/ручным сейвам). Испорченное значение даёт Vector2.ZERO.
+static func _as_vector2(value: Variant) -> Vector2:
+	if value is Vector2:
+		return value
+	if value is Dictionary:
+		return Vector2(
+			_as_float(value.get("x", 0.0), 0.0),
+			_as_float(value.get("y", 0.0), 0.0)
+		)
+	if value is String:
+		var parts: PackedStringArray = value.split(",")
+		if parts.size() == 2 and parts[0].strip_edges().is_valid_float() \
+			and parts[1].strip_edges().is_valid_float():
+			return Vector2(parts[0].strip_edges().to_float(), parts[1].strip_edges().to_float())
+	return Vector2.ZERO
 
 
 static func _as_int(value: Variant, fallback: int) -> int:

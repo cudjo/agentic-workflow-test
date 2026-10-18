@@ -13,7 +13,13 @@ extends Node
 ## возвращает false и эмитит `EventBus.slot_corrupted(slot, reason)`.
 ##
 ## Ограничения места сохранения (только костёр, запрет в бою — T-22/EC-06)
-## проверяет вызывающий UI; GameState.in_combat появится в T-26.
+## проверяет `Bonfire.save_to_slot()` (T-26): флаг `GameState.in_combat`
+## блокирует запись, а активная точка сохранения — только костёр.
+##
+## После успешной записи/загрузки запоминается `GameState.active_slot`:
+## DeathHandler пишет в него death-автосейв, чтобы выход в бюджете смерти
+## при загрузке давал обычную смерть (EC-04). Успешная загрузка эмитит
+## `EventBus.save_loaded` — DeathHandler разрешает отложенную смерть.
 ##
 ## `saves_dir` — публичный только для тестов; игровой код использует дефолт.
 
@@ -61,6 +67,7 @@ func save_slot(slot: int, metadata: Dictionary = {}) -> bool:
 		_emit_save_failed(slot, LOAD_IO_ERROR)
 		return false
 
+	_remember_active_slot(state, slot)
 	var bus: Node = _event_bus()
 	if bus != null:
 		bus.emit_signal("save_completed", slot)
@@ -85,7 +92,15 @@ func load_slot(slot: int) -> bool:
 
 	var body: Dictionary = result.get("body", {})
 	var state_data: Dictionary = body.get("state", {})
-	return SaveSerializer.apply_state(state, state_data)
+	var applied: bool = SaveSerializer.apply_state(state, state_data)
+	if not applied:
+		return false
+
+	_remember_active_slot(state, slot)
+	var bus: Node = _event_bus()
+	if bus != null:
+		bus.emit_signal("save_loaded", slot)
+	return true
 
 
 ## Читает и проверяет слот без применения к GameState.
@@ -249,6 +264,12 @@ func _ensure_saves_dir() -> bool:
 func _remove_file(path: String) -> void:
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+## Запоминает слот в GameState (если поле есть) — цель death-автосейва (EC-04).
+func _remember_active_slot(state: Node, slot: int) -> void:
+	if state.get("active_slot") != null:
+		state.set("active_slot", slot)
 
 
 func _game_state() -> Node:

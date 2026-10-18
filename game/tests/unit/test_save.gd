@@ -1,6 +1,7 @@
 extends GutTest
 ## T-25 — сохранения: round-trip, checksum, миграции, атомарность
-## (PLAN §3.4, AC-05.1, EC-07/EC-14).
+## (PLAN §3.4, AC-05.1, EC-07/EC-14). T-26 — schema v3: HP, инвентарь,
+## способности, смерть/corpse run и чекпоинт костра.
 ##
 ## Тесты работают в отдельном каталоге `user://test_saves_t25`, чтобы не
 ## трогать реальные слоты игрока; `SaveManager.saves_dir` переопределяется
@@ -14,6 +15,15 @@ const AXE_PATH: String = "res://data/weapons/two_handed_axe.tres"
 var _original_saves_dir: String = SaveManager.DEFAULT_SAVES_DIR
 var _original_stamina: float = 0.0
 var _original_weapon: WeaponData = null
+var _original_hp: float = 0.0
+var _original_currency: int = 0
+var _original_inventory: Array[StringName] = []
+var _original_abilities: Array[StringName] = []
+var _original_death_active: bool = false
+var _original_corpse: Dictionary = {}
+var _original_respawn: Dictionary = {}
+var _original_active_slot: int = 0
+var _original_in_combat: bool = false
 
 
 func before_all() -> void:
@@ -32,6 +42,25 @@ func after_all() -> void:
 func before_each() -> void:
 	_original_stamina = GameState.stamina
 	_original_weapon = GameState.weapon
+	_original_hp = GameState.hp
+	_original_currency = GameState.currency
+	_original_inventory = GameState.get_inventory()
+	_original_abilities = GameState.get_abilities()
+	_original_death_active = GameState.death_active
+	_original_corpse = GameState.get_corpse_info()
+	_original_respawn = {
+		"bonfire": GameState.respawn_bonfire,
+		"zone_id": GameState.respawn_zone_id,
+		"position": GameState.respawn_position,
+	}
+	_original_active_slot = GameState.active_slot
+	_original_in_combat = GameState.in_combat
+
+	# Каждый тест начинает с чистого состояния смерти/HP, чтобы не наследовать
+	# corpse-метку предыдущего теста.
+	GameState.clear_corpse()
+	GameState.death_active = false
+	GameState.set_in_combat(false)
 	_cleanup_dir()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(TEST_DIR))
 
@@ -40,6 +69,26 @@ func after_each() -> void:
 	GameState.stamina = _original_stamina
 	if _original_weapon != null:
 		GameState.set_weapon(_original_weapon)
+	GameState.set_hp(_original_hp)
+	GameState.currency = _original_currency
+	GameState.restore_inventory(_original_inventory)
+	GameState.restore_abilities(_original_abilities)
+	GameState.restore_death_state(
+		_original_death_active,
+		bool(_original_corpse.get("active", false)),
+		StringName(str(_original_corpse.get("zone_id", ""))),
+		_original_corpse.get("position", Vector2.ZERO),
+		_original_corpse.get("items", []),
+		int(_original_corpse.get("currency", 0)),
+		bool(_original_corpse.get("lost", false))
+	)
+	GameState.restore_respawn_bonfire(
+		StringName(str(_original_respawn.get("bonfire", ""))),
+		StringName(str(_original_respawn.get("zone_id", ""))),
+		_original_respawn.get("position", Vector2.ZERO)
+	)
+	GameState.active_slot = _original_active_slot
+	GameState.set_in_combat(_original_in_combat)
 	_cleanup_dir()
 
 
@@ -263,6 +312,96 @@ func test_migration_wraps_v0_state_and_rejects_newer_schema() -> void:
 
 	var mislabelled: Dictionary = SaveMigrations.migrate(0, {"state": {"stamina": 1.0}})
 	assert_false(mislabelled["ok"], "nested body marked as v0 is rejected, not emptied")
+
+
+func test_round_trip_restores_hp_inventory_abilities_and_death_state() -> void:
+	# T-26 (schema v3): всё, что нужно corpse run и EC-04.
+	GameState.clear_abilities()
+	GameState.set_hp(37.5)
+	GameState.restore_inventory([&"ash_shard"])
+	GameState.currency = 12
+	GameState.death_active = true
+	GameState.drop_corpse(&"zone_02_swamp", Vector2(64.0, -32.0))
+	GameState.restore_inventory([&"bone_charm"])
+	GameState.add_ability(&"double_jump")
+	GameState.set_respawn_bonfire(
+		&"zone_01_village",
+		&"hub",
+		Vector2(112.0, 212.0)
+	)
+
+	assert_true(SaveManager.save_slot(1, {"zone_id": "zone_02_swamp"}), "death state saves")
+
+	# Ломаем всё, чтобы загрузка была заметна.
+	GameState.set_hp(100.0)
+	GameState.clear_inventory()
+	GameState.clear_abilities()
+	GameState.clear_corpse()
+	GameState.death_active = false
+	GameState.restore_respawn_bonfire(&"", &"", Vector2.ZERO)
+
+	assert_true(SaveManager.load_slot(1), "schema v3 slot loads")
+	assert_almost_eq(GameState.hp, 37.5, 0.001, "HP is restored (AC-05.1)")
+	assert_eq(GameState.get_inventory(), [&"bone_charm"], "inventory is restored")
+	assert_true(
+		GameState.has_ability(&"double_jump"),
+		"abilities are restored (contract T-06/T-26)"
+	)
+
+	assert_true(GameState.death_active, "pending death is persisted (EC-04)")
+	assert_true(GameState.has_corpse(), "corpse marker is persisted")
+	assert_eq(GameState.corpse_zone_id, &"zone_02_swamp", "corpse zone is restored")
+	assert_eq(GameState.corpse_position, Vector2(64.0, -32.0), "corpse position is restored")
+	assert_eq(GameState.corpse_items, [&"ash_shard"], "corpse items are restored")
+	assert_eq(GameState.corpse_currency, 12, "corpse currency is restored")
+	assert_false(GameState.corpse_lost, "corpse is still recoverable")
+
+	assert_eq(GameState.respawn_bonfire, &"zone_01_village/hub", "respawn bonfire id")
+	assert_eq(GameState.respawn_zone_id, &"zone_01_village", "respawn zone id")
+	assert_eq(GameState.respawn_position, Vector2(112.0, 212.0), "respawn position")
+	assert_eq(GameState.active_slot, 1, "SaveManager remembers the active slot")
+
+
+func test_v2_save_is_migrated_to_v3_with_defaults() -> void:
+	var v2_body: Dictionary = {
+		"state": {
+			"stamina": 33.5,
+			"weapon_id": "one_handed_sword",
+			"weapon_path": SWORD_PATH,
+			"bosses_defeated": ["zone_01_boss"],
+			"boss_rewards_pending": {},
+			"currency": 7,
+		},
+		"meta": {"zone_id": "zone_01_village", "level": 2},
+	}
+
+	var migrated: Dictionary = SaveMigrations.migrate(2, v2_body)
+	assert_true(migrated["ok"], "v2 is mappable to v3")
+	var state: Dictionary = migrated["body"]["state"]
+	assert_almost_eq(float(state["hp"]), GameState.hp_max, 0.001, "hp defaults to max HP")
+	assert_eq(state["inventory"], [], "inventory defaults to empty")
+	assert_eq(state["abilities"], [], "abilities default to empty")
+	assert_false(bool(state["death_active"]), "no pending death in an old save")
+	assert_false(bool(state["death_corpse_active"]), "no corpse in an old save")
+	assert_eq(state["death_items"], [], "no corpse items")
+	assert_eq(int(state["death_currency"]), 0, "no corpse currency")
+	assert_eq(str(state["respawn_bonfire"]), "", "no checkpoint")
+	assert_almost_eq(float(state["stamina"]), 33.5, 0.001, "existing fields survive")
+	assert_eq(state["currency"], 7, "v2 currency survives")
+
+	# Файл версии 2 реально загружается и не ломает GameState.
+	_write_text(SaveManager.get_slot_path(1), SaveSerializer.encode(v2_body, 2))
+	GameState.set_hp(1.0)
+	GameState.clear_inventory()
+	GameState.clear_abilities()
+	GameState.clear_corpse()
+	assert_true(SaveManager.load_slot(1), "v2 slot loads through migration")
+	assert_almost_eq(GameState.hp, GameState.hp_max, 0.001, "migrated save has full HP")
+	assert_eq(GameState.get_inventory(), [], "migrated save has empty inventory")
+	assert_eq(GameState.get_abilities(), [], "migrated save has no abilities")
+	assert_false(GameState.death_active, "migrated save has no pending death")
+	assert_almost_eq(GameState.stamina, 33.5, 0.001, "v2 stamina is restored")
+	assert_eq(GameState.currency, 7, "v2 currency is restored")
 
 
 func test_newer_schema_file_is_not_loaded() -> void:

@@ -21,8 +21,12 @@ extends RefCounted
 ## Версия 0 — прототип до T-25: поля состояния лежали на верхнем уровне тела
 ## (`{"stamina": ..., "weapon_id": ...}`). Версия 1 — T-25 (stamina/weapon).
 ## Версия 2 — T-30: прогресс боссов, отложенные награды и валюта.
+## Версия 3 — T-26: HP, инвентарь, способности, смерть/corpse run (EC-04) и
+## чекпоинт костра.
 
-const CURRENT_VERSION: int = 2
+const CURRENT_VERSION: int = 3
+const BALANCE_PATH: String = "res://data/balance/balancing.tres"
+const FALLBACK_MAX_HP: float = 100.0
 
 const REASON_OK: String = "ok"
 const REASON_SCHEMA_TOO_NEW: String = "schema_too_new"
@@ -65,6 +69,10 @@ static func migrate(schema_version: int, body: Dictionary) -> Dictionary:
 	if version == 1:
 		migrated = _v1_to_v2(migrated)
 		version = 2
+
+	if version == 2:
+		migrated = _v2_to_v3(migrated)
+		version = 3
 
 	if version != CURRENT_VERSION:
 		return {
@@ -111,3 +119,53 @@ static func _v1_to_v2(body: Dictionary) -> Dictionary:
 		state["currency"] = 0
 	migrated["state"] = state
 	return migrated
+
+
+## v2 → v3: T-26 (HP, инвентарь, способности, смерть/corpse, чекпоинт).
+## Старые сейвы получают дефолты: полное HP, пустой инвентарь/способности,
+## отсутствие смерти и метки, пустой чекпоинт. Существующие поля не меняются.
+static func _v2_to_v3(body: Dictionary) -> Dictionary:
+	var migrated: Dictionary = body.duplicate(true)
+	var state_value: Variant = migrated.get("state", {})
+	var state: Dictionary = state_value if state_value is Dictionary else {}
+
+	if not state.has("hp"):
+		state["hp"] = _default_max_hp()
+	if not state.has("inventory"):
+		state["inventory"] = []
+	if not state.has("abilities"):
+		state["abilities"] = []
+	if not state.has("death_active"):
+		state["death_active"] = false
+	if not state.has("death_corpse_active"):
+		state["death_corpse_active"] = false
+	if not state.has("death_zone_id"):
+		state["death_zone_id"] = ""
+	if not state.has("death_position"):
+		state["death_position"] = {"x": 0.0, "y": 0.0}
+	if not state.has("death_items"):
+		state["death_items"] = []
+	if not state.has("death_currency"):
+		state["death_currency"] = 0
+	if not state.has("death_lost"):
+		state["death_lost"] = false
+	if not state.has("respawn_bonfire"):
+		state["respawn_bonfire"] = ""
+	if not state.has("respawn_zone_id"):
+		state["respawn_zone_id"] = ""
+	if not state.has("respawn_position"):
+		state["respawn_position"] = {"x": 0.0, "y": 0.0}
+
+	migrated["state"] = state
+	return migrated
+
+
+## Дефолтное HP для старых сейвов — из того же `balancing.tres`, что и игра
+## (единый источник данных, PLAN §3.1). Ресурс недоступен → безопасный fallback.
+static func _default_max_hp() -> float:
+	if not ResourceLoader.exists(BALANCE_PATH):
+		return FALLBACK_MAX_HP
+	var balance: BalancingParams = load(BALANCE_PATH) as BalancingParams
+	if balance == null or balance.max_hp <= 0.0:
+		return FALLBACK_MAX_HP
+	return balance.max_hp

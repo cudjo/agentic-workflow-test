@@ -11,6 +11,29 @@ signal player_state_changed(state_name: StringName)
 signal stamina_changed(current: float, maximum: float)
 ## HP игрока достиг HP = 0; смерть обрабатывается T-26.
 signal player_died
+## Текущее HP игрока изменилось (T-26). Потребитель: HUD (T-19).
+signal player_health_changed(current: float, maximum: float)
+## Игрок возрождён у костра после смерти (T-26, AC-05.2). Потребители:
+## экран смерти (T-22), камера/загрузка (T-17).
+signal player_respawned(zone_id: StringName, position: Vector2)
+## Бюджет смерти `t_death` истёк: экран смерти может открываться (T-22).
+## `info` — снимок метки гибели (`GameState.get_corpse_info()` + `previous_lost`).
+signal death_screen_requested(info: Dictionary)
+## Инвентарь/валюта выложены в corpse-метку на месте гибели (T-26, AC-05.2).
+signal corpse_dropped(zone_id: StringName, position: Vector2, items: Array, currency: int)
+## Предыдущая corpse-метка потеряна навсегда: игрок умер повторно до подбора
+## (T-26, EC-05). Потребители: экран смерти/карта (T-22/T-33).
+signal corpse_lost(zone_id: StringName, position: Vector2)
+## Corpse-метка подобрана по контакту; инвентарь/валюта вернулись игроку.
+signal corpse_collected(items: Array, currency: int)
+## Костёр активирован как точка возрождения (T-26). Потребители: HUD/тост,
+## карта (T-33).
+signal checkpoint_activated(zone_id: StringName, bonfire_id: StringName)
+## Флаг боя изменился (T-26, EC-06): сохранение у костра запрещено.
+signal combat_state_changed(in_combat: bool)
+## Слот успешно загружен и применён к GameState (T-25/T-26, EC-04).
+## Потребитель: DeathHandler — разрешает отложенную смерть из сейва.
+signal save_loaded(slot: int)
 
 ## Игрок получил новую способность (T-06, AC-02.1). Потребители: Player
 ## (ставит runtime-флаг через AbilityBase.activate), ability gates (T-09),

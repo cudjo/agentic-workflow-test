@@ -101,6 +101,11 @@ extends Resource
 ## Неуязвимость и смена паттерна при переходе фазы, s (T-30, AC-03.4).
 @export var boss_phase_transition_time: float = 0.45
 
+@export_group("Health")
+## Максимальное здоровье игрока (T-26, AC-05.2). Возрождение у костра
+## восстанавливает HP до этого значения; падение в пропасть наносит полный урон.
+@export var max_hp: float = 100.0
+
 @export_group("Stamina")
 ## Максимальная выносливость.
 @export var stamina_max: float = 100.0

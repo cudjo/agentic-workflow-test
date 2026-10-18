@@ -21,6 +21,10 @@ const MAX_DOUBLE_JUMPS: int = AbilityDoubleJump.AIR_JUMPS
 
 ## Movement/timing data (single source of truth).
 @export var balance: BalancingParams
+## EC-03: за этой границей по Y игрок считается упавшим в пропасть и получает
+## полный урон. `INF` — проверка выключена (зоны без пропастей/T-17 задаёт
+## limit из границ зоны).
+@export var fall_death_y: float = INF
 
 ## FSM node. Untyped on purpose: Player -> PlayerStateMachine -> states -> Player
 ## would otherwise form a cyclic class reference.
@@ -87,6 +91,7 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor() and velocity.y > 0.0:
 		velocity.y = 0.0
 
+	_check_fall_death()
 	GameState.update_stamina(delta, is_resting())
 
 
@@ -292,18 +297,49 @@ func apply_hurt() -> void:
 	state_machine.request_state(&"hurt")
 
 
-## Входящий урон врага переводит игрока в Hurt (T-12): отбрасывание из
-## `Hurtbox` больше не «уносит» игрока в idle без реакции. HP/блок — T-26/T-11.
-func _on_hurtbox_damaged(_damage: Damage) -> void:
-	if state_machine != null:
+## Наносит урон игроку (T-26): HP живёт в GameState, смерть при HP <= 0.
+## `ignore_iframes` — только для падения в пропасть (EC-03: полный урон,
+## рывок/перекат не спасают). Возвращает оставшееся HP.
+func apply_damage(amount: float, ignore_iframes: bool = false) -> float:
+	if is_dead or amount <= 0.0:
+		return GameState.hp
+	if not ignore_iframes and is_invulnerable():
+		return GameState.hp
+
+	var remaining: float = GameState.damage_hp(amount)
+	if remaining <= 0.0:
+		kill()
+	else:
 		apply_hurt()
+	return remaining
+
+
+## EC-03: падение в пропасть наносит полный урон (100% max HP) и убивает
+## даже в i-frames рывка.
+func apply_fall_damage() -> void:
+	apply_damage(GameState.hp_max, true)
+
+
+## Граница смерти от падения (T-17/тесты). `INF` отключает проверку.
+func set_fall_limit_y(value: float) -> void:
+	fall_death_y = value
+
+
+## Входящий урон врага (T-12) уменьшает HP и переводит в Hurt (T-26).
+## Блок/парирование (T-11) могут отменить урон до этого вызова.
+func _on_hurtbox_damaged(damage: Damage) -> void:
+	if damage != null:
+		apply_damage(damage.amount)
 
 
 ## Terminal death: interrupts any action immediately (EC-01).
+## Бюджет `t_death`, corpse-метку и возрождение обрабатывает DeathHandler.
 func kill() -> void:
 	if is_dead:
 		return
 	is_dead = true
+	GameState.set_hp(0.0)
+	stop_attack_hitbox()
 	state_machine.force_state(&"death")
 
 
@@ -312,8 +348,17 @@ func reset_player() -> void:
 	is_dead = false
 	velocity = Vector2.ZERO
 	on_landed()
+	stop_attack_hitbox()
 	InputManager.consume_coyote_time(&"jump")
 	state_machine.force_state(&"idle")
+
+
+## EC-03: проверка выхода за границу мира/пропасти (раз в physics-tick).
+func _check_fall_death() -> void:
+	if is_dead or not is_finite(fall_death_y):
+		return
+	if global_position.y > fall_death_y:
+		apply_fall_damage()
 
 
 # ------------------------------------------------------------------------------

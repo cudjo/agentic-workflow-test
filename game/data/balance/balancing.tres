@@ -43,6 +43,7 @@ enemy_knockback_friction = 600.0
 enemy_stuck_timeout = 1.2
 boss_death_duration = 1.1
 boss_phase_transition_time = 0.45
+max_hp = 100.0
 stamina_max = 100.0
 e_attack = 12.0
 e_block = 8.0
