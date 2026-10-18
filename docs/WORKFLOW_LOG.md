@@ -282,6 +282,13 @@
 - **Разблокированы:** T-17 (переходы), T-30 (боссы).
 - **Решение:** слот освобождён (T-14) → запуск **T-30** (Boss framework + боссы 1–2, backend) — голова глубочайшей цепочки боссов (T-30→T-31→T-32), параллельно с T-06 (способности).
 
+## 2026-10-18 — Orchestrator: Приёмка T-06, запуск T-15
+
+- **T-06 принят:** AbilitySystem (AbilityBase/Registry) + двойной прыжок, коммит `616cda2`, GUT **175/175, 1817 asserts** (+8 тестов). Кросс-правки `EventBus` (+`ability_acquired`), `GameState` (+`abilities`), Player/FSM/states — на контроль Guardian.
+- **⚠️ Интеграционный зазор (трек до QA):** способности пока НЕ сериализуются SaveManager'ом — T-06 задокументировал контракт (`abilities: Array[String]`, schema bump + миграция). Сложу в T-26 (следующий save-интегрирующий бэкенд) либо отдельным проходом перед QA.
+- **Разблокированы:** T-07/T-08/T-09 (способности), T-19 (HUD — зависимости T-18/T-06/T-10 все готовы).
+- **Решение:** слот освобождён (T-06) → запуск **T-15** (зоны 2–3 «Болото»/«Горный перевал», dba) — на критическом пути боссов (T-31 ждёт T-15), параллельно с T-30 (боссы).
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -423,3 +430,46 @@
 - **Ограничения:** гейт-подсказка и открытие завала — T-09; HUD-слоты — T-19; сейв набора способностей — T-25. Godot в системе не установлен, использован portable 4.4.1 (совместим с 4.4+). Статус T-06 в `docs/TASKS.json` не менялся (`pending` до QA/Guardian).
 - **Коммит:** `616cda2` «T-06: AbilitySystem + двойной прыжок» (на `v2` поверх T-14/T-25; исходный коммит ветки `ee5a58e`, перенесён cherry-pick). Чистый worktree `616cda2` — import/GUT/smoke зелёные.
 - **Примечание:** в `docs/WORKFLOW_LOG.md` на момент записи была незакоммиченная append-only запись Orchestrator (приёмка T-14) — она вошла в docs-коммит вместе с этой записью; её содержимое не правил.
+
+## 2026-10-18 — T-30 выполнен (tasker-backend)
+
+- **Skills:** загружен `godot` (Reason: типизированный GDScript, `Resource`/`class_name`, CharacterBody2D + EnemyStateMachine, Area2D hitbox/hurtbox, `tres`-данные, GUT/headless). Другие skills не требовались: задача не затрагивает React/PostgreSQL/Docker/Go/Python.
+- **Задача:** T-30 «Boss framework + боссы 1–2» (PLAN §2.1/§3.1, SPEC US-03/AC-03.4/EC-09, TASKS T-30). Статус TASKS не менялся (pending до QA/Guardian).
+- **Контракт фаз:** `BossData` + `BossPhaseData` (`data/bosses/*.tres`): 2–3 фазы, `hp_threshold_ratio` 1.0 / 0.66 / 0.33 (`BossData.PHASE_TWO_THRESHOLD`/`PHASE_THREE_THRESHOLD`, параметризованы по фазам). `BossBase` при переходе меняет `pattern_id`, скорость/тайминги/урон/размер хитбокса, эмитит `EventBus.boss_phase_changed(boss_id, index, title)` — `title` = «ФАЗА II»/«ФАЗА III» для HUD T-19 (AC-03.4). Дополнительно: `boss_fight_started`, `boss_health_changed`, `boss_defeated`, `boss_reward_granted`.
+- **Контракт награды/EC-09:** при смерти `BossBase` вызывает `GameState.mark_boss_defeated(id)` + `GameState.queue_boss_reward(id, zone_id, reward_id, gold)`. Если игрок жив — награда выдаётся сразу (`claim_boss_reward`, +`currency`, событие); если мёртв — остаётся в `boss_rewards_pending` и выдаётся `BossArena` при следующем входе в зону (`claim_pending_boss_rewards(zone_id)`). Флаг и очередь персистятся SaveManager (schema v1→v2); арена при загруженном флаге не спавнит босса и открывает барьеры.
+- **Арена:** `BossArena` (`boss_base/boss_arena.gd`): вход игрока через `Trigger` закрывает `StaticBody2D`-барьеры группы `arena_barrier` (слой world), ограничивает босса `arena_bounds`; после победы открывает выходы. Сцены: `zone_01/boss_arena_zone_01.tscn`, `zone_02/boss_arena_zone_02.tscn` (программные заглушки через `_draw`, без внешнего арта).
+- **Боссы:** `Zone01Boss` — ближний (`cleave` → `lunge` → `frenzy`, рывки/ускорение по фазам); `Zone02Boss` — дальний/вызовы (`bolt` → `volley` 3 снаряда → `summon` 2 снаряда + призывы, держит `preferred_distance`, лимит 4 живых вызова, призывы убираются со смертью). Снаряды — `EnemyProjectile`, призывы — `Enemy` (переиспользование T-10/T-12).
+- **Файлы:** `data/bosses/` (3 скрипта + 2 `.tres`), `entities/bosses/boss_base/`, `entities/bosses/zone_01/`, `entities/bosses/zone_02/`, `tests/unit/test_boss.gd` (11 тестов).
+- **Кросс-файловые правки (на контроль Guardian):** `autoload/EventBus.gd` (+5 boss-сигналов), `autoload/GameState.gd` (+boss/currency API), `core/save/save_serializer.gd` (+boss-поля), `core/save/save_migrations.gd` (CURRENT_VERSION 1→2, `_v1_to_v2`), `data/balance/balancing_params.gd`/`balancing.tres` (`boss_death_duration`, `boss_phase_transition_time`), `tests/unit/test_save.gd` (жёстко зашитая `schema_version:1` заменена на `SaveMigrations.CURRENT_VERSION`).
+- **Evidence (portable Godot 4.4.1-stable, headless, `GODOT_PATH`):**
+  - Базовая линия HEAD до задачи: GUT 175/175, 1817 asserts.
+  - Чистый worktree коммита `ef53c1c`: `--headless --import` exit 0 (без script/parse errors); GUT `-gdir=res://tests -ginclude_subdirs` — **186/186 passed, 1992 asserts** (175 базовых + 11 новых, 0 падений).
+  - Smoke `--headless --path game --quit` exit 0; отдельные арены `zone_01`/`zone_02` с `--quit-after 120` exit 0.
+  - FPS long-fight (600 physics-кадров, фаза III zone_02 с призывами/снарядами): `Performance.TIME_PHYSICS_PROCESS` p95 = **0.00773 s** (< 1/60 = 0.01667 s), first100 = 0.00504 s, last100 = 0.00533 s — деградации нет.
+  - Совмещённая проверка на текущем HEAD `a923ea9` (T-30 + T-15): GUT **196/196, 2198 asserts** — зоны 2–3 не сломаны.
+- **Ограничения/далее:** арены — самостоятельные сцены; встраивание в `zone_01_village` (T-14) и `zone_02_swamp` (T-15) — при интеграции T-15/T-17, сцена готова к instance. Награда — золото/очередь (предметы/очки — T-29); HUD-панель — T-19 (сигналы готовы). Арт — заглушки. Независимые приёмка QA и ревью Guardian не выполнялись Tasker'ом.
+
+## 2026-10-18 — T-15 выполнен (tasker-dba)
+
+- **Skills:** загружен `godot` (типизированный GDScript, `Resource`/`class_name`, TileMapLayer, CanvasLayer/Control `_draw`, PointLight2D/CanvasModulate, PackedScene/ResourceSaver-генератор, GUT/headless — профильный стек зон и визуала). Другие skills не требовались: задача не затрагивает React/PostgreSQL/Docker/Go/Python.
+- **Задача:** T-15 «Зоны 2–3 „Болото“ и „Горный перевал“» (TASKS T-15, DESIGN §8.6, SPEC §4.1/§5, PLAN §2.1/§2.3/§3.6). Статус TASKS не менялся (`pending` до QA/Guardian).
+- **Подход:** генератор `tests/tools/build_zones_02_03.gd` на пайплайне T-13 по образцу T-14: `ZoneScene` + `ZoneData`, общий `zone_terrain.tres` (строки зон 2/3 — индексы 1 и 2), props `bonfire`/`chest`/`rubble`, баннер, `WorldBounds`. Арт — программные заглушки в палитрах зон; туман и параллакс — лёгкие скрипты без шейдеров/партиклов.
+- **Зона 2 «Болото» (`zone_02_swamp`):** палитра `green-9` (небо), `brown` (земля), `gold-9` (акцент/пламя), `steel-9` (вода hazard), ambient 0.36. Backdrop: мутное небо, мёртвые деревья, мох, топь, болотные огни; Foreground: камыш, ряска, пузыри. Туман `zone_02_fog.gd`: CanvasLayer 4, 2 полупрозрачных покрывала + 5 мягких клубов на радиальном градиенте, дрейф в `_process` (7 узлов, без аллокаций). Hazard-вода двумя плёсами (колонки 8–12, 16–18, ряд 13) поверх пола. Костёр (96, 224), сундук за dash-gate на карнизе.
+- **Зона 3 «Горный перевал» (`zone_03_mountains`):** палитра `night-9`, `steel` (порода), `steel-3` (холодный акцент/лёд), `stone-5` (hazard-шипы), `bone` (снег), ambient 0.36. Параллакс `zone_03_parallax.gd`: 3 хребта (scroll_factors 0.08/0.18/0.32, реакция на `Camera2D`, без камеры — ветровой дрейф), непрерывная снеговая кромка, 18 штрихов ветра; Foreground — 26 снежинок и позёмка. Две вертикальные шахты (центральная под wall climb: стены 11/14, верхняя полка; вторая — камин 20/24), костёр (96, 224) с тёплым пламенем `gold-3` через `zone_03_scene.gd` (наследник `ZoneScene`; accent остаётся холодным).
+- **Связность (сверено с T-14):** `village.gate → zone_02_swamp/west_gate`; `zone_02_swamp.west_gate → zone_01_village/from_gate`; `zone_02_swamp.east_gate ↔ zone_03_mountains.north_pass`; `zone_03_mountains.south_ledge → zone_01_village/from_ledge`; `village.ledge → zone_03_mountains/south_ledge`. В зоне 1 нет входа `east_gate` (это расхождение шаблона T-13), поэтому обратный путь болота ведёт в существующий `from_gate`, а гор — в `from_ledge`. Тест обходит все выходы всех трёх зон и проверяет существование целевой зоны и точки входа.
+- **Ability gates (SPEC §4.1, заглушки T-09):** болото — `Props/DashGate` (`Rubble`, meta `ability_gate=dash`, `future_gate=T-09`) на карнизе с сундуком; горы — `Props/WallClimbGate` (`wall_climb`) у входа в шахту и `Props/DashGate` (`dash`) на карнизе. Родные зоны dash/wall climb — зона 2, поэтому оба «чужих» применения в зоне 3 закрывают критерий «способность вне родной зоны». Над dash-карнизами добавлены сплошные козырьки (ряд 7), чтобы препятствие нельзя было перепрыгнуть.
+- **Тесты:** `tests/integration/test_zone_02_03.gd` — 10 GUT-тестов: загрузка через `SceneRouter`, палитры/ambient/пламя, связность всех входов-выходов, туман (слой, клубы, дрейф) и hazard-вода, параллакс (слои, камера, ветер, снег), вертикальные шахты, ability gates (native + foreign), входы/выходы/костры/границы, сигнал перехода, headless-бюджет 60 кадров < 1 с.
+- **Evidence (portable Godot 4.4.1-stable, headless, `GODOT_PATH`):**
+  - Базовая линия HEAD `ef53c1c` (T-30): GUT 186/186, 1992 asserts.
+  - Чистый worktree коммита `a923ea9`: `--headless --import` exit 0; GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **196/196 passed, 2198 asserts** (186 базовых + 10 новых, 0 падений); отдельный прогон нового файла — 10/10, 206 asserts.
+  - Smoke `--headless --path game --quit` exit 0; отдельные сцены `zone_02_swamp.tscn` и `zone_03_mountains.tscn` с `--quit-after 120` — exit 0, без скрипт-ошибок.
+  - Визуальный smoke: окно 480×270, OpenGL-совместимый рендер обеих зон в PNG (вне репо) — читаются палитры, мягкий туман и его дрейф, три слоя хребтов со снегом, штрихи ветра, шахты, костры, hazard-вода.
+- **Найденные/исправленные проблемы:**
+  1. Туман из прямоугольных `ColorRect` выглядел «плитами» — заменён на `TextureRect` с радиальным градиентом (мягкие клубы) + равномерные покрывала; по-прежнему 7 узлов.
+  2. Снег хребтов рисовался хеш-точками 2×2 и читался пунктиром — заменён на непрерывную 1-px кромку (ближний слой `bone`, средний `stone-5`).
+  3. Dash-препятствия можно было перепрыгнуть — добавлены сплошные козырьки над карнизами (32 px просвета, завал высотой 16–24 px).
+  4. Низкая видимость болота при ambient 0.30 делала сцену почти чёрной — ambient поднят до 0.36, «слепоту» создаёт туман, а не потеря деталей.
+  5. Обратные ссылки в шаблон T-13 (`east_gate` для деревни) не соответствуют фактическим входам T-14 — использованы `from_gate`/`from_ledge`.
+- **Кросс-файловые правки:** нет — только новые файлы в `world/zones/zone_02_swamp/`, `world/zones/zone_03_mountains/`, `data/zones/`, `tests/`. `ZoneScene`, `ZoneData`, тайлсет и props T-13 не менялись; `docs/TASKS.json` не трогал.
+- **Ограничения:** физика/логика dash и wall climb — T-07/T-08, сам gate и подсказка «Нужно: …» — T-09; чекпоинт-сохранение костров — T-26; полноценный перф-пасс с рендером — T-37 (здесь headless-замер и визуальный smoke). Арт — заглушки. Независимые приёмка QA и ревью Guardian не выполнялись Tasker'ом.
+- **Коммит:** `a923ea9` «T-15: зоны 2–3 «Болото» и «Горный перевал»». Запись журнала идёт отдельным docs-коммитом; в него входят уже лежавшие в рабочем дереве незакоммиченные append-only записи Orchestrator (запуск T-15) и T-30 — их содержимое не правил.
