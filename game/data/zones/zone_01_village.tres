@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="ZoneData" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://world/zones/zone_entry_point.gd" id="1_xprix"]
+[ext_resource type="Script" path="res://world/zones/zone_exit.gd" id="2_in5qn"]
+[ext_resource type="Script" path="res://world/zones/zone_palette.gd" id="3_kdcj8"]
+[ext_resource type="Script" path="res://world/zones/zone_data.gd" id="4_bww81"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="5_fjmsc"]
+
+[sub_resource type="Resource" id="Resource_bt28u"]
+script = ExtResource("1_xprix")
+id = &"start"
+position = Vector2(100, 214)
+
+[sub_resource type="Resource" id="Resource_ivvjr"]
+script = ExtResource("1_xprix")
+id = &"from_gate"
+position = Vector2(245, 214)
+
+[sub_resource type="Resource" id="Resource_fy6id"]
+script = ExtResource("1_xprix")
+id = &"from_ledge"
+position = Vector2(380, 166)
+
+[sub_resource type="Resource" id="Resource_qx25x"]
+script = ExtResource("2_in5qn")
+id = &"gate"
+position = Vector2(212, 214)
+size = Vector2(32, 32)
+target_zone_id = &"zone_02_swamp"
+target_entry_id = &"west_gate"
+
+[sub_resource type="Resource" id="Resource_ko108"]
+script = ExtResource("2_in5qn")
+id = &"ledge"
+position = Vector2(408, 160)
+size = Vector2(12, 20)
+target_zone_id = &"zone_03_mountains"
+target_entry_id = &"south_ledge"
+
+[sub_resource type="Resource" id="Resource_ig620"]
+script = ExtResource("3_kdcj8")
+background = Color(0.101961, 0.121569, 0.180392, 1)
+ground = Color(0.231373, 0.180392, 0.133333, 1)
+accent = Color(0.752941, 0.541176, 0.243137, 1)
+hazard = Color(0.478431, 0.164706, 0.141176, 1)
+
+[resource]
+script = ExtResource("4_bww81")
+id = &"zone_01_village"
+display_name = "Деревня-бастион"
+palette = SubResource("Resource_ig620")
+ambient_level = 0.42
+tileset = ExtResource("5_fjmsc")
+entry_points = Array[ExtResource("1_xprix")]([SubResource("Resource_bt28u"), SubResource("Resource_ivvjr"), SubResource("Resource_fy6id")])
+exits = Array[ExtResource("2_in5qn")]([SubResource("Resource_qx25x"), SubResource("Resource_ko108")])
