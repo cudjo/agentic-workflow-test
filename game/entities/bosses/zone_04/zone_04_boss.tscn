@@ -1,0 +1,62 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://entities/bosses/zone_04/zone_04_boss.gd" id="1_boss"]
+[ext_resource type="Resource" path="res://data/bosses/zone_04_boss.tres" id="2_data"]
+[ext_resource type="Script" path="res://core/combat/hitbox.gd" id="3_hitbox"]
+[ext_resource type="Script" path="res://core/combat/hurtbox.gd" id="4_hurtbox"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(28, 42)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurt"]
+size = Vector2(26, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_attack"]
+size = Vector2(34, 30)
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_visual"]
+size = Vector2(28, 42)
+
+[node name="Zone04Boss" type="CharacterBody2D" groups=["bosses"]]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_boss")
+data = ExtResource("2_data")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Visual" type="Sprite2D" parent="."]
+modulate = Color(0.55, 0.38, 0.24, 1)
+texture = SubResource("PlaceholderTexture2D_visual")
+
+[node name="Body" type="Polygon2D" parent="Visual"]
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(-14, -21, 14, -21, 14, 21, -14, 21)
+
+[node name="Hitbox" type="Area2D" parent="."]
+position = Vector2(-18, 0)
+collision_layer = 16
+collision_mask = 32
+monitoring = false
+monitorable = false
+script = ExtResource("3_hitbox")
+hit_layer = 16
+target_mask = 32
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+shape = SubResource("RectangleShape2D_attack")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 64
+collision_mask = 0
+monitoring = false
+monitorable = true
+script = ExtResource("4_hurtbox")
+hurt_layer = 64
+apply_reactions = false
+knockback_target_path = NodePath("..")
+flash_target_path = NodePath("../Visual")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("RectangleShape2D_hurt")

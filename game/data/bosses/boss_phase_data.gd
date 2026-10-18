@@ -12,6 +12,10 @@ extends Resource
 ##   фаза II  — 66..33% HP  (`hp_threshold_ratio = 0.66`)
 ##   фаза III — 33..0% HP   (`hp_threshold_ratio = 0.33`)
 ## Значения параметризованы: другой босс может иметь 2 фазы и иной порог.
+##
+## Зоны опасности окружения (T-31) описаны группой `hazard_*`: сколько зон
+## срабатывает за атаку, их telegraph/active-окна, урон и отбрасывание.
+## Конкретную геометрию (колонны шахт / руны на полу) задаёт подкласс босса.
 
 @export_group("Identity")
 ## Человекочитаемое имя фазы для HUD-баннера («ФАЗА II»).
@@ -62,6 +66,19 @@ extends Resource
 ## Сколько вызовов (врагов) появляется за атаку; 0 — паттерн без вызовов.
 @export var summon_count: int = 0
 
+@export_group("Zone hazards")
+## Сколько зон опасности (камнепад в шахтах / руны-ловушки) срабатывает
+## за атаку; 0 — паттерн без опасностей окружения (T-31).
+@export var hazard_count: int = 0
+## Telegraph зоны опасности до срабатывания, s (читаемость удара).
+@export var hazard_telegraph: float = 0.5
+## Активное окно зоны опасности, s.
+@export var hazard_active: float = 0.3
+## Урон зоны опасности (до формулы/множителей баланса).
+@export var hazard_damage: float = 8.0
+## Сила отбрасывания зоны опасности до `balancing.knockback_scale`.
+@export var hazard_knockback: float = 100.0
+
 
 ## Полная длительность цикла атаки (windup + active + recovery).
 func get_attack_total_time() -> float:
@@ -87,5 +104,9 @@ func is_valid() -> bool:
 	if projectile_count < 0 or projectile_speed <= 0.0 or projectile_lifetime <= 0.0:
 		return false
 	if projectile_spread_degrees < 0.0 or summon_count < 0:
+		return false
+	if hazard_count < 0 or hazard_damage < 0.0 or hazard_knockback < 0.0:
+		return false
+	if hazard_count > 0 and (hazard_telegraph <= 0.0 or hazard_active <= 0.0):
 		return false
 	return true

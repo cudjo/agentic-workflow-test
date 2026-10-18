@@ -1,0 +1,111 @@
+[gd_resource type="Resource" script_class="BossData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://data/bosses/boss_phase_data.gd" id="1_phase"]
+[ext_resource type="Script" path="res://data/bosses/boss_reward_data.gd" id="2_reward"]
+[ext_resource type="Script" path="res://data/bosses/boss_data.gd" id="3_boss"]
+[ext_resource type="PackedScene" path="res://entities/enemies/undead/undead_enemy.tscn" id="4_summon"]
+
+[sub_resource type="Resource" id="Resource_phase_seal"]
+script = ExtResource("1_phase")
+title = "ФАЗА I"
+pattern_id = &"seal_cleave"
+hp_threshold_ratio = 1.0
+move_speed = 34.0
+preferred_distance = 0.0
+lunge_speed = 0.0
+attack_range = 34.0
+attack_cooldown = 1.5
+windup = 0.6
+active = 0.18
+recovery = 0.35
+attack_damage = 10.0
+attack_knockback = 140.0
+attack_size = Vector2(34, 32)
+attack_offset = Vector2(18, 0)
+projectile_count = 0
+projectile_speed = 100.0
+projectile_lifetime = 2.0
+projectile_spread_degrees = 0.0
+summon_count = 0
+hazard_count = 0
+hazard_telegraph = 0.55
+hazard_active = 0.4
+hazard_damage = 0.0
+hazard_knockback = 0.0
+
+[sub_resource type="Resource" id="Resource_phase_traps"]
+script = ExtResource("1_phase")
+title = "ФАЗА II"
+pattern_id = &"trap_ritual"
+hp_threshold_ratio = 0.66
+move_speed = 44.0
+preferred_distance = 0.0
+lunge_speed = 0.0
+attack_range = 46.0
+attack_cooldown = 1.25
+windup = 0.5
+active = 0.18
+recovery = 0.32
+attack_damage = 13.0
+attack_knockback = 160.0
+attack_size = Vector2(36, 32)
+attack_offset = Vector2(20, 0)
+projectile_count = 0
+projectile_speed = 100.0
+projectile_lifetime = 2.0
+projectile_spread_degrees = 0.0
+summon_count = 0
+hazard_count = 3
+hazard_telegraph = 0.55
+hazard_active = 0.4
+hazard_damage = 9.0
+hazard_knockback = 100.0
+
+[sub_resource type="Resource" id="Resource_phase_break"]
+script = ExtResource("1_phase")
+title = "ФАЗА III"
+pattern_id = &"seal_break"
+hp_threshold_ratio = 0.33
+move_speed = 56.0
+preferred_distance = 0.0
+lunge_speed = 30.0
+attack_range = 58.0
+attack_cooldown = 0.95
+windup = 0.4
+active = 0.18
+recovery = 0.26
+attack_damage = 16.0
+attack_knockback = 190.0
+attack_size = Vector2(38, 34)
+attack_offset = Vector2(22, 0)
+projectile_count = 0
+projectile_speed = 100.0
+projectile_lifetime = 2.0
+projectile_spread_degrees = 0.0
+summon_count = 2
+hazard_count = 4
+hazard_telegraph = 0.45
+hazard_active = 0.35
+hazard_damage = 12.0
+hazard_knockback = 120.0
+
+[sub_resource type="Resource" id="Resource_reward"]
+script = ExtResource("2_reward")
+id = &"seal_shard"
+gold = 260
+
+[resource]
+script = ExtResource("3_boss")
+id = &"zone_04_seal_warden"
+display_name_key = "boss.zone_04_seal_warden.name"
+display_name = "Хранитель Печати"
+zone_id = &"zone_04_ruins"
+max_hp = 320.0
+knockback_resistance = 0.85
+poise = 6.0
+body_size = Vector2(28, 42)
+hurtbox_size = Vector2(26, 40)
+body_color = Color(0.55, 0.38, 0.24, 1)
+phases = Array[ExtResource("1_phase")]([SubResource("Resource_phase_seal"), SubResource("Resource_phase_traps"), SubResource("Resource_phase_break")])
+summon_scene = ExtResource("4_summon")
+reward = SubResource("Resource_reward")

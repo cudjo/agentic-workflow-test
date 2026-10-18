@@ -1,0 +1,76 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://entities/bosses/boss_base/boss_arena.gd" id="1_arena"]
+[ext_resource type="PackedScene" path="res://entities/bosses/zone_03/zone_03_boss.tscn" id="2_boss"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
+size = Vector2(480, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_barrier"]
+size = Vector2(8, 224)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_trigger"]
+size = Vector2(456, 200)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_shaft"]
+size = Vector2(20, 112)
+
+[node name="BossArenaZone03" type="Node2D"]
+script = ExtResource("1_arena")
+bounds = Rect2(8, 40, 464, 184)
+sky_color = Color(0.0627451, 0.0745098, 0.109804, 1)
+ground_color = Color(0.309804, 0.419608, 0.478431, 1)
+accent_color = Color(0.498039, 0.603922, 0.658824, 1)
+barrier_color = Color(0.878431, 0.709804, 0.415686, 0.9)
+
+[node name="Ground" type="StaticBody2D" parent="."]
+position = Vector2(240, 232)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
+shape = SubResource("RectangleShape2D_ground")
+
+[node name="ShaftLeft" type="StaticBody2D" parent="."]
+position = Vector2(204, 96)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ShaftLeft"]
+shape = SubResource("RectangleShape2D_shaft")
+
+[node name="ShaftRight" type="StaticBody2D" parent="."]
+position = Vector2(276, 96)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ShaftRight"]
+shape = SubResource("RectangleShape2D_shaft")
+
+[node name="BarrierLeft" type="StaticBody2D" parent="." groups=["arena_barrier"]]
+position = Vector2(4, 112)
+collision_layer = 0
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="BarrierLeft"]
+shape = SubResource("RectangleShape2D_barrier")
+
+[node name="BarrierRight" type="StaticBody2D" parent="." groups=["arena_barrier"]]
+position = Vector2(476, 112)
+collision_layer = 0
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="BarrierRight"]
+shape = SubResource("RectangleShape2D_barrier")
+
+[node name="Trigger" type="Area2D" parent="."]
+position = Vector2(240, 120)
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Trigger"]
+shape = SubResource("RectangleShape2D_trigger")
+
+[node name="Boss" parent="." instance=ExtResource("2_boss")]
+position = Vector2(240, 196)
