@@ -78,6 +78,9 @@ signal faction_quest_completed(
 ## Игрок выбрал фракцию (T-27, US-06). `faction_id` — стабильный id для
 ## концовки T-32; `display_name` — имя для UI.
 signal faction_chosen(faction_id: StringName, display_name: String)
+## Сюжет требует выбрать фракцию (US-06). `reason` — повод/текст под заголовком
+## (пусто — стандартная формулировка). Потребитель — экран выбора (T-24).
+signal faction_choice_requested(reason: String)
 
 ## Зона загружена и ZoneData применён (T-13). Потребители: баннер зоны (T-14),
 ## экран загрузки/переходы (T-17), HUD (T-19).
