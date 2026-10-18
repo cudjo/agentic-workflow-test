@@ -435,6 +435,29 @@
 - **Все 36 задач T-01…T-36 + Integration-01 выполнены.** Осталась сборка → QA (T-37) → Guardian → гейт merge.
 - **Решение:** запуск **Integration-02** (финальная сборка: сцена-флоу MainMenu→Main→зона, монтаж HUD/DialogueScreen/DeathHandler, interact-система игрока, расстановка арен боссов и NPC, reset «Новой игры»).
 
+## 2026-10-18 — Orchestrator: Приёмка Integration-02, запуск QA (T-37)
+
+- **Integration-02 принят:** финальная сборка (флоу MainMenu→Main→зона, монтаж HUD/DialogueScreen/DeathHandler, interact-система, арены боссов 1–4 в зоны, NPC в хаб, reset «Новой игры», EC-06 на аренах), коммит `c7c0d62`, GUT **518/518, 7047 asserts** (+8 тестов, flow-смоук `ASSEMBLY_FLOW_OK`).
+- **Вся имплементация (T-01…T-36 + Integration-01/02) завершена.** Осталась сквозная приёмка QA + финальное ревью Guardian.
+- **Решение:** запуск **QA (T-37)** — независимый сквозной e2e-пасс по SPEC/DESIGN (меню → зона 1 → 3 способности → бой → костёр → смерть → фракции → 5 боссов → финал), a11y-чеклист DESIGN §9.6, NFR. Артефакт — `docs/QA.md`.
+
+## 2026-10-18 — Orchestrator: Приёмка QA (T-37) — FAIL, цикл доработки 1
+
+- **QA (T-37): ❌ FAIL.** Артефакт `docs/QA.md` (24.5 КБ), ревизия `c7c0d62`. GUT 518/518 (1 флейк perf-теста). E2E 83/90. NFR: FPS 720 (ok), загрузка зон 0.44–0.83 с (≤3 с, ok), 20 save/load +0.01% (ok).
+- **9 блокеров:** (1) способности недостижимы — нет AbilityPickup в зонах; (2) нет врагов в зонах (EnemySpawner не размещён); (3) боссы 1–4 невидимы (`self_modulate.a=0`); (4) выбор фракции не триггерится (`faction_choice_requested` не эмитится); (5) ремап недостижим (пункт disabled, обработчик `pass`); (6) журнал/фракции недостижимы (нет входа); (7) a11y: WorldMap EN overflow, HUD не масштабируется на 150%, runtime-ошибка `DeathScreen._retranslate`; (8) AC-02.4 подсказка «Нужно: …» обрезается; (9) EC-13 (потеря фокуса окна) не реализован.
+- **Решение (цикл доработки 1):** запуск 2 параллельных фикс-задач — **Fix-1** (контент/видимость/EC-13) и **Fix-2** (навигация/a11y). После — повторный QA (T-37).
+
+## 2026-10-18 — Orchestrator: Приёмка Fix-1, ожидание Fix-2
+
+- **Fix-1 принят:** размещение способностей (double_jump/dash/wall_climb в зоны 1/2/3), врагов (EnemySpawner в зоны 1–4, все 4 типа), видимость боссов (`show_placeholder_art=false` вместо `self_modulate.a=0`), триггер выбора фракции (по `quest_completed`+`dialogue_finished`), EC-13 (focus out → pause + PauseMenu), коммит `8ecab0f`, GUT **518/518, 7047 asserts**.
+- **Решение:** жду Fix-2 (навигация/a11y), затем повторный QA (T-37).
+
+## 2026-10-18 — Orchestrator: Приёмка Fix-2, запуск Integration-03 (интеграция веток)
+
+- **Fix-2 принят:** навигация (ремап/журнал/фракции достижимы), a11y (WorldMap/HUD 150%/DeathScreen/подсказка AC-02.4), коммит `c38ff72`, GUT **518/518, 7060 asserts** (qa_a11y 105/106; остаток fail — контур врагов D10, вне Fix-2). Кросс-правки `Settings.gd`/`MainMenu.gd`/`Remap.gd`/`Journal`/`Factions`, `project.godot` (+journal/factions), locale CSV, `test_menu.gd` — на контроль Guardian.
+- **⚠️ Ветки:** Fix-1 (`8ecab0f`, worktree `fix-1-world`) и Fix-2 (`c38ff72`, worktree `fix2-nav-a11y`) — отдельные ветки от `c7c0d62`. Main их не содержит (проверено `worktree_list`). Нужна интеграция в main.
+- **Решение:** запуск **Integration-03** (интеграция веток фиксов в main через cherry-pick + верификация). Файлы фиксов не пересекаются → конфликтов не ожидается. Затем повторный QA (T-37).
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -954,3 +977,13 @@
 - **Проверки (portable Godot 4.4.1-stable, `GODOT_PATH`, worktree `fix-1-world`):** `--headless --path game --import` — exit 0, без parse/script-ошибок; GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **518/518 passed, 7047 asserts** (без регрессий); smoke-проба (untracked) — у зон 1–4 pickups/spawners/enemies/arena/boss visible, контактный подбор `double_jump`, триггер фракции открывает `FactionChoice`, EC-13 `paused=true` + `PauseMenu`, resume снимает паузу; `--headless --path game --quit-after 180` — exit 0 без SCRIPT ERROR.
 - **Кросс-файловые правки (на контроль Guardian):** `entities/bosses/boss_base/boss_arena.gd` (+`show_placeholder_art`), `Main.gd` (+сигналы/пауза), сцены зон 1–4 (`world/zones/**`, добавлены pickup/spawner/entries, арены). `ui/**`, `assets/locale/`, `MainMenu.gd`, `docs/TASKS.json`, `game/tests/_probe.gd`, `opencode.jsonc` не трогались.
 - **Ограничения:** `wall_climb` в зоне 3 стоит в левой ветке (доступна со входа с уступа зоны 1); вход из зоны 2 в зону 3 ведёт в правую ветку — туда игрок возвращается через зону 2/1. Это следует из текущей геометрии зоны, новых проходов не добавлялось. Независимые QA/Guardian не выполнялись.
+
+## 2026-10-19 — Integration-03 выполнен (tasker-devops)
+
+- **Skills:** загружен `godot` (верификация Godot-проекта: headless import, GUT, smoke). Другие skills не требовались.
+- **Действие:** сведение веток Fix-1 `8ecab0f` и Fix-2 `c38ff72` в рабочую ветку `v2` (HEAD до интеграции `c7c0d62`) через `git cherry-pick`; конфликтов нет, содержимое кода/тестов не правилось.
+- **Расхождение с постановкой:** задача называла ветку `main`, но рабочая директория фактически на `v2` (`c7c0d62`). Локальный/remote `main` = `97a1296` — устаревший предок `v2` (0 уникальных коммитов). Интеграция выполнена в `v2`; `main` не изменялся.
+- **Коммиты:** `70d8d38` — Fix-1 (cherry-pick `8ecab0f`); `5f92c0e` — Fix-2 (cherry-pick `c38ff72`); итоговый коммит Integration-03 (workflow evidence). Незакоммиченные записи Orchestrator в `docs/WORKFLOW_LOG.md` восстановлены (23 строки) без потерь.
+- **Проверки (portable Godot 4.7.2-stable, headless, из `game/`):** `--headless --import` — exit 0; GUT `-gdir=res://tests -ginclude_subdirs -gexit` — прогон 1: 517/518 (fail perf `test_long_boss_fight_stays_within_60hz_physics_budget`, p95=0.01698 > 0.01667), прогон 2: 517/518 (p95=0.01767), прогон 3: **518/518, 7060 asserts** (p95=0.00819); изолированный запуск perf-теста — pass (p95=0.0093); на базовом `c7c0d62` полный прогон — 518/518, 7047 asserts. Вывод: флейк perf-порога под нагрузкой (16.67 мс), не регрессия интеграции.
+- **Smoke:** `--headless --path game --quit-after 180` — exit 0, 0 `SCRIPT ERROR`/`ERROR`.
+- **Ограничения:** независимые QA/Guardian не выполнялись; smoke не заменяет приёмку. Worktree/ветки фиксов и untracked QA-артефакты не тронуты.
