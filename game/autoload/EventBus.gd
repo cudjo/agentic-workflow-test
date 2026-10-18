@@ -40,6 +40,14 @@ signal save_loaded(slot: int)
 ## HUD (T-19, слот способности больше не «закрыт»).
 signal ability_acquired(ability_id: StringName)
 
+## Кулдаун способности изменился (T-07 → HUD T-19, AC-02.2).
+## `remaining`/`duration` — секунды; `duration = 0` или `remaining = 0` —
+## способность снова готова, полоса кулдауна скрыта.
+signal ability_cooldown_changed(ability_id: StringName, remaining: float, duration: float)
+## Игрок вошёл/вышел из зоны ability gate (T-09 → HUD T-19, AC-02.4).
+## `required = true` — показать подсказку «Нужно: …», false — скрыть.
+signal ability_hint_changed(ability_id: StringName, required: bool)
+
 ## Репутация с фракцией изменилась (T-27, AC-06.1). Потребители: UI фракций
 ## и журнал (T-24), диалоги NPC (T-28), HUD-тосты.
 signal faction_reputation_changed(faction_id: StringName, value: int)
