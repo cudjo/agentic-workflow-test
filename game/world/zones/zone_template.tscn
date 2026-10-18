@@ -1,0 +1,76 @@
+[gd_scene load_steps=12 format=4]
+
+[ext_resource type="Script" path="res://world/zones/zone_scene.gd" id="1_6vibl"]
+[ext_resource type="Resource" path="res://data/zones/zone_template.tres" id="2_xehaa"]
+[ext_resource type="TileSet" path="res://world/tilesets/zone_terrain.tres" id="3_oqmcf"]
+[ext_resource type="PackedScene" path="res://world/props/bonfire.tscn" id="4_5w3o8"]
+[ext_resource type="Script" path="res://world/props/bonfire.gd" id="5_bhsck"]
+[ext_resource type="PackedScene" path="res://world/props/chest.tscn" id="6_ayrr1"]
+[ext_resource type="Script" path="res://world/props/chest.gd" id="7_yqjdv"]
+[ext_resource type="PackedScene" path="res://world/props/door.tscn" id="8_otauu"]
+[ext_resource type="Script" path="res://world/props/door.gd" id="9_gsnga"]
+[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="10_vvrp7"]
+[ext_resource type="Script" path="res://world/props/rubble.gd" id="11_ng3hd"]
+
+[node name="ZoneTemplate" type="Node2D"]
+script = ExtResource("1_6vibl")
+zone_data = ExtResource("2_xehaa")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Sky" type="ColorRect" parent="Background"]
+unique_name_in_owner = true
+offset_right = 480.0
+offset_bottom = 270.0
+mouse_filter = 2
+color = Color(0.101961, 0.121569, 0.180392, 1)
+
+[node name="Ambient" type="CanvasModulate" parent="."]
+unique_name_in_owner = true
+color = Color(0.42, 0.42, 0.42, 1)
+
+[node name="Ground" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAAAA8AAAAFAAAAAAABAA8AAAAFAAAAAAACAA8AAAAFAAAAAAADAA8AAAAFAAAAAAAEAA8AAAAFAAAAAAAFAA8AAAAFAAAAAAAGAA8AAAAFAAAAAAAHAA8AAAAFAAAAAAAIAA8AAAAFAAAAAAAJAA8AAAAFAAAAAAAKAA8AAAAFAAAAAAALAA8AAAAFAAAAAAAMAA8AAAAFAAAAAAANAA8AAAAFAAAAAAAOAA8AAAAFAAAAAAAPAA8AAAAFAAAAAAAQAA8AAAAFAAAAAAARAA8AAAAFAAAAAAASAA8AAAAFAAAAAAATAA8AAAAFAAAAAAAUAA8AAAAFAAAAAAAVAA8AAAAFAAAAAAAWAA8AAAAFAAAAAAAXAA8AAAAFAAAAAAAYAA8AAAAFAAAAAAAZAA8AAAAFAAAAAAAaAA8AAAAFAAAAAAAbAA8AAAAFAAAAAAAcAA8AAAAFAAAAAAAdAA8AAAAFAAAAAAAAAAoAAAAKAAAAAAAdAAoAAAAKAAAAAAAAAAsAAAAKAAAAAAAdAAsAAAAKAAAAAAAAAAwAAAAKAAAAAAAdAAwAAAAKAAAAAAAAAA0AAAAKAAAAAAAdAA0AAAAKAAAAAAAAAA4AAAAKAAAAAAAdAA4AAAAKAAAAAAAIAAsAAAAFAAAAAAAJAAsAAAAFAAAAAAAKAAsAAAAFAAAAAAALAAsAAAAFAAAAAAA=")
+tile_set = ExtResource("3_oqmcf")
+
+[node name="Platforms" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAOAAwAAAAAAAUAAAAPAAwAAAABAAUAAAAQAAwAAAABAAUAAAARAAwAAAACAAUAAAA=")
+tile_set = ExtResource("3_oqmcf")
+
+[node name="Ladders" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAUAAwAAAAAAAYAAAAUAA0AAAAAAAYAAAAUAA4AAAAAAAYAAAA=")
+tile_set = ExtResource("3_oqmcf")
+
+[node name="Hazards" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+tile_map_data = PackedByteArray("AAAXAA4AAAAAAAcAAAAYAA4AAAAAAAcAAAAZAA4AAAAAAAcAAAA=")
+tile_set = ExtResource("3_oqmcf")
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="Bonfire" type="Node2D" parent="Props" instance=ExtResource("4_5w3o8")]
+position = Vector2(64, 240)
+script = ExtResource("5_bhsck")
+
+[node name="Chest" type="Node2D" parent="Props" instance=ExtResource("6_ayrr1")]
+position = Vector2(168, 176)
+script = ExtResource("7_yqjdv")
+
+[node name="Door" type="Node2D" parent="Props" instance=ExtResource("8_otauu")]
+position = Vector2(436, 240)
+script = ExtResource("9_gsnga")
+
+[node name="Rubble" type="StaticBody2D" parent="Props" instance=ExtResource("10_vvrp7")]
+position = Vector2(112, 240)
+collision_mask = 0
+script = ExtResource("11_ng3hd")
+
+[node name="Entries" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="Exits" type="Node2D" parent="."]
+unique_name_in_owner = true

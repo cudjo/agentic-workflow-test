@@ -11,3 +11,7 @@ signal player_state_changed(state_name: StringName)
 signal stamina_changed(current: float, maximum: float)
 ## HP игрока достиг HP = 0; смерть обрабатывается T-26.
 signal player_died
+
+## Зона загружена и ZoneData применён (T-13). Потребители: баннер зоны (T-14),
+## экран загрузки/переходы (T-17), HUD (T-19).
+signal zone_entered(zone_id: StringName, display_name: String)
