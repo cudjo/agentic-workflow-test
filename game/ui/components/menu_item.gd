@@ -120,7 +120,19 @@ func _draw() -> void:
 	if not disabled and (active or focused or hovered):
 		draw_rect(rect, UITokens.GOLD if active else UITokens.NIGHT_3)
 
-	if focused and not active and not disabled:
+	# Фокус виден и на отключённом пункте: причина отключения обязана быть
+	# доступна с клавиатуры/геймпада (DESIGN §6.1, §9.2, §9.6 п.2). Каретка
+	# при этом не рисуется — disabled-состояние остаётся отличимым.
+	if focused and not active:
+		if disabled:
+			draw_rect(rect, UITokens.NIGHT_3)
+			UIStyle.draw_focus_brackets(
+				self,
+				rect.grow(-2),
+				UITokens.GOLD_9,
+				UITokens.FOCUS_ARM,
+				UITokens.BORDER_INNER
+			)
 		UIStyle.draw_frame(self, rect, UITokens.BORDER_INNER, UITokens.GOLD_9)
 
 	var text_color: Color = get_label_color()
