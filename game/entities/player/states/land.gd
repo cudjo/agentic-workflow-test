@@ -14,6 +14,8 @@ func physics_update(_delta: float) -> void:
 		return
 	if player.try_roll():
 		return
+	if player.try_dash():
+		return
 	if player.try_attack():
 		return
 	if player.has_move_input():

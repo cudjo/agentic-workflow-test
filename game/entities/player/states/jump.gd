@@ -9,6 +9,8 @@ func enter(_previous: StringName) -> void:
 
 
 func physics_update(_delta: float) -> void:
+	if player.try_dash():
+		return
 	if player.try_double_jump():
 		return
 	if player.velocity.y >= 0.0:

@@ -18,6 +18,8 @@ const RESTING_STATES: Array[StringName] = [&"idle", &"run", &"land"]
 const ABILITY_DOUBLE_JUMP_ID: StringName = AbilityDoubleJump.ID
 ## Сколько воздушных прыжков доступно до приземления (AC-02.1).
 const MAX_DOUBLE_JUMPS: int = AbilityDoubleJump.AIR_JUMPS
+## Способность «Рывок» (T-07, AC-02.2).
+const ABILITY_DASH_ID: StringName = AbilityDash.ID
 
 ## Movement/timing data (single source of truth).
 @export var balance: BalancingParams
@@ -41,6 +43,8 @@ var is_dead: bool = false
 var ability_flags: Dictionary = {}
 ## Потрачено воздушных прыжков с момента последнего приземления (AC-02.1).
 var double_jumps_used: int = 0
+## Остаток кулдауна рывка, с (C_dash из balancing.tres; T-07, AC-02.2).
+var dash_cooldown_left: float = 0.0
 
 var _hitbox_step: int = -1
 var _combo_weapon_id: StringName = &""
@@ -75,6 +79,7 @@ func _physics_process(delta: float) -> void:
 	if balance == null or state_machine == null:
 		return
 
+	_update_dash_cooldown(delta)
 	_capture_input_buffers()
 	_update_facing()
 
@@ -153,7 +158,16 @@ func try_roll() -> bool:
 	return state_machine.request_state(&"roll")
 
 
+## Рывок (T-07, AC-02.2): только со способностью, вне кулдауна C_dash и при
+## достаточной выносливости. Вызывается из наземных (idle/run/land) и
+## воздушных (jump/fall/double_jump) состояний. Проверки способности/кулдауна
+## идут до `just_pressed()`, поэтому нажатие в кулдауне остаётся в 150-мс
+## буфере, а не «съедается».
 func try_dash() -> bool:
+	if not has_ability(ABILITY_DASH_ID):
+		return false
+	if not is_dash_ready():
+		return false
 	if not state_machine.can_request(&"dash"):
 		return false
 	if not InputManager.just_pressed(&"dash"):
@@ -287,6 +301,63 @@ func _on_ability_acquired(ability_id: StringName) -> void:
 
 
 # ------------------------------------------------------------------------------
+# Dash cooldown (T-07, AC-02.2)
+# ------------------------------------------------------------------------------
+
+## Кулдаун C_dash истёк (доступность способности проверяет `try_dash()`).
+func is_dash_ready() -> bool:
+	return dash_cooldown_left <= 0.0
+
+
+## Остаток кулдауна рывка в секундах (0 — готов).
+func get_dash_cooldown_left() -> float:
+	return dash_cooldown_left
+
+
+## Запускает кулдаун C_dash при входе в рывок (`states/dash.gd`).
+## HUD T-19 получает `EventBus.ability_cooldown_changed(id, remaining,
+## duration)` и рисует полосу; по remaining = 0 полоса гаснет.
+func begin_dash_cooldown() -> void:
+	dash_cooldown_left = _dash_cooldown_duration()
+	EventBus.ability_cooldown_changed.emit(
+		ABILITY_DASH_ID,
+		dash_cooldown_left,
+		dash_cooldown_left
+	)
+
+
+## Снимает кулдаун (возрождение у костра/новая игра): рывок снова готов.
+func reset_dash_cooldown() -> void:
+	if dash_cooldown_left <= 0.0:
+		return
+	dash_cooldown_left = 0.0
+	EventBus.ability_cooldown_changed.emit(
+		ABILITY_DASH_ID,
+		0.0,
+		_dash_cooldown_duration()
+	)
+
+
+## C_dash из balancing.tres, зажатый пределом AC-02.2 (≤ 1 с).
+func _dash_cooldown_duration() -> float:
+	if balance == null:
+		return 0.0
+	return clampf(balance.c_dash, 0.0, AbilityDash.MAX_COOLDOWN_SEC)
+
+
+## Тикает кулдаун по physics-кадрам и зеркалит остаток в EventBus для HUD.
+func _update_dash_cooldown(delta: float) -> void:
+	if dash_cooldown_left <= 0.0:
+		return
+	dash_cooldown_left = maxf(dash_cooldown_left - delta, 0.0)
+	EventBus.ability_cooldown_changed.emit(
+		ABILITY_DASH_ID,
+		dash_cooldown_left,
+		_dash_cooldown_duration()
+	)
+
+
+# ------------------------------------------------------------------------------
 # Damage / death API (T-10/T-26 extend; T-04 needs the FSM transitions)
 # ------------------------------------------------------------------------------
 
@@ -348,6 +419,7 @@ func reset_player() -> void:
 	is_dead = false
 	velocity = Vector2.ZERO
 	on_landed()
+	reset_dash_cooldown()
 	stop_attack_hitbox()
 	InputManager.consume_coyote_time(&"jump")
 	state_machine.force_state(&"idle")

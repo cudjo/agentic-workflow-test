@@ -335,6 +335,8 @@ func test_fall_into_pit_deals_full_damage_even_in_dash_iframes() -> void:
 	# Даже i-frames рывка не спасают от пропасти (EC-01/EC-03).
 	GameState.set_hp(GameState.hp_max)
 	player.reset_player()
+	# T-07: рывок требует способность (AC-02.2), иначе состояние выходит.
+	GameState.add_ability(&"dash")
 	player.state_machine.force_state(&"dash")
 	assert_true(player.is_invulnerable(), "precondition: dash i-frames")
 	player.global_position = Vector2(0.0, 150.0)

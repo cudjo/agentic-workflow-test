@@ -12,6 +12,7 @@ extends RefCounted
 
 const ABILITY_PATHS: Array[String] = [
 	"res://data/abilities/double_jump.tres",
+	"res://data/abilities/dash.tres",
 ]
 
 static var _cache: Dictionary = {}

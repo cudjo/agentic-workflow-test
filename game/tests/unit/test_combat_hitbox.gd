@@ -21,6 +21,7 @@ func before_each() -> void:
 
 func after_each() -> void:
 	GameState.set_weapon(load(DEFAULT_WEAPON_PATH) as WeaponData)
+	GameState.clear_abilities()
 	_reset_input()
 
 
@@ -263,6 +264,8 @@ func test_player_combo_is_configured_from_weapon_data() -> void:
 
 
 func test_dash_and_block_spend_their_stamina() -> void:
+	# T-07: рывок доступен только со способностью (AC-02.2).
+	GameState.add_ability(&"dash")
 	var player: Player = _spawn_player()
 	await _settle(player)
 	var stamina_before: float = GameState.stamina

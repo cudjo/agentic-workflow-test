@@ -16,6 +16,8 @@ func enter(previous: StringName) -> void:
 
 
 func physics_update(_delta: float) -> void:
+	if player.try_dash():
+		return
 	if player.velocity.y >= 0.0:
 		machine.force_state(&"fall")
 		return
