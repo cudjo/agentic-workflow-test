@@ -21,7 +21,7 @@ const FOREGROUND_SCRIPT := "res://world/zones/zone_01_village/zone_01_foreground
 const BONFIRE_SCENE := "res://world/props/bonfire.tscn"
 const CHEST_SCENE := "res://world/props/chest.tscn"
 const DOOR_SCENE := "res://world/props/door.tscn"
-const RUBBLE_SCENE := "res://world/props/rubble.tscn"
+const ABILITY_GATE_SCENE := "res://world/props/ability_gate.tscn"
 
 const FLOOR_TOP := 224.0
 const FLOOR_ROW_TOP := 14
@@ -179,8 +179,9 @@ func _build_zone_scene(tileset: TileSet, zone_data: ZoneData) -> bool:
 	_add_prop(props, root, BONFIRE_SCENE, "Bonfire", Vector2(112.0, FLOOR_TOP))
 	_add_prop(props, root, CHEST_SCENE, "Chest", Vector2(356.0, 176.0))
 	_add_prop(props, root, DOOR_SCENE, "Door", Vector2(408.0, 176.0))
-	var rubble := _add_prop(props, root, RUBBLE_SCENE, "Rubble", Vector2(448.0, FLOOR_TOP))
+	var rubble := _add_prop(props, root, ABILITY_GATE_SCENE, "Rubble", Vector2(448.0, FLOOR_TOP))
 	rubble.scale = Vector2(1.5, 2.5)
+	rubble.set(&"gate_id", &"village_ledge")
 	rubble.set_meta(&"ability_gate", &"double_jump")
 	rubble.set_meta(&"future_gate", "T-09")
 

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AbilityGateCatalog" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://data/ability_gate_catalog.gd" id="1_catalog"]
+[ext_resource type="Script" path="res://data/ability_gate_data.gd" id="2_gate"]
+
+[sub_resource type="Resource" id="Resource_gate_village_ledge"]
+script = ExtResource("2_gate")
+id = &"village_ledge"
+ability_id = &"double_jump"
+proof_zone_id = &"zone_03_mountains"
+
+[sub_resource type="Resource" id="Resource_gate_swamp_dash"]
+script = ExtResource("2_gate")
+id = &"swamp_dash_gate"
+ability_id = &"dash"
+proof_zone_id = &"zone_04_ruins"
+
+[sub_resource type="Resource" id="Resource_gate_mountains_wall"]
+script = ExtResource("2_gate")
+id = &"mountains_wall_climb"
+ability_id = &"wall_climb"
+proof_zone_id = &"zone_04_ruins"
+
+[sub_resource type="Resource" id="Resource_gate_mountains_dash"]
+script = ExtResource("2_gate")
+id = &"mountains_dash_ledge"
+ability_id = &"dash"
+
+[resource]
+script = ExtResource("1_catalog")
+gates = Array[ExtResource("2_gate")]([SubResource("Resource_gate_village_ledge"), SubResource("Resource_gate_swamp_dash"), SubResource("Resource_gate_mountains_wall"), SubResource("Resource_gate_mountains_dash")])

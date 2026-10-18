@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=4]
+
+[ext_resource type="Script" path="res://world/props/ability_gate.gd" id="1_gate"]
+[ext_resource type="Script" path="res://world/props/AbilityHint.gd" id="2_hint"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gate"]
+size = Vector2(32, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hint"]
+size = Vector2(64, 56)
+
+[node name="AbilityGate" type="StaticBody2D"]
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("1_gate")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -12)
+shape = SubResource("RectangleShape2D_gate")
+
+[node name="HintArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HintArea"]
+position = Vector2(0, -24)
+shape = SubResource("RectangleShape2D_hint")
+
+[node name="AbilityHint" type="Node2D" parent="."]
+top_level = true
+script = ExtResource("2_hint")

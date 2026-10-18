@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=4]
+[gd_scene load_steps=20 format=4]
 
 [ext_resource type="Script" path="res://world/zones/zone_03_mountains/zone_03_scene.gd" id="1_1vsv8"]
 [ext_resource type="Resource" path="res://data/zones/zone_03_mountains.tres" id="2_aawns"]
@@ -9,8 +9,7 @@
 [ext_resource type="Script" path="res://world/props/bonfire.gd" id="7_rydwe"]
 [ext_resource type="PackedScene" path="res://world/props/chest.tscn" id="8_m33fe"]
 [ext_resource type="Script" path="res://world/props/chest.gd" id="9_7tsq5"]
-[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="10_2soet"]
-[ext_resource type="Script" path="res://world/props/rubble.gd" id="11_4oi3u"]
+[ext_resource type="PackedScene" path="res://world/props/ability_gate.tscn" id="10_2soet"]
 [ext_resource type="Script" path="res://world/zones/zone_03_mountains/zone_03_foreground.gd" id="12_by0ya"]
 [ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="13_y51h0"]
 [ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="14_ymd2k"]
@@ -125,7 +124,7 @@ script = ExtResource("9_7tsq5")
 position = Vector2(192, 224)
 scale = Vector2(2, 2.5)
 collision_mask = 0
-script = ExtResource("11_4oi3u")
+gate_id = &"mountains_wall_climb"
 metadata/ability_gate = &"wall_climb"
 metadata/future_gate = "T-09"
 
@@ -133,7 +132,7 @@ metadata/future_gate = "T-09"
 position = Vector2(64, 160)
 scale = Vector2(1, 2)
 collision_mask = 0
-script = ExtResource("11_4oi3u")
+gate_id = &"mountains_dash_ledge"
 metadata/ability_gate = &"dash"
 metadata/future_gate = "T-09"
 

@@ -31,7 +31,7 @@ const ZONE_03_FOREGROUND := "res://world/zones/zone_03_mountains/zone_03_foregro
 
 const BONFIRE_SCENE := "res://world/props/bonfire.tscn"
 const CHEST_SCENE := "res://world/props/chest.tscn"
-const RUBBLE_SCENE := "res://world/props/rubble.tscn"
+const ABILITY_GATE_SCENE := "res://world/props/ability_gate.tscn"
 
 const FLOOR_TOP := 224.0
 const FLOOR_ROW_TOP := 14
@@ -134,8 +134,9 @@ func _build_swamp_scene(tileset: TileSet, zone_data: ZoneData) -> bool:
 	_add_owned(root, props, root)
 	_add_prop(props, root, BONFIRE_SCENE, "Bonfire", Vector2(96.0, FLOOR_TOP))
 	_add_prop(props, root, CHEST_SCENE, "Chest", Vector2(432.0, 160.0))
-	var dash_gate := _add_prop(props, root, RUBBLE_SCENE, "DashGate", Vector2(352.0, 160.0))
+	var dash_gate := _add_prop(props, root, ABILITY_GATE_SCENE, "DashGate", Vector2(352.0, 160.0))
 	dash_gate.scale = Vector2(2.0, 2.0)
+	dash_gate.set(&"gate_id", &"swamp_dash_gate")
 	dash_gate.set_meta(&"ability_gate", &"dash")
 	dash_gate.set_meta(&"future_gate", "T-09")
 
@@ -248,12 +249,14 @@ func _build_mountains_scene(tileset: TileSet, zone_data: ZoneData) -> bool:
 	_add_prop(props, root, BONFIRE_SCENE, "Bonfire", Vector2(96.0, FLOOR_TOP))
 	_add_prop(props, root, CHEST_SCENE, "Chest", Vector2(192.0, 48.0))
 	_add_prop(props, root, CHEST_SCENE, "ChestDash", Vector2(96.0, 160.0))
-	var wall_gate := _add_prop(props, root, RUBBLE_SCENE, "WallClimbGate", Vector2(192.0, FLOOR_TOP))
+	var wall_gate := _add_prop(props, root, ABILITY_GATE_SCENE, "WallClimbGate", Vector2(192.0, FLOOR_TOP))
 	wall_gate.scale = Vector2(2.0, 2.5)
+	wall_gate.set(&"gate_id", &"mountains_wall_climb")
 	wall_gate.set_meta(&"ability_gate", &"wall_climb")
 	wall_gate.set_meta(&"future_gate", "T-09")
-	var dash_gate := _add_prop(props, root, RUBBLE_SCENE, "DashGate", Vector2(64.0, 160.0))
+	var dash_gate := _add_prop(props, root, ABILITY_GATE_SCENE, "DashGate", Vector2(64.0, 160.0))
 	dash_gate.scale = Vector2(1.0, 2.0)
+	dash_gate.set(&"gate_id", &"mountains_dash_ledge")
 	dash_gate.set_meta(&"ability_gate", &"dash")
 	dash_gate.set_meta(&"future_gate", "T-09")
 
