@@ -476,6 +476,38 @@
 - **⚠️ docs/QA.md:** QA-агент заблокирован политикой на запись в docs/; готовый текст — `game/tests/e2e/QA_48de7dc_proposed.md` (нужно скопировать в `docs/QA.md`).
 - **Решение (цикл доработки 2):** запуск 2 параллельных фиксов — **Fix-3a** (N1/N3/N4 + копия QA.md) и **Fix-3b** (N2). Это 2-й цикл; при повторном сбое — пересборка planner / эскалация.
 
+## 2026-10-18 — Orchestrator: Приёмка Fix-3b, ожидание Fix-3a
+
+- **Fix-3b принят:** масштаб UI 150% для 8 экранов (общий `UIScale`-хелпер, все экраны слушают `ui_scale_changed`), коммит `759480b` (в `v2`), GUT **518/518, 7060 asserts**; qa_a11y 105/106 — остался только N4. **N2 закрыт.**
+- **Решение:** жду Fix-3a (N1/N3/N4/N5 + копия QA.md), затем интеграция в `v2` + повторный QA.
+
+## 2026-10-18 — Orchestrator: Приёмка Fix-3a, запуск Integration-04
+
+- **Fix-3a принят:** N1 (повторный выбор фракции через сброс флага по `FactionChoice.closed`), N3 (Teacher×3 в хабе + панель прокачки AC-08), N4 (контур врагов по тумблеру читаемости), N5 (SPEC §4.1: wall_climb перенесён в зону 2), копия `QA_48de7dc_proposed.md` → `docs/QA.md`. Коммит `6bda86a` (detached worktree от `48de7dc`). GUT **518/518**, qa_a11y **106/106**.
+- **Ветки:** Fix-3b (`759480b`) — на `v2`; Fix-3a (`6bda86a`) — в detached worktree. Нужна интеграция Fix-3a в `v2`.
+- **Решение:** запуск **Integration-04** (cherry-pick `6bda86a` в `v2` поверх `759480b` + верификация). Затем повторный QA.
+
+## 2026-10-18 — Orchestrator: Приёмка Integration-04, повторный QA (прогон 3)
+
+- **Integration-04 принят:** Fix-3a влит в `v2` (cherry-pick `aece545` поверх `759480b`), конфликтов нет. GUT **518/518, 7060 asserts**. `v2` HEAD = `aece545`, содержит Fix-1/2/3a/3b.
+- **⚠️:** `docs/WORKFLOW_LOG.md` остаётся незакоммиченным (записи Orchestrator); untracked-коллизия `docs/QA.md` ушла в бэкап `...\fix3a-integration\untracked-backup\`. `v2` ahead of `origin/v2` на 33 коммита — push за человеком.
+- **Решение:** запуск повторного **QA (T-37)** на `aece545` — финальная верификация всех блокеров (9 исходных + N1–N5) + a11y + NFR.
+
+## 2026-10-18 — Orchestrator: QA PASS, запуск Guardian + финализация docs
+
+- **QA (T-37): ✅ PASS** (ревизия `aece545…`). Все 9 исходных блокеров + N1–N5 закрыты. e2e **130/130**, a11y **106/106**, GUT **518/518**, NFR **8/8** (FPS 711, загрузка 0.05–0.13 с, 20 save/load −0.01%).
+- **Остаточные не-блокеры:** N6 (headless leak-сообщения при exit code 0), N5b (маркировка источника dash — минор).
+- **Решение:** запуск **Guardian** (финальное ревью интегрированного диффа + evidence) и **финализация docs** (копия QA.md → docs/ + коммит WORKFLOW_LOG). Далее — гейт merge (человек).
+
+## 2026-10-19 — Integration-04: Fix-3a влит в `v2` (tasker-backend)
+
+- **Skills:** загружен `godot` — верификация Godot-проекта headless (import/GUT/smoke) требует знания CLI-флагов GUT и поведения `--quit-after`; других skills не требовалось (изменений кода нет).
+- **Инспекция:** `v2` = `759480b` (Fix-3b), `6bda86a` (Fix-3a) — только в detached worktree `%TEMP%\opencode\fix3a`, не входит ни в одну ветку (`git branch --contains 6bda86a` пуст); `759480b` входит только в `v2`.
+- **Действие:** `git cherry-pick 6bda86a` поверх `759480b`. Конфликтов нет (пересечений по файлам нет), коммит без правок: **`aece545`** (13 files, +1754/−28).
+- **Untracked-коллизия (до pick):** в рабочем дереве `v2` лежали untracked `docs/QA.md` (старая версия от `c7c0d62`) и `game/tests/e2e/QA_48de7dc_proposed.md` (байт-в-байт = версии из `6bda86a`). Оба перемещены в бэкап `%TEMP%\opencode\fix3a-integration\untracked-backup\` перед pick (ничего не удалено); после pick `docs/QA.md` — версия из коммита (ревизия `48de7dc`), e2e-копия восстановлена коммитом. `game/tests/_probe.gd`, `opencode.jsonc`, worktree `fix3a` не трогались.
+- **Верификация (портативный Godot 4.4.1.stable, из `game/`):** `--headless --import` → exit 0; GUT `-gdir=res://tests -ginclude_subdirs -gexit` → **518/518, 7060 asserts**, exit 0; smoke `--headless --path game --quit-after 180` → exit 0, SCRIPT ERROR — 0.
+- **Итог:** `v2` = `aece545` (Fix-3a) поверх `759480b` (Fix-3b) поверх `48de7dc`; оба фикса в ветке. Код/тесты не правились, `docs/TASKS.json` не тронут. Незакоммиченными остались `docs/WORKFLOW_LOG.md` (в т.ч. запись Orchestrator о запуске Integration-04) — коммит документации оставлен на решение Orchestrator.
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -1018,3 +1050,12 @@
 - **Проверка (portable Godot 4.4.1-stable, `GODOT_PATH`, `game/`):** `--headless --import` — parse/script ошибок нет; GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **518/518, 7060 asserts, exit 0**; `qa_e2e` — **115/115**; `qa_a11y` — **105 PASS / 1 FAIL** (остался только известный N4: контур врагов, вне Fix-3b); `qa_rerun_probe` — **11/11** (все 8 экранов 150 %: 8→12, 16→24, 32→48); `qa_fix_probe` — **20/20**; smoke 100/150/200 % RU/EN — font масштабируется на всех 8, переполнения Control нет; рендер-кадры 150 % сняты (Inventory/Journal/Factions/FactionChoice/WorldMap/Campfire/Remap/DeathScreen).
 - **Кросс-файловые правки:** `ui/theme/ui_scale.gd` (новый), `ui/components/kbd.gd`; UI-экраны — только разрешённые каталоги. `Main.gd`, `world/`, `entities/`, `autoload/` не тронуты; `docs/TASKS.json`, untracked QA/probe-файлы и `opencode.jsonc` не менялись.
 - **Ограничения:** `qa_a11y` N4 (силуэт врагов) остаётся открытым — относится к Fix-3a/AC-07.1; на 200 % заголовки ограничены 48/20/9–10 px по доступной ширине 480×270 (иначе текст выходит за кадр), строки списков/панели используют перенос/скролл.
+
+## 2026-10-19 — Docs-финализация перед гейтом merge (tasker-devops)
+
+- **Skills:** загружен `godot` — по указанию Orchestrator; фактически правок кода/сцен нет, skill использован как контекст проекта (Godot 4.4.1, GUT/e2e-харнессы) для сверки терминов и команд в отчёте. Других skills не требовалось (docs-only, N/A по стеку изменений).
+- **Действие 1:** `game/tests/e2e/QA_aece545_proposed.md` → `docs/QA.md` (перезапись). SHA-256 источника и копии совпадают (`FD1E4C96…6A78`), 73 194 байта: `docs/QA.md` = финальный QA-отчёт ревизии `aece545` (PASS).
+- **Действие 2:** одним docs-коммитом зафиксированы накопленные записи Orchestrator в `docs/WORKFLOW_LOG.md` (приёмки Integration-04/Fix-3a/Fix-3b, QA PASS, запуск Guardian + финализация) и `docs/QA.md`. Перед коммитом `git diff --name-only` — только эти два файла; untracked QA-харнессы, `opencode.jsonc`, код/тесты и `docs/TASKS.json` в коммит не попали.
+- **Рабочее дерево:** `docs/WORKFLOW_LOG.md` и `docs/QA.md` закоммичены; незакоммиченных изменений кода/тестов нет. Untracked (чужие артефакты, не тронуты): `game/tests/e2e/` (qa_e2e/qa_a11y/qa_nfr/probes + `.uid`/`.tscn`), `opencode.jsonc`; `game/tests/_probe.gd` в дереве отсутствует.
+- **Проверки:** перезапуск GUT/e2e не выполнялся — код и тесты не менялись; evidence — QA-отчёт `aece545` (e2e 130/130, a11y 106/106, GUT 518/518, NFR 8/8). `git status`/`git log` проверены после коммита.
+- **Ограничения:** smoke не выполнялся (docs-only). Независимые QA/Guardian и гейт merge — решение человека.
