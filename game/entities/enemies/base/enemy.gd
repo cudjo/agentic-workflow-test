@@ -38,6 +38,9 @@ var attack_timer: float = 0.0
 var attack_cooldown_left: float = 0.0
 var patrol_wait_left: float = 0.0
 var is_dead: bool = false
+## Враговый producer `GameState.in_combat` (EC-06/B-03): true, пока враг
+## агрился/дрался; снимается идемпотентно при потере цели/смерти/выходе.
+var _combat_source_active: bool = false
 
 var _attack_hitbox_live: bool = false
 var _death_elapsed: float = 0.0
@@ -60,6 +63,8 @@ var flash_applied_count: int = 0
 
 func _ready() -> void:
 	add_to_group(&"enemies")
+	if not EventBus.player_died.is_connected(_on_player_died):
+		EventBus.player_died.connect(_on_player_died)
 	if data == null:
 		push_error("Enemy: data resource is missing on %s" % name)
 		set_physics_process(false)
@@ -84,6 +89,14 @@ func _ready() -> void:
 	fsm = _new_state_machine()
 	_connect_state_machine()
 	_set_facing(facing)
+
+
+## Выход из дерева (смена зоны/очистка): снять источник боя, чтобы
+## `in_combat` не залипал после исчезновения врага (B-03).
+func _exit_tree() -> void:
+	_set_combat_source_active(false)
+	if EventBus.player_died.is_connected(_on_player_died):
+		EventBus.player_died.disconnect(_on_player_died)
 
 
 func _physics_process(delta: float) -> void:
@@ -296,6 +309,7 @@ func _die() -> void:
 	if is_dead:
 		return
 	is_dead = true
+	_set_combat_source_active(false)
 	fsm.force_state(EnemyStateMachine.State.DEATH)
 	_death_elapsed = 0.0
 	_attack_hitbox_live = false
@@ -374,11 +388,18 @@ func _on_state_changed(from_state: EnemyStateMachine.State, to_state: EnemyState
 			_attack_hitbox_live = false
 			attack_hitbox.deactivate()
 			_face_target()
+			_set_combat_source_active(true)
+		EnemyStateMachine.State.CHASE:
+			_set_combat_source_active(true)
 		EnemyStateMachine.State.HURT:
 			attack_hitbox.deactivate()
 			_attack_hitbox_live = false
+			_set_combat_source_active(true)
 		EnemyStateMachine.State.PATROL:
 			patrol_wait_left = 0.0
+			_set_combat_source_active(false)
+		EnemyStateMachine.State.DEATH:
+			_set_combat_source_active(false)
 
 
 func _can_detect_target() -> bool:
@@ -400,8 +421,27 @@ func _find_target() -> Node2D:
 
 func _lose_target() -> void:
 	target = null
+	_set_combat_source_active(false)
 	fsm.force_state(EnemyStateMachine.State.PATROL)
 	patrol_wait_left = 0.0
+
+
+## Смерть игрока: враг теряет цель и выходит из боя, иначе `in_combat`
+## залипает после смерти/возрождения (B-03). После респавна враг может
+## снова агриться и зарегистрировать источник заново.
+func _on_player_died() -> void:
+	if is_dead or fsm == null:
+		_set_combat_source_active(false)
+		return
+	_lose_target()
+
+
+## Идемпотентная регистрация источника боя обычного врага в GameState.
+func _set_combat_source_active(value: bool) -> void:
+	if _combat_source_active == value:
+		return
+	_combat_source_active = value
+	GameState.set_combat_source(self, value)
 
 
 func _face_target() -> void:

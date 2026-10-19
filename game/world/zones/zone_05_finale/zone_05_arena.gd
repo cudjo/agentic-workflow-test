@@ -47,6 +47,7 @@ var _zone_id: StringName = &""
 
 func _ready() -> void:
 	add_to_group(&"boss_arena_slot")
+	_connect_player_events()
 	_create_trigger()
 	_create_barriers()
 	_spawn_boss()
@@ -55,6 +56,21 @@ func _ready() -> void:
 	if start_on_ready:
 		start_fight.call_deferred()
 	queue_redraw()
+
+
+## Выход из зоны 5 в бою не должен оставлять `GameState.in_combat`
+## включённым (B-03): SceneRouter выгружает зону вместе с ареной.
+func _exit_tree() -> void:
+	if EventBus.player_died.is_connected(_on_player_died):
+		EventBus.player_died.disconnect(_on_player_died)
+	if _fight_started:
+		_fight_started = false
+		GameState.set_in_combat(false)
+
+
+func _connect_player_events() -> void:
+	if not EventBus.player_died.is_connected(_on_player_died):
+		EventBus.player_died.connect(_on_player_died)
 
 
 # ------------------------------------------------------------------------------
@@ -238,6 +254,24 @@ func _on_boss_defeated(_defeated_boss: BossBase) -> void:
 	GameState.set_in_combat(false)
 	_open_barriers()
 	fight_finished.emit()
+
+
+## Смерть игрока на арене (B-03): бой прерывается, барьеры открываются,
+## `in_combat` сбрасывается, чтобы после возрождения сохранение работало.
+func _on_player_died() -> void:
+	var was_active: bool = _fight_started
+	_fight_started = false
+	_abort_boss_fight()
+	_open_barriers()
+	GameState.reset_combat_state()
+	if was_active:
+		fight_finished.emit()
+
+
+## Бой прерван смертью игрока: босс ждёт повторного входа на арену.
+func _abort_boss_fight() -> void:
+	if boss != null and is_instance_valid(boss):
+		boss.fight_active = false
 
 
 func _claim_pending_rewards() -> void:

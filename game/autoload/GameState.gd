@@ -97,7 +97,14 @@ var respawn_position: Vector2 = Vector2.ZERO
 var active_slot: int = 0
 
 ## Флаг боя (EC-06): сохранение у костра запрещено, пока true.
+## Складывается из ручного флага (арены/боссы) и источников-агрессоров
+## (обычные враги): у каждого врага свой ключ, поэтому смерть одного из
+## нескольких не снимает бой преждевременно (Fix-4b/B-03).
 var in_combat: bool = false
+## Ручной флаг боя — его держат арены/боссы, пока идёт бой.
+var _in_combat_pinned: bool = false
+## Instance id -> true: обычные враги, которые сейчас агро/в бою.
+var _combat_sources: Dictionary = {}
 
 ## Зона, в которой находится игрок (обновляется по `EventBus.zone_entered`).
 var current_zone_id: StringName = &""
@@ -415,7 +422,49 @@ func restore_respawn_bonfire(
 	respawn_position = position
 
 
+## Ручной флаг боя (арены/боссы). `false` — явное окончание боя: снимает
+## и ручной флаг, и источники-врагов (победа над боссом/выход из зоны/смерть),
+## чтобы призванные или ещё живые враги не держали запрет сохранения.
 func set_in_combat(value: bool) -> void:
+	_in_combat_pinned = value
+	if not value:
+		_combat_sources.clear()
+	_refresh_in_combat()
+
+
+## Регистрирует/снимает источник боя обычного врага (агро/бой).
+## Refcount по принципу «любой активный агрессор»: флаг остаётся включённым,
+## пока активен хотя бы один источник или арена (B-03).
+func set_combat_source(source: Object, active: bool) -> void:
+	if source == null:
+		return
+	var key: int = source.get_instance_id()
+	if active:
+		_combat_sources[key] = true
+	else:
+		_combat_sources.erase(key)
+	_refresh_in_combat()
+
+
+## Активен ли источник боя (для тестов/диагностики состояния).
+func is_combat_source_active(source: Object) -> bool:
+	return source != null and _combat_sources.has(source.get_instance_id())
+
+
+## Полный сброс боя: смерть игрока/новая игра. Снимает и ручной флаг арены,
+## и все источники-врагов (B-03: после смерти на арене сохранение доступно).
+func reset_combat_state() -> void:
+	_in_combat_pinned = false
+	_combat_sources.clear()
+	_refresh_in_combat()
+
+
+func _refresh_in_combat() -> void:
+	# Освобождённый источник не должен «залипать» в реестре.
+	for key: int in _combat_sources.keys():
+		if instance_from_id(key) == null:
+			_combat_sources.erase(key)
+	var value: bool = _in_combat_pinned or not _combat_sources.is_empty()
 	if in_combat == value:
 		return
 	in_combat = value

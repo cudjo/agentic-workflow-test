@@ -38,19 +38,40 @@ func _ready() -> void:
 
 
 ## Принимает попадание; возвращает false, если урон не прошёл (i-frames).
+## MINOR-06: реакции (knockback/flash) синхронизированы с решением цели —
+## если цель в i-frames переката/рывка, урон отклонит `apply_damage`, а
+## отбрасывание/вспышка не должны применяться вовсе.
 func receive_damage(damage: Damage) -> bool:
 	if invulnerable or damage == null:
+		return false
+	# MINOR-06: i-frames цели (перекат/рывок игрока) — урон не проходит,
+	# реакции не применяются. Проверяем до сигнала: Player всё равно
+	# отклонил бы урон в `apply_damage()`.
+	if _target_has_iframes():
 		return false
 	last_damage = damage
 	hit_count += 1
 	damaged.emit(damage)
-	if apply_reactions:
+	if apply_reactions and not _target_has_iframes():
 		damage.apply_knockback(_knockback_target)
 		# T-35/DESIGN §9.3: до 3 вспышек/с; в режиме «Без мигания» — ни одной.
 		if not _is_no_flash() and _flash_governor.try_flash(_now_sec()):
 			flash_applied_count += 1
 			damage.flash(_flash_target)
 	return true
+
+
+## Цель сейчас неуязвима (Player: roll/dash i-frames). Проверяется до и после
+## `damaged`: до — чтобы отклонить попадание, после — если сигнал сменил состояние.
+func _target_has_iframes() -> bool:
+	var target: Object = _knockback_target
+	if target == null or not is_instance_valid(target):
+		target = get_parent()
+	if target == null or not is_instance_valid(target):
+		return false
+	if target.has_method(&"is_invulnerable"):
+		return bool(target.call(&"is_invulnerable"))
+	return false
 
 
 func set_invulnerable(value: bool) -> void:
