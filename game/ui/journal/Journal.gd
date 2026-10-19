@@ -86,7 +86,10 @@ func _ready() -> void:
 		Locale.language_changed.connect(_on_locale_changed)
 	if not Journal.journal_changed.is_connected(_on_journal_changed):
 		Journal.journal_changed.connect(_on_journal_changed)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
 	_refresh()
+	apply_ui_scale()
 
 
 func _exit_tree() -> void:
@@ -94,6 +97,8 @@ func _exit_tree() -> void:
 		Locale.language_changed.disconnect(_on_locale_changed)
 	if Journal.journal_changed.is_connected(_on_journal_changed):
 		Journal.journal_changed.disconnect(_on_journal_changed)
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 	if _pause_owned:
 		get_tree().paused = _pause_previous
 		_pause_owned = false
@@ -371,6 +376,61 @@ func _make_section(text: String, color: Color = UITokens.STEEL_3) -> Label:
 
 
 # ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6): 8 → 12 px при 150 %, 8 → 16 px при 200 %
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+## Пересчитывает шрифты, строки и геометрию списка/деталей так, чтобы текст
+## не обрезался на 150/200 %.
+func apply_ui_scale() -> void:
+	if not _built or _root == null:
+		return
+	UIScale.apply(self)
+
+	var detail_bottom: float = DETAIL_RECT.end.y
+	var detail_height: float = maxf(DETAIL_RECT.size.y, UIScale.px(DETAIL_RECT.size.y))
+	var detail_y: float = detail_bottom - detail_height
+	_detail_panel.position.y = detail_y
+	_detail_panel.size.y = detail_height
+
+	var list_y: float = LIST_RECT.position.y
+	_list_panel.size.y = maxf(60.0, detail_y - list_y - 4.0)
+
+	var font: int = UIScale.font(UITokens.FONT_BODY)
+	_detail_status.position.y = detail_y + 4.0
+	_detail_status.size.y = float(font) + 2.0
+	var text_y: float = detail_y + maxf(18.0, float(font) + 6.0)
+	_detail_text.position.y = text_y
+	_detail_text.size.y = maxf(30.0, detail_bottom - text_y - 4.0)
+
+	# На 150/200 % заголовок «ЖУРНАЛ» шире 128 px и наезжает на вкладки.
+	_tab_bar.position.x = 172.0 if UIScale.factor() > 1.0 else TAB_POSITION.x
+	# На 150/200 % строка EN-квеста (420 px при 12 px) не влезает в 452 px
+	# из-за полосы прокрутки: используем всю ширину экрана.
+	if UIScale.factor() > 1.0:
+		_list_panel.position.x = 8.0
+		_list_panel.size.x = 464.0
+		_detail_panel.position.x = 8.0
+		_detail_panel.size.x = 464.0
+		_detail_status.position.x = 18.0
+		_detail_status.size.x = 444.0
+		_detail_text.position.x = 18.0
+		_detail_text.size.x = 444.0
+	else:
+		_list_panel.position.x = LIST_RECT.position.x
+		_list_panel.size.x = LIST_RECT.size.x
+		_detail_panel.position.x = DETAIL_RECT.position.x
+		_detail_panel.size.x = DETAIL_RECT.size.x
+		_detail_status.position.x = DETAIL_RECT.position.x + 10.0
+		_detail_status.size.x = DETAIL_RECT.size.x - 20.0
+		_detail_text.position.x = DETAIL_RECT.position.x + 10.0
+		_detail_text.size.x = DETAIL_RECT.size.x - 20.0
+
+
+# ------------------------------------------------------------------------------
 # Перестроение списка
 # ------------------------------------------------------------------------------
 
@@ -414,11 +474,13 @@ func _refresh() -> void:
 		})
 
 	_rebuild_list()
+	apply_ui_scale()
 
 	if _rows.is_empty():
 		_selected_key = ""
 		_selected_entry = {}
 		_set_empty_detail(tr(EMPTY_SELECTION) if _has_any_entry() else tr(EMPTY_JOURNAL))
+		apply_ui_scale()
 		return
 
 	var target: AshenMenuItem = _find_row(_selected_key)
@@ -426,6 +488,7 @@ func _refresh() -> void:
 		target = _rows[0]
 	_selected_key = _row_key(target)
 	_set_detail(target.get_meta("entry") as Dictionary)
+	apply_ui_scale()
 	if visible:
 		target.grab_focus()
 

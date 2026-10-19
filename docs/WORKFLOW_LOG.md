@@ -458,6 +458,24 @@
 - **⚠️ Ветки:** Fix-1 (`8ecab0f`, worktree `fix-1-world`) и Fix-2 (`c38ff72`, worktree `fix2-nav-a11y`) — отдельные ветки от `c7c0d62`. Main их не содержит (проверено `worktree_list`). Нужна интеграция в main.
 - **Решение:** запуск **Integration-03** (интеграция веток фиксов в main через cherry-pick + верификация). Файлы фиксов не пересекаются → конфликтов не ожидается. Затем повторный QA (T-37).
 
+## 2026-10-18 — Orchestrator: Приёмка Integration-03, повторный QA (T-37)
+
+- **Integration-03 принят:** ветки Fix-1/Fix-2 сведены в `v2` (cherry-pick `70d8d38` + `5f92c0e`, итог `48de7dc`), конфликтов нет. GUT 518/518 (3-й прогон; известный флейк perf-порога на 1–2 прогонах под нагрузкой). Верификация чистая.
+- **⚠️ Ветка (на гейт merge):** рабочая ветка — `v2` (HEAD `48de7dc`); `main` (`97a1296`) — устаревший предок. Решение по сведению main/v2 — за человеком на гейте merge, на QA не влияет.
+- **Решение:** запуск повторного **QA (T-37)** на интегрированной ревизии `48de7dc`.
+
+## 2026-10-18 — Orchestrator: QA отменён, перезапуск (по решению человека)
+
+- **QA повторный прогон был отменён (cancelled) до завершения.**
+- **Решение человека:** перезапустить QA. Запускаю повторный сквозной e2e-пасс на ревизии `48de7dc`.
+
+## 2026-10-18 — Orchestrator: Повторный QA — FAIL (частично), цикл доработки 2
+
+- **QA повторный (ревизия `48de7dc`): ❌ FAIL (частично).** 7/9 блокеров закрыты полностью; 2 частично; +1 новый блокер. e2e **115/115 PASS**, NFR **8/8** (FPS 680, загрузка 0.06–0.72 с, 20 save/load +0.01%), GUT **518/518**.
+- **Осталось:** N1 (Esc/B на `FactionChoice` навсегда блокирует выбор фракции — US-06); N3 (`Teacher` не размещён в мире — AC-08 недостижим); N2 (UI 150% не применяется к 8 экранам — a11y §9.6 п.6); N4 (контур врагов в «читаемость силуэтов», DESIGN §9.1 — минор); N5 (источники способностей расходятся с SPEC §4.1 — минор).
+- **⚠️ docs/QA.md:** QA-агент заблокирован политикой на запись в docs/; готовый текст — `game/tests/e2e/QA_48de7dc_proposed.md` (нужно скопировать в `docs/QA.md`).
+- **Решение (цикл доработки 2):** запуск 2 параллельных фиксов — **Fix-3a** (N1/N3/N4 + копия QA.md) и **Fix-3b** (N2). Это 2-й цикл; при повторном сбое — пересборка planner / эскалация.
+
 ## 2026-10-18 — T-25 выполнен (tasker-backend)
 
 - **Skills:** загружен `godot` (типизированный GDScript, autoload, FileAccess/DirAccess, HashingContext, GUT/headless — профильный стек сохранений). Другие skills не требовались.
@@ -987,3 +1005,16 @@
 - **Проверки (portable Godot 4.7.2-stable, headless, из `game/`):** `--headless --import` — exit 0; GUT `-gdir=res://tests -ginclude_subdirs -gexit` — прогон 1: 517/518 (fail perf `test_long_boss_fight_stays_within_60hz_physics_budget`, p95=0.01698 > 0.01667), прогон 2: 517/518 (p95=0.01767), прогон 3: **518/518, 7060 asserts** (p95=0.00819); изолированный запуск perf-теста — pass (p95=0.0093); на базовом `c7c0d62` полный прогон — 518/518, 7047 asserts. Вывод: флейк perf-порога под нагрузкой (16.67 мс), не регрессия интеграции.
 - **Smoke:** `--headless --path game --quit-after 180` — exit 0, 0 `SCRIPT ERROR`/`ERROR`.
 - **Ограничения:** независимые QA/Guardian не выполнялись; smoke не заменяет приёмку. Worktree/ветки фиксов и untracked QA-артефакты не тронуты.
+
+## 2026-10-19 — Fix-3b выполнен (tasker-frontend)
+
+- **Skills:** загружен `godot` (GDScript/UI, Control, темы, GUT, headless import — профильный стек правок UI). Другие skills не требовались.
+- **Задача:** N2 (a11y §9.6 п.6, масштаб UI) — 8 экранов не реагировали на `Config.ui_scale`.
+- **Что сделано:**
+  - новый общий хелпер `ui/theme/ui_scale.gd` (`UIScale`): `font()/px()`, идемпотентный `apply(root)` для Label/RichTextLabel/AshenMenuItem/AshenTab/TabBar; базовые 100 % размеры хранятся в метаданных.
+  - подписка на `Config.ui_scale_changed` + `apply_ui_scale()` в Inventory, Journal, Factions, FactionChoice, WorldMap, Campfire, Remap, DeathScreen.
+  - геометрия под 150 %: Journal (список/детали/вкладки), Factions/FactionChoice (ширина колонки списка), WorldMap (левая панель/карта/заголовок), Campfire (панель слотов, диалог, карточки), Remap (одна колонка строк при 150 %+), DeathScreen (титул до 48 px, панель предупреждения), Inventory (cap заголовков, перенос ноты обучения, сдвиг репутации, полоса вкладок).
+  - `AshenKbd` масштабирует глиф/размер и слушает сигнал; custom-draw строки Inventory/Remap/Campfire используют `UIScale.font/px`.
+- **Проверка (portable Godot 4.4.1-stable, `GODOT_PATH`, `game/`):** `--headless --import` — parse/script ошибок нет; GUT `-gdir=res://tests -ginclude_subdirs -gexit` — **518/518, 7060 asserts, exit 0**; `qa_e2e` — **115/115**; `qa_a11y` — **105 PASS / 1 FAIL** (остался только известный N4: контур врагов, вне Fix-3b); `qa_rerun_probe` — **11/11** (все 8 экранов 150 %: 8→12, 16→24, 32→48); `qa_fix_probe` — **20/20**; smoke 100/150/200 % RU/EN — font масштабируется на всех 8, переполнения Control нет; рендер-кадры 150 % сняты (Inventory/Journal/Factions/FactionChoice/WorldMap/Campfire/Remap/DeathScreen).
+- **Кросс-файловые правки:** `ui/theme/ui_scale.gd` (новый), `ui/components/kbd.gd`; UI-экраны — только разрешённые каталоги. `Main.gd`, `world/`, `entities/`, `autoload/` не тронуты; `docs/TASKS.json`, untracked QA/probe-файлы и `opencode.jsonc` не менялись.
+- **Ограничения:** `qa_a11y` N4 (силуэт врагов) остаётся открытым — относится к Fix-3a/AC-07.1; на 200 % заголовки ограничены 48/20/9–10 px по доступной ширине 480×270 (иначе текст выходит за кадр), строки списков/панели используют перенос/скролл.

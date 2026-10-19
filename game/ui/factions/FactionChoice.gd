@@ -79,7 +79,10 @@ func _ready() -> void:
 		Locale.language_changed.connect(_on_locale_changed)
 	if not EventBus.faction_choice_requested.is_connected(_on_choice_requested):
 		EventBus.faction_choice_requested.connect(_on_choice_requested)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
 	_refresh()
+	apply_ui_scale()
 
 
 func _exit_tree() -> void:
@@ -87,6 +90,8 @@ func _exit_tree() -> void:
 		Locale.language_changed.disconnect(_on_locale_changed)
 	if EventBus.faction_choice_requested.is_connected(_on_choice_requested):
 		EventBus.faction_choice_requested.disconnect(_on_choice_requested)
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 	if _pause_owned:
 		get_tree().paused = _pause_previous
 		_pause_owned = false
@@ -391,6 +396,47 @@ func _make_label(
 
 
 # ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+func apply_ui_scale() -> void:
+	if not _built or _root == null:
+		return
+	UIScale.apply(self)
+
+	# Строка фракции «ЗАКРЫТ … +2» при 12 px = 192 px: расширяем список,
+	# детали сдвигаем вправо (a11y §9.6 п.6).
+	var list_width: float = clampf(
+		maxf(LIST_RECT.size.x, UIScale.px(LIST_RECT.size.x)),
+		LIST_RECT.size.x,
+		244.0
+	)
+	_list_panel.size.x = list_width
+	var detail_x: float = LIST_RECT.position.x + list_width + 8.0
+	_detail_panel.position.x = detail_x
+	_detail_panel.size.x = maxf(120.0, PANEL_RECT.end.x - 14.0 - detail_x + 8.0)
+	if _subtitle != null:
+		_subtitle.position.y = 38.0 if UIScale.factor() > 1.0 else 30.0
+	# Кнопки действий и подсказка делят нижнюю полосу: держим их в 22 px,
+	# чтобы на 150/200 % подсказка не наезжала на кнопки.
+	for button: AshenMenuItem in [_confirm_button, _cancel_button]:
+		if button == null:
+			continue
+		var base_min: Vector2 = button.get_meta(UIScale.META_MIN, button.custom_minimum_size)
+		var base_width: float = base_min.x
+		button.custom_minimum_size.y = float(ACTION_HEIGHT)
+		if button.get_parent() is HBoxContainer:
+			button.custom_minimum_size.x = maxf(
+				base_width,
+				UIStyle.text_width(button.text, button.font_size) + float(button.font_size) + 8.0
+			)
+
+
+# ------------------------------------------------------------------------------
 # Список и детали
 # ------------------------------------------------------------------------------
 
@@ -420,6 +466,7 @@ func _refresh() -> void:
 		_selected_id = ids[0] if not ids.is_empty() else &""
 	_rebuild_rows()
 	_rebuild_detail()
+	apply_ui_scale()
 	if visible:
 		_focus_selected()
 

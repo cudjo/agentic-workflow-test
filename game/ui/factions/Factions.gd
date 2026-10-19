@@ -85,7 +85,10 @@ func _ready() -> void:
 		EventBus.faction_access_changed.connect(_on_access_changed)
 	if not EventBus.faction_chosen.is_connected(_on_faction_chosen):
 		EventBus.faction_chosen.connect(_on_faction_chosen)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
 	_refresh()
+	apply_ui_scale()
 
 
 func _exit_tree() -> void:
@@ -97,6 +100,8 @@ func _exit_tree() -> void:
 		EventBus.faction_access_changed.disconnect(_on_access_changed)
 	if EventBus.faction_chosen.is_connected(_on_faction_chosen):
 		EventBus.faction_chosen.disconnect(_on_faction_chosen)
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 	if _pause_owned:
 		get_tree().paused = _pause_previous
 		_pause_owned = false
@@ -380,6 +385,34 @@ func _make_label(
 
 
 # ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+## Шрифты и строки пересчитываются по текущему `Config.ui_scale`; панели
+## построены на контейнерах/скролле, поэтому текст не обрезается.
+func apply_ui_scale() -> void:
+	if not _built or _root == null:
+		return
+	UIScale.apply(self)
+
+	# На 150/200 % левая колонка расширяется: строка «ЗАКРЫТ … +2» при 12 px
+	# занимает 192 px, в исходные 220 px не влезает (a11y §9.6 п.6).
+	var list_width: float = clampf(
+		maxf(LIST_RECT.size.x, UIScale.px(LIST_RECT.size.x)),
+		LIST_RECT.size.x,
+		244.0
+	)
+	_list_panel.size.x = list_width
+	var detail_x: float = LIST_RECT.position.x + list_width + 8.0
+	_detail_panel.position.x = detail_x
+	_detail_panel.size.x = maxf(120.0, PANEL_RECT.end.x - 14.0 - detail_x + 8.0)
+
+
+# ------------------------------------------------------------------------------
 # Список и детали
 # ------------------------------------------------------------------------------
 
@@ -412,6 +445,7 @@ func _refresh() -> void:
 		_selected_id = ids[0] if not ids.is_empty() else &""
 	_rebuild_rows()
 	_rebuild_detail()
+	apply_ui_scale()
 	if visible:
 		_focus_selected()
 

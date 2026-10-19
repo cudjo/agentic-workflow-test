@@ -132,6 +132,9 @@ func _ready() -> void:
 		Config.visual_accessibility_changed.connect(_apply_accessibility)
 	if not Locale.language_changed.is_connected(_on_locale_changed):
 		Locale.language_changed.connect(_on_locale_changed)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
+	apply_ui_scale()
 
 
 func _exit_tree() -> void:
@@ -147,6 +150,8 @@ func _exit_tree() -> void:
 		Config.visual_accessibility_changed.disconnect(_apply_accessibility)
 	if Locale.language_changed.is_connected(_on_locale_changed):
 		Locale.language_changed.disconnect(_on_locale_changed)
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 
 
 # ------------------------------------------------------------------------------
@@ -433,6 +438,57 @@ func _make_label(title: String, color: Color) -> Label:
 
 
 # ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+## Пересчитывает шрифты диалога/карточек и ширину панели слотов, чтобы на
+## 150/200 % подсказки не клипались (clip_contents больше не нужен).
+func apply_ui_scale() -> void:
+	if not _built or _ui_root == null:
+		return
+	UIScale.apply(self)
+
+	if _dialog != null:
+		var factor_gt_1: bool = UIScale.factor() > 1.0
+		var slots_state: bool = _state == State.SLOTS
+		var dialog_height: float = (
+			clampf(UIScale.px(UITokens.DIALOG_SIZE.y), UITokens.DIALOG_SIZE.y, 148.0)
+			if factor_gt_1 and not slots_state
+			else clampf(UIScale.px(UITokens.DIALOG_SIZE.y), UITokens.DIALOG_SIZE.y, 104.0)
+		)
+		var dialog_x: float = 0.0 if factor_gt_1 else DIALOG_POSITION.x
+		var dialog_width: float = 480.0 if factor_gt_1 else UITokens.DIALOG_SIZE.x
+		var dialog_y: float = (
+			DIALOG_POSITION.y if not factor_gt_1 else 270.0 - dialog_height
+		)
+		_dialog.position = Vector2(dialog_x, dialog_y)
+		_dialog.size = Vector2(dialog_width, dialog_height)
+
+	if _slots_panel != null:
+		var panel_width: float = clampf(
+			maxf(float(SLOTS_PANEL_WIDTH), UIScale.px(float(SLOTS_PANEL_WIDTH))),
+			float(SLOTS_PANEL_WIDTH),
+			464.0
+		)
+		var card_height: float = maxf(float(SLOT_CARD_HEIGHT), UIScale.px(float(SLOT_CARD_HEIGHT)))
+		for card: Button in _slot_cards:
+			if card != null:
+				card.custom_minimum_size.y = card_height
+				card.queue_redraw()
+		_slots_panel.position.x = (480.0 - panel_width) * 0.5
+		_slots_panel.size = Vector2(
+			panel_width,
+			_slots_panel.get_combined_minimum_size().y
+		)
+		if _slot_hint != null:
+			_slot_hint.clip_contents = false
+
+
+# ------------------------------------------------------------------------------
 # Состояния и ответы
 # ------------------------------------------------------------------------------
 
@@ -459,6 +515,7 @@ func _set_state(state: State) -> void:
 		call_deferred(&"_focus_current_slot")
 	else:
 		_release_slot_focus()
+	apply_ui_scale()
 
 
 func _localized_answers(answers: Array) -> Array:
@@ -982,19 +1039,22 @@ class _SlotCard:
 			number_color = UITokens.BLOOD_5
 		elif focused:
 			number_color = UITokens.GOLD_3
-		var number_baseline: float = 3.0 + UIStyle.baseline_y(UITokens.FONT_H2)
+		var number_font: int = UIScale.font(UITokens.FONT_H2)
+		var body_font: int = UIScale.font(UITokens.FONT_BODY)
+		var line_step: int = UIScale.font(UITokens.LINE_BODY)
+		var number_baseline: float = 3.0 + UIStyle.baseline_y(number_font)
 		UIStyle.draw_text(
 			self,
 			Vector2(4, number_baseline),
 			str(slot_number),
 			number_color,
-			UITokens.FONT_H2
+			number_font
 		)
 
-		var text_x: float = 4.0 + float(UITokens.FONT_H2) + 4.0
+		var text_x: float = 4.0 + float(number_font) + 4.0
 		var overwrite_width: float = 0.0
 		if overwrite:
-			overwrite_width = UIStyle.text_width(OVERWRITE_LABEL, UITokens.FONT_BODY)
+			overwrite_width = UIStyle.text_width(OVERWRITE_LABEL, body_font)
 		var title_width: float = size.x - text_x - 4.0
 		if overwrite:
 			title_width -= overwrite_width + 8.0
@@ -1005,16 +1065,16 @@ class _SlotCard:
 		elif corrupted:
 			title_color = UITokens.BLOOD_5
 
-		var baseline_first: float = 3.0 + UIStyle.baseline_y(UITokens.FONT_BODY)
-		var baseline_second: float = (
-			3.0 + float(UITokens.LINE_BODY) + UIStyle.baseline_y(UITokens.FONT_BODY)
-		)
+		var block_height: float = float(line_step) * 2.0
+		var block_top: float = maxf(3.0, (size.y - block_height) * 0.5)
+		var baseline_first: float = block_top + UIStyle.baseline_y(body_font)
+		var baseline_second: float = baseline_first + float(line_step)
 		UIStyle.draw_text(
 			self,
 			Vector2(text_x, baseline_first),
-			_fit_text(card_title, title_width, UITokens.FONT_BODY),
+			_fit_text(card_title, title_width, body_font),
 			title_color,
-			UITokens.FONT_BODY
+			body_font
 		)
 		UIStyle.draw_text(
 			self,
@@ -1022,10 +1082,10 @@ class _SlotCard:
 			_fit_text(
 				card_details,
 				size.x - text_x - 4.0,
-				UITokens.FONT_BODY
+				body_font
 			),
 			UITokens.STONE_5,
-			UITokens.FONT_BODY
+			body_font
 		)
 
 		if overwrite:
@@ -1034,7 +1094,7 @@ class _SlotCard:
 				Vector2(4, baseline_first),
 				OVERWRITE_LABEL,
 				UITokens.GOLD_3,
-				UITokens.FONT_BODY,
+				body_font,
 				size.x - 8.0,
 				HORIZONTAL_ALIGNMENT_RIGHT
 			)

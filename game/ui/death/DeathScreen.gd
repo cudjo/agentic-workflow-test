@@ -119,6 +119,9 @@ func _ready() -> void:
 		EventBus.death_screen_requested.connect(_on_death_screen_requested)
 	if not EventBus.player_respawned.is_connected(_on_player_respawned):
 		EventBus.player_respawned.connect(_on_player_respawned)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
+	apply_ui_scale()
 	set_process(false)
 	call_deferred(&"_adopt_death_handler")
 
@@ -130,6 +133,8 @@ func _exit_tree() -> void:
 		EventBus.death_screen_requested.disconnect(_on_death_screen_requested)
 	if EventBus.player_respawned.is_connected(_on_player_respawned):
 		EventBus.player_respawned.disconnect(_on_player_respawned)
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 
 
 func _process(delta: float) -> void:
@@ -603,6 +608,46 @@ func _make_label(
 
 
 # ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+## Шрифты и заголовок: на 150/200 % титул растёт до 48 px (больше не влезает
+## в 480 px по ширине), блок заголовка ужимается по вертикали, чтобы панели
+## остались на своих местах.
+func apply_ui_scale() -> void:
+	if not _built or _root == null:
+		return
+	UIScale.apply(self)
+
+	var factor: float = UIScale.factor()
+	var title_font: int = mini(UIScale.font(UITokens.FONT_TITLE), 48)
+	if _title_label != null:
+		_title_label.add_theme_font_size_override("font_size", title_font)
+		_title_label.custom_minimum_size.y = float(title_font)
+	if _title_block != null:
+		_title_block.add_theme_constant_override(
+			"separation",
+			UITokens.SP_3 if factor <= 1.0 else 0
+		)
+		_title_block.position.y = TITLE_RECT.position.y if factor <= 1.0 else 4.0
+	if _subtitle_label != null:
+		_subtitle_label.custom_minimum_size.y = float(UIScale.font(UITokens.FONT_BODY)) + 2.0
+	if _warning != null:
+		var warning_height: float = maxf(
+			WARNING_RECT.size.y,
+			float(UIScale.font(UITokens.FONT_BODY)) + 4.0
+		)
+		_warning.position.y = (
+			WARNING_RECT.position.y if factor <= 1.0 else 270.0 - warning_height - 2.0
+		)
+		_warning.size = Vector2(WARNING_RECT.size.x, warning_height)
+
+
+# ------------------------------------------------------------------------------
 # Применение данных
 # ------------------------------------------------------------------------------
 
@@ -671,6 +716,7 @@ func _apply_view(view: Dictionary) -> void:
 
 	_map_snapshot = _build_map_snapshot(view)
 	_minimap.set_data(_map_snapshot)
+	apply_ui_scale()
 
 
 func _subtitle_for(view: Dictionary, lost: bool) -> String:

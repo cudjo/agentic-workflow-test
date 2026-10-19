@@ -20,6 +20,7 @@ signal closed
 signal zone_selected(zone_id: StringName)
 
 const LAYER: int = 20
+const VIEW_WIDTH: float = 480.0
 const HEADER_RECT := Rect2(8, 8, 300, 18)
 const PROMPT_RECT := Rect2(356, 8, 116, 12)
 ## 164 (а не 160): кнопки зон растягиваются до 160 px, EN «1. BASTION
@@ -74,13 +75,18 @@ func _ready() -> void:
 	_build()
 	if not Locale.language_changed.is_connected(_on_locale_changed):
 		Locale.language_changed.connect(_on_locale_changed)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
 	_connect_event_bus()
 	_refresh_data()
+	apply_ui_scale()
 
 
 func _exit_tree() -> void:
 	if Locale.language_changed.is_connected(_on_locale_changed):
 		Locale.language_changed.disconnect(_on_locale_changed)
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 	_disconnect_event_bus()
 	if _pause_owned:
 		get_tree().paused = _pause_previous
@@ -267,6 +273,7 @@ func _refresh_data() -> void:
 	_renderer.set_data(_data)
 	_rebuild_zone_list()
 	_update_detail()
+	apply_ui_scale()
 
 
 func _model_instance() -> WorldMapModel:
@@ -528,6 +535,61 @@ func _make_label(text: String, color: Color, font_size: int) -> Label:
 	label.add_theme_constant_override("shadow_offset_y", 1)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	return label
+
+
+# ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+## На 150/200 % левая колонка зон расширяется под 12/16-px текст, карта и
+## детали сдвигаются вправо; клетка карты пересчитывается, чтобы не выйти
+## за панель. На 100 % геометрия возвращается к макету.
+func apply_ui_scale() -> void:
+	if _root == null:
+		return
+	UIScale.apply(self)
+
+	# Заголовок «КАРТА МИРА» при 24 px упирается в панели: 20 px оставляет
+	# зазор и сохраняет увеличение относительно 16 px.
+	if _header != null:
+		_header.add_theme_font_size_override(
+			"font_size",
+			mini(UIScale.font(UITokens.FONT_H2), 20)
+		)
+		_header.size.y = 22.0 if UIScale.factor() > 1.0 else HEADER_RECT.size.y
+
+	var left_width: float = clampf(
+		maxf(LEFT_RECT.size.x, UIScale.px(LEFT_RECT.size.x)),
+		LEFT_RECT.size.x,
+		250.0
+	)
+	_zone_panel.size.x = left_width
+
+	var map_x: float = LEFT_RECT.position.x + left_width + 12.0
+	var map_width: float = maxf(120.0, VIEW_WIDTH - LEFT_RECT.position.x - map_x)
+	_map_panel.position.x = map_x
+	_map_panel.size.x = map_width
+	_detail_panel.position.x = map_x
+	_detail_panel.size.x = map_width
+
+	if _renderer != null:
+		var columns: int = maxi(1, WorldMapModel.GRID_SIZE.x)
+		var rows: int = maxi(1, WorldMapModel.GRID_SIZE.y)
+		_renderer.cell_size = Vector2(
+			maxf(1.0, floorf(map_width / float(columns))),
+			maxf(1.0, floorf(MAP_RECT.size.y / float(rows)))
+		)
+		_renderer.queue_redraw()
+
+	# Строки деталей в фиксированной панели: длинный текст переносится.
+	for label: Label in [_detail_name, _detail_state, _detail_gates]:
+		if label != null:
+			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 
 
 # ------------------------------------------------------------------------------

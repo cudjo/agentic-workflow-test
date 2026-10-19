@@ -119,12 +119,16 @@ func _ready() -> void:
 	_ensure_built()
 	if not Locale.language_changed.is_connected(_on_locale_changed):
 		Locale.language_changed.connect(_on_locale_changed)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
 	_refresh_rows()
 
 
 func _exit_tree() -> void:
 	if Locale.language_changed.is_connected(_on_locale_changed):
 		Locale.language_changed.disconnect(_on_locale_changed)
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 	if _pause_owned:
 		get_tree().paused = _pause_previous
 		_pause_owned = false
@@ -514,6 +518,60 @@ func _make_label(
 
 
 # ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+func apply_ui_scale() -> void:
+	if not _built or _root == null:
+		return
+	UIScale.apply(self)
+
+	var compact: bool = UIScale.factor() > 1.0
+	# На 150/200 % строки идут в одну колонку: действие и привязки при
+	# 12/16 px не помещаются в 210 px и перекрывались бы.
+	var columns: int = 1 if compact else 2
+	if _list_box != null:
+		_list_box.columns = columns
+	if compact:
+		_list_panel.position.y = 52.0
+		_list_panel.size.y = 158.0
+		_status.position.y = 214.0
+		_status.size = Vector2(452.0, 18.0)
+		_reset_button.get_parent().position.y = 238.0
+		_footer_hint.position.y = 254.0
+	else:
+		_list_panel.position.y = LIST_RECT.position.y
+		_list_panel.size.y = LIST_RECT.size.y
+		_status.position.y = STATUS_POSITION.y
+		_status.size = Vector2(452.0, 14.0)
+		_reset_button.get_parent().position.y = ACTIONS_POSITION.y
+		_footer_hint.position.y = 244.0
+
+	var row_width: float = 440.0 if compact else 210.0
+	for row: _RemapRow in _rows:
+		if row != null:
+			row.custom_minimum_size.x = row_width
+			row.queue_redraw()
+	if compact:
+		_hint.add_theme_font_size_override(
+			"font_size",
+			mini(UIScale.font(UITokens.FONT_BODY), 10)
+		)
+		_footer_hint.add_theme_font_size_override(
+			"font_size",
+			mini(UIScale.font(UITokens.FONT_BODY), 10)
+		)
+	else:
+		_hint.add_theme_font_size_override("font_size", UITokens.FONT_BODY)
+		_footer_hint.add_theme_font_size_override("font_size", UITokens.FONT_BODY)
+	_link_focus_neighbors()
+
+
+# ------------------------------------------------------------------------------
 # Перестроение строк
 # ------------------------------------------------------------------------------
 
@@ -556,6 +614,7 @@ func _refresh_rows() -> void:
 		_row_by_action[action] = row
 
 	_link_focus_neighbors()
+	apply_ui_scale()
 
 	if visible and not _rows.is_empty():
 		var target: _RemapRow = _row_by_action.get(_selected_action, null) as _RemapRow
@@ -565,18 +624,19 @@ func _refresh_rows() -> void:
 		target.grab_focus()
 
 
-## Две колонки: ↑/↓ идут по столбцу, ←/→ — в соседний столбец строки.
+## `columns` строк: ↑/↓ идут по столбцу, ←/→ — в соседний столбец строки.
 func _link_focus_neighbors() -> void:
 	if _rows.is_empty():
 		return
 	var count: int = _rows.size()
+	var columns: int = maxi(1, _list_box.columns if _list_box != null else 2)
 	for index: int in count:
 		var row: _RemapRow = _rows[index]
-		var column: int = index % 2
-		var top_index: int = index - 2 if index >= 2 else index
-		var bottom_index: int = index + 2 if index + 2 < count else index
+		var column: int = index % columns
+		var top_index: int = index - columns if index >= columns else index
+		var bottom_index: int = index + columns if index + columns < count else index
 		var left_index: int = index if column == 0 else index - 1
-		var right_index: int = index if column == 1 else mini(index + 1, count - 1)
+		var right_index: int = index if column == columns - 1 else mini(index + 1, count - 1)
 		row.focus_neighbor_top = _rows[top_index].get_path()
 		row.focus_neighbor_bottom = _rows[bottom_index].get_path()
 		row.focus_neighbor_left = _rows[left_index].get_path()
@@ -741,9 +801,10 @@ class _RemapRow extends AshenMenuItem:
 
 		var padding: int = UITokens.PANEL_PADDING
 		var right: float = size.x - float(padding)
+		var font: int = UIScale.font(UITokens.FONT_BODY)
 		var baseline: float = (
-			(size.y - UIStyle.text_height(UITokens.FONT_BODY)) * 0.5
-			+ UIStyle.baseline_y(UITokens.FONT_BODY)
+			(size.y - UIStyle.text_height(font)) * 0.5
+			+ UIStyle.baseline_y(font)
 		)
 
 		var text: String = bindings
@@ -758,11 +819,11 @@ class _RemapRow extends AshenMenuItem:
 			text = tr("ui.remap.empty_binding")
 			color = UITokens.STONE_5
 
-		var text_width: float = UIStyle.text_width(text, UITokens.FONT_BODY)
+		var text_width: float = UIStyle.text_width(text, font)
 		UIStyle.draw_text(
 			self,
 			Vector2(right - text_width, baseline),
 			text,
 			color,
-			UITokens.FONT_BODY
+			font
 		)

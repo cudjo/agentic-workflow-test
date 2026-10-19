@@ -72,16 +72,25 @@ func _ready() -> void:
 	var input_manager: Node = get_node_or_null("/root/InputManager")
 	if input_manager != null and input_manager.has_signal("device_changed"):
 		input_manager.device_changed.connect(_on_device_changed)
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
 	refresh()
+
+
+func _exit_tree() -> void:
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 
 
 func refresh() -> void:
 	_glyph = glyph_for_action(action, get_device())
+	var glyph_height: float = UIScale.px(float(UITokens.KBD_HEIGHT))
+	var font: int = UIScale.font(UITokens.FONT_BODY)
 	var width: float = maxf(
-		float(UITokens.KBD_HEIGHT),
-		UIStyle.text_width(_glyph, UITokens.FONT_BODY) + float(UITokens.SP_2)
+		glyph_height,
+		UIStyle.text_width(_glyph, font) + UIScale.px(float(UITokens.SP_2))
 	)
-	custom_minimum_size = Vector2(width, UITokens.KBD_HEIGHT)
+	custom_minimum_size = Vector2(width, glyph_height)
 	queue_redraw()
 
 
@@ -165,15 +174,15 @@ func _draw() -> void:
 	)
 
 	var baseline: float = (
-		(rect.size.y - 2.0 - UIStyle.text_height(UITokens.FONT_BODY)) * 0.5
-		+ UIStyle.baseline_y(UITokens.FONT_BODY)
+		(rect.size.y - 2.0 - UIStyle.text_height(UIScale.font(UITokens.FONT_BODY))) * 0.5
+		+ UIStyle.baseline_y(UIScale.font(UITokens.FONT_BODY))
 	)
 	UIStyle.draw_text(
 		self,
 		Vector2(1, baseline),
 		_glyph,
 		UITokens.BONE,
-		UITokens.FONT_BODY,
+		UIScale.font(UITokens.FONT_BODY),
 		rect.size.x - 2.0,
 		HORIZONTAL_ALIGNMENT_CENTER
 	)
@@ -182,3 +191,7 @@ func _draw() -> void:
 func _on_device_changed(_device: String, _device_id: int) -> void:
 	if device_override == "":
 		refresh()
+
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	refresh()

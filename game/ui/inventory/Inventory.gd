@@ -206,11 +206,15 @@ func _init() -> void:
 func _ready() -> void:
 	_ensure_built()
 	_connect_events()
+	if not Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.connect(_on_ui_scale_changed)
 	refresh()
 
 
 func _exit_tree() -> void:
 	_disconnect_events()
+	if Config.ui_scale_changed.is_connected(_on_ui_scale_changed):
+		Config.ui_scale_changed.disconnect(_on_ui_scale_changed)
 	if _pause_owned:
 		get_tree().paused = _pause_previous
 		_pause_owned = false
@@ -310,6 +314,7 @@ func refresh() -> void:
 	_refresh_learning_points()
 	_refresh_reputation()
 	_refresh_equipment_summary()
+	apply_ui_scale()
 
 
 func get_grid_capacity() -> int:
@@ -1331,6 +1336,130 @@ func _make_label(
 
 
 # ------------------------------------------------------------------------------
+# Масштаб UI (a11y §9.6 п.6)
+# ------------------------------------------------------------------------------
+
+func _on_ui_scale_changed(_scale: int) -> void:
+	apply_ui_scale()
+
+
+## Шрифты/строки и компактные строки характеристик; панели сохраняют макет
+## 480×270, длинные подписи переносятся вместо обрезки.
+func apply_ui_scale() -> void:
+	if not _built or _root == null:
+		return
+	UIScale.apply(self)
+
+	var font: int = UIScale.font(UITokens.FONT_BODY)
+	var stat_step: float = clampf(maxf(float(STAT_ROW_HEIGHT), float(font) + 4.0), 15.0, 16.0)
+	for index: int in _stat_rows.size():
+		var row: Control = _stat_rows[index]
+		if row == null:
+			continue
+		row.position.y = STATS_Y + float(index) * stat_step
+		row.size.y = stat_step
+		row.queue_redraw()
+	for row: Control in _reputation_rows:
+		if row != null:
+			row.size.y = maxf(float(REPUTATION_ROW_HEIGHT), float(font) + 4.0)
+			row.queue_redraw()
+	if _training_note != null:
+		_training_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if _detail_view != null:
+		_detail_view.queue_redraw()
+	for slot: Control in _grid_slots:
+		if slot != null:
+			slot.queue_redraw()
+	for value: Variant in _equipment_slots.values():
+		var slot: Control = value as Control
+		if slot != null:
+			slot.queue_redraw()
+
+	# Заголовки колонок при 12/16 px шире своих панелей: ограничиваем кегль
+	# по доступной ширине (иначе текст выходит за рамку).
+	_cap_label_font(_equipment_title, 100.0)
+	_cap_label_font(_items_title, 170.0)
+	_cap_label_font(_stats_title, 139.0)
+	_cap_label_font(_learning_name, 98.0)
+	_cap_label_font(_reputation_title, 139.0)
+	_cap_label_font(_training_note, 128.0)
+
+	# Две строки ноты обучения при 12 px выше исходных 24 px: сдвигаем
+	# разделитель и блок репутации, чтобы текст не наезжал на «РЕПУТАЦИЯ».
+	var bottom_rule: Control = _root.get_node_or_null("StatsRuleBottom") as Control
+	if UIScale.factor() > 1.0:
+		if _training_note != null:
+			_training_note.size.y = maxf(24.0, UIScale.px(24.0))
+		if bottom_rule != null:
+			bottom_rule.position.y = 170.0
+		if _reputation_title != null:
+			_reputation_title.position.y = 172.0
+		for index: int in _reputation_rows.size():
+			_reputation_rows[index].position.y = 184.0 + float(index) * float(REPUTATION_ROW_HEIGHT)
+	else:
+		if _training_note != null:
+			_training_note.size.y = 24.0
+		if bottom_rule != null:
+			bottom_rule.position.y = 158.0
+		if _reputation_title != null:
+			_reputation_title.position.y = 161.0
+		for index: int in _reputation_rows.size():
+			_reputation_rows[index].position.y = REPUTATION_Y + float(index) * float(REPUTATION_ROW_HEIGHT)
+
+	# Значения экипировки: колонка сдвигается под более широкие подписи.
+	for value: Variant in _equipment_values.values():
+		var label: Label = value as Label
+		if label == null:
+			continue
+		label.position.x = 96.0 if UIScale.factor() > 1.0 else 70.0
+		label.size.x = 24.0 if UIScale.factor() > 1.0 else 38.0
+		label.size.y = maxf(label.size.y, float(UIScale.font(UITokens.FONT_BODY)) + 2.0)
+
+	_layout_tab_strip()
+	if _close_prompt != null:
+		_close_prompt.position.x = 168.0 if UIScale.factor() > 1.0 else 120.0
+
+
+## Ограничивает кегль так, чтобы самая длинная строка влезла в `max_width`.
+func _cap_label_font(label: Label, max_width: float) -> void:
+	if label == null:
+		return
+	var base: int = int(label.get_meta(UIScale.META_FONT, UITokens.FONT_BODY))
+	var size: int = UIScale.font(base)
+	var longest: int = 1
+	for line: String in label.text.split("\n"):
+		longest = maxi(longest, line.length())
+	var fit: int = int(floor(max_width / float(longest)))
+	size = clampi(mini(size, fit), base, UIScale.font(base))
+	label.add_theme_font_size_override("font_size", size)
+	if label.has_meta(UIScale.META_RECT):
+		var rect: Rect2 = label.get_meta(UIScale.META_RECT)
+		label.position = rect.position
+		label.size = rect.size
+
+
+## Полоса вкладок построена вручную: пересчитываем x/ширину под новый кегль.
+func _layout_tab_strip() -> void:
+	var x: float = 14.0
+	for node: Control in _tab_nodes:
+		if node == null:
+			continue
+		var size: int = (
+			(node as AshenTab).font_size
+			if node is AshenTab
+			else node.get_theme_font_size(&"font_size")
+		)
+		var width: float = maxf(56.0, UIStyle.text_width(node.text, size) + 16.0)
+		node.position.x = x
+		if node is AshenTab:
+			node.size = Vector2(width, float(maxi(UITokens.TAB_HEIGHT, size + 6)))
+			node.custom_minimum_size = node.size
+		else:
+			node.size = Vector2(width, float(size) + 2.0)
+		x += width + float(UITokens.SP_2)
+
+
+# ------------------------------------------------------------------------------
 # Внутренние визуальные компоненты
 # ------------------------------------------------------------------------------
 
@@ -1361,21 +1490,22 @@ class StatRow extends Control:
 		if focused:
 			draw_rect(Rect2(Vector2.ZERO, size), UITokens.NIGHT_3)
 
-		var plus_size: int = 11
-		var cost_width: float = 18.0
-		var value_width: float = 18.0
+		var plus_size: int = int(UIScale.px(11.0))
+		var cost_width: float = UIScale.px(18.0)
+		var value_width: float = UIScale.px(18.0)
 		var plus_x: float = size.x - float(plus_size)
 		var cost_x: float = plus_x - 2.0 - cost_width
 		var value_x: float = cost_x - 2.0 - value_width
-		var center_y: float = (size.y - UIStyle.text_height(UITokens.FONT_BODY)) * 0.5
-		var baseline: float = center_y + UIStyle.baseline_y(UITokens.FONT_BODY)
+		var font: int = UIScale.font(UITokens.FONT_BODY)
+		var center_y: float = (size.y - UIStyle.text_height(font)) * 0.5
+		var baseline: float = center_y + UIStyle.baseline_y(font)
 
 		UIStyle.draw_text(
 			self,
 			Vector2(0, baseline),
 			stat_label,
 			UITokens.STONE_5,
-			UITokens.FONT_BODY,
+			font,
 			value_x - 2.0
 		)
 		UIStyle.draw_text(
@@ -1383,7 +1513,7 @@ class StatRow extends Control:
 			Vector2(value_x, baseline),
 			str(value),
 			UITokens.BONE,
-			UITokens.FONT_BODY,
+			font,
 			value_width,
 			HORIZONTAL_ALIGNMENT_RIGHT
 		)
@@ -1392,7 +1522,7 @@ class StatRow extends Control:
 			Vector2(cost_x, baseline),
 			"·—" if required_points < 0 else "·%d" % required_points,
 			UITokens.STONE_3,
-			UITokens.FONT_BODY,
+			font,
 			cost_width,
 			HORIZONTAL_ALIGNMENT_RIGHT
 		)
@@ -1405,10 +1535,10 @@ class StatRow extends Control:
 		UIStyle.draw_dashed_frame(self, plus_rect, 1, UITokens.STONE_3)
 		UIStyle.draw_text(
 			self,
-			Vector2(plus_rect.position.x, plus_rect.position.y + 8),
+			Vector2(plus_rect.position.x, plus_rect.position.y + float(font)),
 			"+",
 			UITokens.STONE_3,
-			UITokens.FONT_BODY,
+			font,
 			plus_rect.size.x,
 			HORIZONTAL_ALIGNMENT_CENTER
 		)
@@ -1474,22 +1604,25 @@ class ReputationRow extends Control:
 	func _draw() -> void:
 		if size.x <= 0.0 or size.y <= 0.0:
 			return
+		var font: int = UIScale.font(UITokens.FONT_BODY)
 		var baseline: float = (
-			(size.y - UIStyle.text_height(UITokens.FONT_BODY)) * 0.5
-			+ UIStyle.baseline_y(UITokens.FONT_BODY)
+			(size.y - UIStyle.text_height(font)) * 0.5
+			+ UIStyle.baseline_y(font)
 		)
+		var bar_x: float = UIScale.px(BAR_X)
+		var value_width: float = UIScale.px(VALUE_WIDTH)
 		UIStyle.draw_text(
 			self,
 			Vector2(0, baseline),
 			short_name,
 			UITokens.STONE_5,
-			UITokens.FONT_BODY,
-			BAR_X - 2.0
+			font,
+			bar_x - 2.0
 		)
 
-		var bar_width: float = maxf(size.x - BAR_X - VALUE_WIDTH - 3.0, 8.0)
+		var bar_width: float = maxf(size.x - bar_x - value_width - 3.0, 8.0)
 		var bar_rect := Rect2(
-			Vector2(BAR_X, (size.y - BAR_HEIGHT) * 0.5),
+			Vector2(bar_x, (size.y - BAR_HEIGHT) * 0.5),
 			Vector2(bar_width, BAR_HEIGHT)
 		)
 		draw_rect(bar_rect, UITokens.VOID)
@@ -1516,11 +1649,11 @@ class ReputationRow extends Control:
 			value_color = UITokens.BLOOD_5
 		UIStyle.draw_text(
 			self,
-			Vector2(size.x - VALUE_WIDTH, baseline),
+			Vector2(size.x - value_width, baseline),
 			get_value_text(),
 			value_color,
-			UITokens.FONT_BODY,
-			VALUE_WIDTH,
+			font,
+			value_width,
 			HORIZONTAL_ALIGNMENT_RIGHT
 		)
 
@@ -1550,37 +1683,41 @@ class ItemDetailView extends Control:
 	func _draw() -> void:
 		if data.is_empty() or size.x <= 0.0:
 			return
+		var font: int = UIScale.font(UITokens.FONT_BODY)
+		var ascent: float = UIStyle.baseline_y(font)
 		var title: String = _fit(str(data.get("name", "")), size.x)
 		UIStyle.draw_text(
 			self,
-			Vector2(0, UIStyle.baseline_y(UITokens.FONT_BODY)),
+			Vector2(0, ascent + 1.0),
 			title,
 			UITokens.GOLD_3,
-			UITokens.FONT_BODY
+			font
 		)
 
 		var subtitle: String = str(data.get("subtitle", ""))
 		if bool(data.get("equipped", false)):
 			subtitle = tr("ui.inv.equipped_suffix") % subtitle
+		var subtitle_y: float = ascent + 1.0 + float(font) + 2.0
 		UIStyle.draw_text(
 			self,
-			Vector2(0, 20.0),
+			Vector2(0, subtitle_y),
 			_fit(subtitle, size.x),
 			UITokens.STONE_5,
-			UITokens.FONT_BODY
+			font
 		)
 
 		if bool(data.get("empty", false)):
 			return
 
+		var detail_y: float = subtitle_y + float(font) + 2.0
 		if bool(data.get("unavailable", false)):
 			var lock_text: String = tr("ui.inv.unavailable_prefix") % str(data.get("unavailable_reason", ""))
 			UIStyle.draw_text(
 				self,
-				Vector2(0, 32.0),
+				Vector2(0, detail_y),
 				_fit(lock_text, size.x),
 				UITokens.BLOOD_5,
-				UITokens.FONT_BODY
+				font
 			)
 			return
 
@@ -1588,16 +1725,16 @@ class ItemDetailView extends Control:
 		if requirements.is_empty():
 			UIStyle.draw_text(
 				self,
-				Vector2(0, 32.0),
+				Vector2(0, detail_y),
 				tr("ui.inv.no_requirements"),
 				UITokens.STEEL_3,
-				UITokens.FONT_BODY
+				font
 			)
 			return
 
 		for index: int in mini(requirements.size(), 2):
 			var row: Dictionary = requirements[index]
-			var y: float = 32.0 + float(index) * 12.0
+			var y: float = detail_y + float(index) * float(font)
 			var left: String = "%s %d" % [
 				str(row.get("short_name", "")),
 				int(row.get("required", 0)),
@@ -1607,7 +1744,7 @@ class ItemDetailView extends Control:
 				Vector2(0, y),
 				_fit(left, size.x * 0.45),
 				UITokens.STONE_5,
-				UITokens.FONT_BODY
+				font
 			)
 			_draw_tag(
 				str(row.get("tag", "")),
@@ -1618,10 +1755,11 @@ class ItemDetailView extends Control:
 	func _draw_tag(text: String, met: bool, baseline: float) -> void:
 		if text == "":
 			return
-		var tag_width: float = UIStyle.text_width(text, UITokens.FONT_BODY) + 6.0
+		var font: int = UIScale.font(UITokens.FONT_BODY)
+		var tag_width: float = UIStyle.text_width(text, font) + 6.0
 		var tag_rect := Rect2(
-			Vector2(size.x - tag_width, baseline - 8.0),
-			Vector2(tag_width, 10.0)
+			Vector2(size.x - tag_width, baseline - float(font) + 2.0),
+			Vector2(tag_width, float(font))
 		)
 		if met:
 			UIStyle.draw_frame(self, tag_rect, UITokens.BORDER_INNER, UITokens.STEEL_3)
@@ -1630,7 +1768,7 @@ class ItemDetailView extends Control:
 				Vector2(tag_rect.position.x + 3.0, baseline - 1.0),
 				text,
 				UITokens.STEEL_3,
-				UITokens.FONT_BODY
+				font
 			)
 		else:
 			draw_rect(tag_rect, UITokens.BLOOD)
@@ -1640,14 +1778,15 @@ class ItemDetailView extends Control:
 				Vector2(tag_rect.position.x + 3.0, baseline - 1.0),
 				text,
 				UITokens.BONE,
-				UITokens.FONT_BODY
+				font
 			)
 
 	func _fit(text: String, max_width: float) -> String:
-		if UIStyle.text_width(text, UITokens.FONT_BODY) <= max_width:
+		var font: int = UIScale.font(UITokens.FONT_BODY)
+		if UIStyle.text_width(text, font) <= max_width:
 			return text
 		var fitted: String = text
-		while fitted.length() > 1 and UIStyle.text_width(fitted, UITokens.FONT_BODY) > max_width:
+		while fitted.length() > 1 and UIStyle.text_width(fitted, font) > max_width:
 			fitted = fitted.substr(0, fitted.length() - 1)
 		return fitted.substr(0, maxi(fitted.length() - 1, 1)) + "."
 
