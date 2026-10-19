@@ -225,20 +225,32 @@ static func next_ui_scale(current: int, step: int) -> int:
 # Режим окна
 # ------------------------------------------------------------------------------
 
-## DisplayServer-режим для значения `window_mode`.
+## DisplayServer-режим для значения `window_mode`. MINOR-01: «Без рамки» — это
+## окно без рамки (`WINDOWED` + `WINDOW_FLAG_BORDERLESS`), а не эксклюзивный
+## полный экран; «Полный экран» — обычный полноэкранный режим движка.
 static func display_mode_for(mode: int) -> int:
 	match mode:
 		WINDOW_FULLSCREEN:
 			return DisplayServer.WINDOW_MODE_FULLSCREEN
-		WINDOW_BORDERLESS:
-			return DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
 		_:
+			# WINDOW_WINDOWED и WINDOW_BORDERLESS используют оконный режим;
+			# borderless отличается флагом (см. `is_borderless_mode`).
 			return DisplayServer.WINDOW_MODE_WINDOWED
 
 
+## true — режим «Без рамки»: оконный режим без системной рамки.
+static func is_borderless_mode(mode: int) -> bool:
+	return mode == WINDOW_BORDERLESS
+
+
 ## Применяет режим окна (no-op в headless — DisplayServer там dummy).
+## Порядок важен при выходе из fullscreen: сначала режим, затем рамка.
 func apply_window_mode() -> void:
 	DisplayServer.window_set_mode(display_mode_for(window_mode))
+	DisplayServer.window_set_flag(
+		DisplayServer.WINDOW_FLAG_BORDERLESS,
+		is_borderless_mode(window_mode)
+	)
 
 
 # ------------------------------------------------------------------------------

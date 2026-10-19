@@ -864,6 +864,12 @@ func _has_world_root() -> bool:
 
 func _start_game(slot: int) -> void:
 	var zone: StringName = &""
+	## B-02/AC-05.1: загрузка слота восстанавливает не только зону, но и позицию
+	## у костра. `null` — обычная точка входа (новая игра/старый сейв без
+	## чекпоинта). Виртуальный `checkpoint` не требует физической entry в зоне
+	## (у зоны 4/5 нет `start`), позиция задаётся явно.
+	var spawn_position: Variant = null
+	var entry_id: StringName = SceneRouter.DEFAULT_ENTRY_ID
 	if slot > 0:
 		if not SaveManager.load_slot(slot):
 			var failure: String = str(SaveManager.read_slot(slot).get("reason", SaveManager.LOAD_CORRUPTED))
@@ -872,6 +878,9 @@ func _start_game(slot: int) -> void:
 			return
 		var meta: Dictionary = SaveManager.get_slot_metadata(slot)
 		zone = GameState.respawn_zone_id
+		if zone != &"" and GameState.has_checkpoint():
+			spawn_position = GameState.respawn_position
+			entry_id = SceneRouter.CHECKPOINT_ENTRY_ID
 		if zone == &"":
 			zone = StringName(str(meta.get("zone_id", "")))
 	else:
@@ -889,13 +898,17 @@ func _start_game(slot: int) -> void:
 
 	game_started.emit(slot)
 	if in_place:
-		if not SceneRouter.bootstrap(zone):
+		if not SceneRouter.bootstrap(zone, entry_id, spawn_position):
 			push_warning("MainMenu: не удалось загрузить зону '%s'" % zone)
 		close()
 		return
 
+	# Смена сцены создаёт новый Main: запрос переживает её в автолоаде и
+	# применяется в `Main._ready()` → `SceneRouter.bootstrap()`.
+	SceneRouter.request_bootstrap(zone, entry_id, spawn_position)
 	var error: Error = get_tree().change_scene_to_file("res://Main.tscn")
 	if error != OK:
+		SceneRouter.clear_bootstrap_request()
 		push_error("MainMenu: не удалось сменить сцену на Main.tscn (%s)" % error_string(error))
 		return
 	close()

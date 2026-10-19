@@ -15,6 +15,13 @@ extends Node
 ##   5. `EventBus.zone_loaded` — хук для кроссфейда музыки AudioManager (T-34).
 ##
 ## Точка старта игры — `bootstrap()` из `Main.gd`; `reset()` — новая игра/тесты.
+##
+## Fix-4a (B-01/B-02): и `bootstrap()`, и `change_zone()` принимают необязательную
+## точку спавна игрока. Она нужна, когда игрок входит не через физическую точку
+## входа, а по чекпоинту костра: загрузка слота (AC-05.1) и возрождение в зоне
+## чекпоинта (AC-05.2) ставят игрока ровно в `GameState.respawn_position`.
+## Такой вход помечается виртуальным `entry_id = checkpoint` — его нет в
+## ZoneData, но позиция задаётся явно и не зависит от первой точки входа.
 
 ## Переход начат (зона ещё не активна). Потребители: тесты/QA, HUD.
 signal transition_started(zone_id: StringName, entry_id: StringName)
@@ -30,6 +37,9 @@ signal zone_visited(zone_id: StringName)
 
 const DEFAULT_ZONE_ID: StringName = &"zone_01_village"
 const DEFAULT_ENTRY_ID: StringName = &"start"
+## Виртуальная точка входа «у костра»: позиция задаётся spawn_position, а не
+## ZoneData.entry_points (в зоне 4/5 физической точки `start` нет).
+const CHECKPOINT_ENTRY_ID: StringName = &"checkpoint"
 const ZONE_SCENE_PATTERN: String = "res://world/zones/%s/%s.tscn"
 const ZONE_DATA_PATTERN: String = "res://data/zones/%s.tres"
 const LOADING_SCENE: PackedScene = preload("res://ui/loading/LoadingScreen.tscn")
@@ -72,6 +82,12 @@ var _pending_zone_id: StringName = &""
 var _pending_entry_id: StringName = &""
 var _pending_display_name: String = ""
 var _pending_scene_path: String = ""
+## Явная точка спавна игрока для следующего перехода (`Variant`: Vector2/null).
+## `null` — использовать точку входа из ZoneData.
+var _pending_spawn_position: Variant = null
+## Отложенный запрос старта: MainMenu меняет сцену на Main, а `bootstrap()`
+## в новой сцене забирает зону/вход/позицию отсюда (B-02).
+var _bootstrap_request: Dictionary = {}
 var _elapsed: float = 0.0
 var _exit_grace_left: float = 0.0
 
@@ -144,9 +160,28 @@ func instantiate_zone(scene_path: String) -> ZoneScene:
 ## Сцена грузится синхронно: это не переход между зонами, а инициализация мира
 ## (дальше все переходы — фоновые через `change_zone`). Повторный вызов во
 ## время игры ничего не делает.
-func bootstrap(zone_id: StringName = &"", entry_id: StringName = DEFAULT_ENTRY_ID) -> bool:
+##
+## `spawn_position` (Fix-4a, B-02): `Vector2` — поставить игрока явно (загрузка
+## слота у костра, AC-05.1); `null` — обычная точка входа `entry_id`.
+## Вызов без аргументов забирает отложенный запрос `request_bootstrap()`
+## (MainMenu → смена сцены на Main).
+func bootstrap(
+	zone_id: StringName = &"",
+	entry_id: StringName = DEFAULT_ENTRY_ID,
+	spawn_position: Variant = null
+) -> bool:
 	if is_loading or current_zone_id != &"":
 		return false
+
+	if zone_id == &"" and not _bootstrap_request.is_empty():
+		var request: Dictionary = _bootstrap_request
+		_bootstrap_request = {}
+		zone_id = StringName(str(request.get("zone_id", "")))
+		entry_id = StringName(str(request.get("entry_id", DEFAULT_ENTRY_ID)))
+		spawn_position = request.get("spawn_position", null)
+	else:
+		_bootstrap_request = {}
+
 	var target: StringName = zone_id
 	if target == &"" or not ResourceLoader.exists(zone_scene_path(target)):
 		target = GameState.current_zone_id
@@ -170,16 +205,43 @@ func bootstrap(zone_id: StringName = &"", entry_id: StringName = DEFAULT_ENTRY_I
 		return false
 
 	var zone_id_actual: StringName = zone.zone_data.id
-	_apply_zone(zone, root, entry_id)
+	_apply_zone(zone, root, entry_id, spawn_position)
 	transition_finished.emit(zone_id_actual, entry_id)
 	if EventBus.has_signal(&"zone_loaded"):
 		EventBus.zone_loaded.emit(zone_id_actual, zone.zone_data.get_display_name())
 	return true
 
 
+## Отложенный старт: MainMenu задаёт зону/вход/позицию и меняет сцену на Main;
+## `Main._ready()` вызывает `bootstrap()` без аргументов и забирает запрос.
+## Нужен, чтобы загрузка слота у костра (AC-05.1) не теряла позицию при смене
+## сцены. Повторный вызов перезаписывает запрос (последний старт побеждает).
+func request_bootstrap(
+	zone_id: StringName,
+	entry_id: StringName = DEFAULT_ENTRY_ID,
+	spawn_position: Variant = null
+) -> void:
+	_bootstrap_request = {
+		"zone_id": zone_id,
+		"entry_id": entry_id,
+		"spawn_position": spawn_position,
+	}
+
+
+## Отменяет отложенный старт (смена сцены не удалась / повторный выбор слота).
+func clear_bootstrap_request() -> void:
+	_bootstrap_request = {}
+
+
 ## Начинает фоновый переход в зону `zone_id` на точку входа `entry_id`.
+## `spawn_position` (Fix-4a): `Vector2` — явная позиция игрока (возрождение у
+## костра в другой зоне, B-01); `null` — точка входа из ZoneData.
 ## Возвращает false, если переход уже идёт, путь зоны битый или нет WorldRoot.
-func change_zone(zone_id: StringName, entry_id: StringName = DEFAULT_ENTRY_ID) -> bool:
+func change_zone(
+	zone_id: StringName,
+	entry_id: StringName = DEFAULT_ENTRY_ID,
+	spawn_position: Variant = null
+) -> bool:
 	if is_loading:
 		return false
 	var path: String = zone_scene_path(zone_id)
@@ -196,6 +258,7 @@ func change_zone(zone_id: StringName, entry_id: StringName = DEFAULT_ENTRY_ID) -
 
 	_pending_zone_id = zone_id
 	_pending_entry_id = entry_id
+	_pending_spawn_position = spawn_position
 	_pending_scene_path = path
 	var zone_data: ZoneData = _load_zone_data(zone_id)
 	_pending_display_name = zone_data.get_display_name() if zone_data != null else String(zone_id)
@@ -279,6 +342,8 @@ func reset() -> void:
 	_pending_entry_id = &""
 	_pending_display_name = ""
 	_pending_scene_path = ""
+	_pending_spawn_position = null
+	_bootstrap_request = {}
 	_elapsed = 0.0
 	_exit_grace_left = 0.0
 	last_load_seconds = 0.0
@@ -369,7 +434,7 @@ func _complete_transition() -> void:
 		_fail_transition(_pending_zone_id, "WorldRoot is missing")
 		return
 
-	_apply_zone(zone, root, _pending_entry_id)
+	_apply_zone(zone, root, _pending_entry_id, _pending_spawn_position)
 
 	var zone_id: StringName = current_zone_id
 	var entry_id: StringName = current_entry_id
@@ -379,7 +444,14 @@ func _complete_transition() -> void:
 
 ## Заменяет содержимое WorldRoot инстанцированной зоной и переносит игрока.
 ## Общий путь для фонового перехода и синхронного `bootstrap()`.
-func _apply_zone(zone: ZoneScene, root: Node2D, entry_id: StringName) -> void:
+## `spawn_position` (Vector2) перекрывает точку входа — чекпоинт костра
+## (AC-05.1/05.2); `null` — позиция из `entry_id`.
+func _apply_zone(
+	zone: ZoneScene,
+	root: Node2D,
+	entry_id: StringName,
+	spawn_position: Variant = null
+) -> void:
 	_detach_player()
 	_clear_world(root)
 
@@ -391,7 +463,10 @@ func _apply_zone(zone: ZoneScene, root: Node2D, entry_id: StringName) -> void:
 	if not zone.exit_requested.is_connected(_on_zone_exit_requested):
 		zone.exit_requested.connect(_on_zone_exit_requested)
 
-	_attach_player(zone, _entry_position(zone, current_entry_id))
+	var player_position: Vector2 = _entry_position(zone, current_entry_id)
+	if spawn_position is Vector2:
+		player_position = spawn_position
+	_attach_player(zone, player_position)
 	_sync_corpse(zone)
 	_exit_grace_left = exit_grace_time
 	set_process(true)
@@ -404,6 +479,7 @@ func _finish_transition(zone_id: StringName, entry_id: StringName, display_name:
 	_pending_entry_id = &""
 	_pending_display_name = ""
 	_pending_scene_path = ""
+	_pending_spawn_position = null
 	_elapsed = 0.0
 	_unlock_player()
 	if loading_screen != null and is_instance_valid(loading_screen):
@@ -424,6 +500,7 @@ func _fail_transition(zone_id: StringName, reason: String) -> void:
 	_pending_entry_id = &""
 	_pending_display_name = ""
 	_pending_scene_path = ""
+	_pending_spawn_position = null
 	_elapsed = 0.0
 	_unlock_player()
 	if loading_screen != null and is_instance_valid(loading_screen):

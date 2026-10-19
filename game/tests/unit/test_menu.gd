@@ -485,7 +485,12 @@ func test_config_normalizes_language_scale_and_window_mode() -> void:
 	assert_eq(Config.next_ui_scale(200, 1), 100)
 	assert_eq(Config.next_ui_scale(100, -1), 200)
 	assert_eq(int(Config.display_mode_for(Config.WINDOW_FULLSCREEN)), int(DisplayServer.WINDOW_MODE_FULLSCREEN))
-	assert_eq(int(Config.display_mode_for(Config.WINDOW_BORDERLESS)), int(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN))
+	# MINOR-01: «Без рамки» — оконный режим + WINDOW_FLAG_BORDERLESS, а не
+	# эксклюзивный полный экран (раньше маппинг был перепутан).
+	assert_eq(int(Config.display_mode_for(Config.WINDOW_BORDERLESS)), int(DisplayServer.WINDOW_MODE_WINDOWED))
+	assert_false(Config.is_borderless_mode(Config.WINDOW_FULLSCREEN))
+	assert_false(Config.is_borderless_mode(Config.WINDOW_WINDOWED))
+	assert_true(Config.is_borderless_mode(Config.WINDOW_BORDERLESS))
 
 
 

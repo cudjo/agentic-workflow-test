@@ -15,12 +15,28 @@ extends Node
 ## навсегда. Экран сообщает о закрытии сигналом `closed`; если фракция так и не
 ## выбрана, запрос снимается и может быть повторён следующим сюжетным событием
 ## (`quest_completed`) или закрытием диалога. Подтверждённый выбор не сбрасывается.
+##
+## Fix-4a:
+##   * B-04 — «В главное меню» на экране смерти: Main слушает сигнал DeathScreen,
+##     снимает death-состояние, сбрасывает SceneRouter и грузит MainMenu.tscn
+##     (раньше сигнал никто не слушал → soft-lock).
+##   * MINOR-05 — присяга открывается только по сюжетному квесту
+##     (`FACTION_OATH_QUEST`), а не по завершению любого квеста.
 
 const THEME_PATH := "res://ui/theme/main_theme.tres"
 ## Слой паузы — поверх любого игрового слоя (Overlay=40), поэтому 50.
 const PAUSE_LAYER: int = 50
 ## Узел экрана выбора фракции монтируется в Main.tscn (T-24).
 const FACTION_CHOICE_PATH := "FactionChoice"
+## Экран смерти лежит в постоянном Overlay-слое Main.tscn (layer 40).
+const DEATH_SCREEN_PATH := "Overlay/DeathScreen"
+const MAIN_MENU_SCENE_PATH := "res://ui/menus/MainMenu.tscn"
+## MINOR-05: единственный сюжетный квест, завершение которого означает присягу
+## (квест старейшины в хабе). Остальные квесты меняют репутацию (AC-06.1), но
+## не открывают выбор фракции: иначе экран присяги всплывал бы после любого
+## побочного квеста. Новый сюжетный триггер — добавить id сюда (или вызвать
+## `EventBus.faction_choice_requested` из кат-сцены).
+const FACTION_OATH_QUEST: StringName = &"quest_free_smuggle"
 
 ## Квест завершён, но экран выбора фракции ещё не показан (ждём закрытия диалога).
 var _faction_choice_pending: bool = false
@@ -30,6 +46,11 @@ var _faction_choice_requested: bool = false
 var _faction_choice_screen: Node = null
 var _pause_menu: CanvasLayer = null
 var _pause_owned: bool = false
+## B-04: защита от повторного запроса меню (смена сцены асинхронна).
+var _returning_to_menu: bool = false
+## Хук для GUT/интеграции: подменяет `change_scene_to_file` (смена current_scene
+## внутри GUT уничтожила бы раннер). В игре пуст — грузится MainMenu.tscn.
+var menu_scene_loader: Callable = Callable()
 
 
 func _ready() -> void:
@@ -40,6 +61,7 @@ func _ready() -> void:
 			window.theme = ui_theme
 
 	_connect_flow_events()
+	_connect_death_screen()
 
 	# T-17: первый вход в зону. Синхронно — это инициализация мира, дальше все
 	# переходы идут фоновым потоком через SceneRouter.change_zone().
@@ -53,6 +75,7 @@ func _exit_tree() -> void:
 	if EventBus.dialogue_finished.is_connected(_on_dialogue_finished):
 		EventBus.dialogue_finished.disconnect(_on_dialogue_finished)
 	_disconnect_faction_choice()
+	_disconnect_death_screen()
 	if _pause_owned:
 		get_tree().paused = false
 		_pause_owned = false
@@ -96,7 +119,11 @@ func _disconnect_faction_choice() -> void:
 
 ## Ключевой квест завершён: после закрытия диалога сюжет требует присяги.
 ## Выбор уже сделан — сигнал не нужен (концовка T-32 не переспрашивает).
-func _on_quest_completed(_quest_id: StringName, _title: String) -> void:
+## MINOR-05: только `FACTION_OATH_QUEST`; побочные квесты меняют репутацию, но
+## присягу не открывают (раньше триггер срабатывал на любом `quest_completed`).
+func _on_quest_completed(quest_id: StringName, _title: String) -> void:
+	if quest_id != FACTION_OATH_QUEST:
+		return
 	if _faction_choice_requested or FactionManager.is_faction_chosen():
 		return
 	_faction_choice_pending = true
@@ -143,6 +170,63 @@ func _is_dialogue_open() -> bool:
 		and screen.has_method(&"is_open")
 		and bool(screen.call(&"is_open"))
 	)
+
+
+# ------------------------------------------------------------------------------
+# B-04: экран смерти → «В главное меню»
+# ------------------------------------------------------------------------------
+
+## DeathScreen эмитит `main_menu_requested`, но раньше его никто не слушал:
+## кнопка скрывала экран, игра оставалась мёртвой (hp=0, death_active) без
+## ввода — soft-lock. Main — постоянная сцена, поэтому связываем здесь.
+func _connect_death_screen() -> void:
+	var death_screen := get_node_or_null(DEATH_SCREEN_PATH)
+	if death_screen == null or not death_screen.has_signal(&"main_menu_requested"):
+		return
+	var callback := Callable(self, &"_on_main_menu_requested")
+	if not death_screen.is_connected(&"main_menu_requested", callback):
+		death_screen.connect(&"main_menu_requested", callback)
+
+
+func _disconnect_death_screen() -> void:
+	var death_screen := get_node_or_null(DEATH_SCREEN_PATH)
+	if death_screen == null or not is_instance_valid(death_screen):
+		return
+	var callback := Callable(self, &"_on_main_menu_requested")
+	if death_screen.has_signal(&"main_menu_requested") \
+			and death_screen.is_connected(&"main_menu_requested", callback):
+		death_screen.disconnect(&"main_menu_requested", callback)
+
+
+## Завершает забег в памяти и открывает главное меню. Сейвы на диске не
+## трогаются: «Продолжить»/«Загрузить» восстановят последний слот (включая
+## death-автосейв EC-04). Сбрасываем death-состояние, чтобы новая сцена Main не
+## унаследовала hp=0/`death_active`; SceneRouter освобождает игрока и зону.
+func _on_main_menu_requested() -> void:
+	if _returning_to_menu:
+		return
+	_returning_to_menu = true
+	if _pause_owned:
+		get_tree().paused = false
+		_pause_owned = false
+	GameState.reset_death_state(false)
+	GameState.set_in_combat(false)
+	if SceneRouter.has_method(&"reset"):
+		SceneRouter.reset()
+	_open_main_menu()
+
+
+func _open_main_menu() -> void:
+	if menu_scene_loader.is_valid():
+		menu_scene_loader.call()
+		return
+	var error: Error = get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
+	if error != OK:
+		_returning_to_menu = false
+		push_error(
+			"Main: не удалось открыть главное меню '%s' (%s)"
+			% [MAIN_MENU_SCENE_PATH, error_string(error)]
+		)
 
 
 # ------------------------------------------------------------------------------

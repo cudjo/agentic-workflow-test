@@ -64,8 +64,20 @@ var last_death_info: Dictionary = {}
 var player: Player
 var corpse_parent: Node
 
+## Стартовая позиция игрока в зоне: возрождение без чекпоинта возвращает его
+## туда, а не в (0,0). Захватывается после bootstrap/первого `zone_entered`,
+## потому что DeathHandler в Main._ready создаётся раньше, чем зона и игрок.
 var _fallback_position: Vector2 = Vector2.ZERO
+var _fallback_captured: bool = false
 var _corpse_node: Corpse = null
+
+## B-01/AC-05.2: возрождение в зоне чекпоинта идёт фоновым переходом
+## SceneRouter. Пока идёт загрузка, повторный `respawn()` игнорируется, а
+## `player_respawned` эмитится только после `transition_finished` — экран смерти
+## не закрывается раньше, чем игрок оказался в целевой зоне.
+var _pending_respawn: bool = false
+var _pending_respawn_zone: StringName = &""
+var _pending_respawn_position: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -78,8 +90,7 @@ func _ready() -> void:
 		push_error("DeathHandler: balancing resource is missing at %s" % BALANCE_PATH)
 
 	_resolve_player()
-	if player != null:
-		_fallback_position = player.global_position
+	_capture_fallback_position.call_deferred()
 
 	if not EventBus.player_died.is_connected(_on_player_died):
 		EventBus.player_died.connect(_on_player_died)
@@ -87,6 +98,12 @@ func _ready() -> void:
 		EventBus.zone_entered.connect(_on_zone_entered)
 	if not EventBus.save_loaded.is_connected(_on_save_loaded):
 		EventBus.save_loaded.connect(_on_save_loaded)
+	# Возрождение из другой зоны: SceneRouter сам ставит игрока на позицию
+	# чекпоинта при `_apply_zone`, здесь фиксируем завершение (B-01).
+	if not SceneRouter.transition_finished.is_connected(_on_respawn_transition_finished):
+		SceneRouter.transition_finished.connect(_on_respawn_transition_finished)
+	if not SceneRouter.transition_failed.is_connected(_on_respawn_transition_failed):
+		SceneRouter.transition_failed.connect(_on_respawn_transition_failed)
 
 	# EC-04: GameState уже содержит смерть из загруженного сейва — при загрузке
 	# игра должна вести себя как после обычной смерти (без «отката»).
@@ -156,24 +173,85 @@ func _finish_death_budget() -> void:
 
 ## Возрождает игрока у последнего костра с полным HP (AC-05.2), спавнит
 ## corpse-метку в мире и очищает флаг смерти (EC-04). Идемпотентно.
+##
+## B-01: если чекпоинт в другой зоне (`respawn_zone_id != текущая`), игрок
+## переходит туда через SceneRouter с экраном загрузки и встаёт на
+## `respawn_position` после `transition_finished`. В той же зоне — прямая
+## телепортация (как раньше).
 func respawn() -> void:
+	if _pending_respawn:
+		return
 	_resolve_player()
+	var target_zone: StringName = GameState.respawn_zone_id
 	var target_position: Vector2 = GameState.respawn_position
 	if not GameState.has_checkpoint():
+		# Без чекпоинта — стартовая позиция текущей зоны, не (0,0) и не костёр.
 		target_position = _fallback_position if player != null else GameState.respawn_position
+		target_zone = _current_zone_id()
 
 	GameState.reset_hp()
 	GameState.death_active = false
-
-	if player != null:
-		player.global_position = target_position
-		player.velocity = Vector2.ZERO
-		player.reset_player()
-
 	phase = &"idle"
 	time_left = 0.0
+
+	if _needs_zone_transition(target_zone) and _start_zone_respawn(target_zone, target_position):
+		return
+	_finish_respawn(target_position, target_zone)
+
+
+## B-01: чекпоинт в другой зоне — нужен переход. Неизвестная текущая зона
+## (тесты без мира) трактуется как «та же зона»: прямая телепортация.
+func _needs_zone_transition(target_zone: StringName) -> bool:
+	if target_zone == &"":
+		return false
+	var active: StringName = _current_zone_id()
+	return active != &"" and active != target_zone
+
+
+## Запускает фоновый переход в зону чекпоинта; `true` — переход пошёл и
+## завершение придёт в `_on_respawn_transition_finished`. `false` — SceneRouter
+## недоступен/занят, вызывающий ставит игрока напрямую.
+func _start_zone_respawn(zone_id: StringName, position: Vector2) -> bool:
+	if SceneRouter == null or SceneRouter.is_loading:
+		return false
+	_pending_respawn = true
+	_pending_respawn_zone = zone_id
+	_pending_respawn_position = position
+	var started: bool = SceneRouter.change_zone(zone_id, SceneRouter.CHECKPOINT_ENTRY_ID, position)
+	if not started:
+		_pending_respawn = false
+		_pending_respawn_zone = &""
+		return false
+	return true
+
+
+## Завершает возрождение: ставит игрока (в т.ч. после перехода), спавнит
+## corpse-метку и сообщает слушателям (`DeathScreen` закрывается).
+func _finish_respawn(position: Vector2, zone_id: StringName) -> void:
+	_pending_respawn = false
+	_pending_respawn_zone = &""
+	_resolve_player()
+	if player != null:
+		player.global_position = position
+		player.velocity = Vector2.ZERO
+		player.reset_player()
 	_spawn_corpse_from_state()
-	EventBus.player_respawned.emit(GameState.respawn_zone_id, target_position)
+	EventBus.player_respawned.emit(zone_id, position)
+
+
+func _on_respawn_transition_finished(zone_id: StringName, _entry_id: StringName) -> void:
+	if not _pending_respawn or zone_id != _pending_respawn_zone:
+		return
+	_finish_respawn(_pending_respawn_position, zone_id)
+
+
+## Переход не удался (битый путь/таймаут): игрок не должен застрять на экране
+## смерти — ставим его в текущей зоне на позицию чекпоинта как fallback.
+func _on_respawn_transition_failed(zone_id: StringName, reason: String) -> void:
+	if not _pending_respawn or zone_id != _pending_respawn_zone:
+		return
+	push_warning("DeathHandler: возрождение в '%s' не выполнено (%s) — fallback" % [zone_id, reason])
+	_finish_respawn(_pending_respawn_position, _current_zone_id())
 
 
 ## Разрешает смерть, загруженную из сейва (EC-04). Вызывается при загрузке
@@ -274,12 +352,34 @@ func _on_player_died() -> void:
 
 
 func _on_zone_entered(zone_id: StringName, _display_name: String) -> void:
+	# Первый вход в зону: запоминаем фактическую стартовую позицию игрока,
+	# если `_ready` обработчика успел раньше bootstrap (B-01/fallback).
+	_capture_fallback_position()
 	# Смерть из загруженного сейва разрешается после появления зоны.
 	if GameState.death_active:
 		call_deferred(&"resolve_pending_death")
 		return
 	if GameState.has_corpse() and GameState.corpse_zone_id == zone_id:
 		_spawn_corpse_from_state()
+
+
+## Текущая зона игрока: GameState обновляется по `zone_entered`; SceneRouter —
+## резерв, если GameState ещё не получил событие (тесты/ранний старт).
+func _current_zone_id() -> StringName:
+	if GameState.current_zone_id != &"":
+		return GameState.current_zone_id
+	return SceneRouter.current_zone_id
+
+
+## Запоминает стартовую позицию игрока один раз (после появления игрока).
+func _capture_fallback_position() -> void:
+	if _fallback_captured:
+		return
+	_resolve_player()
+	if player == null or not is_instance_valid(player):
+		return
+	_fallback_position = player.global_position
+	_fallback_captured = true
 
 
 func _on_save_loaded(_slot: int) -> void:
