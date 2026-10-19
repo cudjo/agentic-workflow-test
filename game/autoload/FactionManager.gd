@@ -29,7 +29,14 @@ extends Node
 ## `&""`; `get_ending_faction_id()` — выбор, иначе лучшая фракция с
 ## положительной репутацией (пусто — нейтральная концовка).
 
-const FACTIONS_DIR: String = "res://data/factions"
+## Явный манифест данных: в экспорте `*.tres` упаковываются как `*.tres.remap`,
+## поэтому перебор `DirAccess.get_files()` в билде возвращает 0 файлов.
+## Список путей — контракт загрузки, он же проверяется тестом на полноту.
+const FACTION_PATHS: Array[String] = [
+	"res://data/factions/ash.tres",
+	"res://data/factions/free.tres",
+	"res://data/factions/order.tres",
+]
 const REQUIRED_FACTION_COUNT: int = 3
 const REPUTATION_MIN: int = -100
 const REPUTATION_MAX: int = 100
@@ -450,21 +457,11 @@ func _load_factions() -> void:
 	_factions.clear()
 	_ordered_ids.clear()
 
-	var directory: DirAccess = DirAccess.open(FACTIONS_DIR)
-	if directory == null:
-		push_error("FactionManager: cannot open %s" % FACTIONS_DIR)
-		return
-
-	var file_names: PackedStringArray = directory.get_files()
-	file_names.sort()
 	var ids: Array[String] = []
-	for file_name: String in file_names:
-		if not file_name.ends_with(".tres"):
-			continue
-		var path: String = FACTIONS_DIR.path_join(file_name)
+	for path: String in FACTION_PATHS:
 		var data: FactionData = load(path) as FactionData
 		if data == null:
-			push_error("FactionManager: %s is not FactionData" % path)
+			push_error("FactionManager: cannot load faction data at %s" % path)
 			continue
 		if not data.is_valid():
 			push_error("FactionManager: invalid faction data at %s" % path)

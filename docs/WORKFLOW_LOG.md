@@ -499,6 +499,45 @@
 - **Остаточные не-блокеры:** N6 (headless leak-сообщения при exit code 0), N5b (маркировка источника dash — минор).
 - **Решение:** запуск **Guardian** (финальное ревью интегрированного диффа + evidence) и **финализация docs** (копия QA.md → docs/ + коммит WORKFLOW_LOG). Далее — гейт merge (человек).
 
+## 2026-10-18 — Orchestrator: Guardian request changes, цикл доработки (Fix-4)
+
+- **Guardian: ❌ request changes** (ревизия `aece545`; QA PASS, но независимое чтение кода выявило 4 блокера вне покрытия e2e):
+  - **B-01:** возрождение не переключает зону чекпоинта (AC-05.2) — `DeathHandler.respawn` телепортирует в координаты костра чужой зоны.
+  - **B-02:** загрузка сейва игнорирует позицию костра (AC-05.1) — `bootstrap()` грузит со входа, а не на `respawn_position`.
+  - **B-03:** EC-06 не работает для обычных врагов (нет producer'а `in_combat`) и залипает после смерти на арене (нет сброса по `player_died`, у Zone05Arena нет `_exit_tree`).
+  - **B-04:** кнопка «В главное меню» на экране смерти эмитит `main_menu_requested`, который никто не слушает → soft-lock.
+  - + **6 MINOR** (MINOR-01 window mapping; MINOR-02 Zero Dead Config: `move_up/down`+ladder/hazard без потребителя; MINOR-03 мёртвые сундуки/экономика; MINOR-04 навыки учителей без эффекта; MINOR-05 выбор фракции на любом квесте; MINOR-06 i-frames не гасят knockback/flash) + 7 INFO.
+- **Решение (цикл доработки):** запуск **Fix-4a** (B-01/B-02/B-04 + MINOR-01/05) и **Fix-4b** (B-03 + MINOR-06). MINOR-02/03/04 — scope-решение человека (представлю на гейте). Затем повторный QA + Guardian.
+
+## 2026-10-18 — Orchestrator: Приёмка Fix-4b, перезапуск Fix-4a
+
+- **Fix-4b принят:** B-03 (EC-06 для врагов через refcount + сброс после смерти на арене + `_exit_tree` зоны 5) + MINOR-06 (i-frames гасят knockback/flash), коммит `d34169d` (detached worktree), GUT **523/523, 7107 asserts** (+5 тестов).
+- **⚠️ Fix-4a упала с ошибкой «Insufficient Balance» (сбой запуска субагента), не выполнена.**
+- **Решение:** перезапуск **Fix-4a** (B-01/B-02/B-04 + MINOR-01/05).
+
+## 2026-10-18 — Orchestrator: Fix-4a (лимит шагов), запуск Integration-05
+
+- **Fix-4a: код и тесты готовы, но субагент упёрся в лимит шагов — НЕ закоммитил.** Изменения uncommitted в worktree `1ee15a\fix4a`: B-01/B-02 (`spawn_position`/`CHECKPOINT_ENTRY_ID` + respawn через `SceneRouter.change_zone`), B-04 (меню со смерти), MINOR-01 (window mapping), MINOR-05 (фильтр присяги `quest_free_smuggle`). GUT **523/523** (+5 тестов, 44 asserts).
+- **Fix-4b:** `d34169d` (B-03 + MINOR-06), GUT 523/523 (+5).
+- **Решение:** запуск **Integration-05** — закоммитить Fix-4a в её worktree, свести Fix-4a + Fix-4b в `v2` (cherry-pick поверх `39ab884`), верифицировать (ожидаем ~528/528). Затем повторный QA + Guardian.
+
+## 2026-10-18 — Orchestrator: Приёмка Integration-05, повторный QA + Guardian
+
+- **Integration-05 принят:** Fix-4a (`2814841`→cherry-pick `19cf35b`) + Fix-4b (`d34169d`→`9a7513f`) влиты в `v2`, конфликтов нет. GUT **528/528, 7154 asserts** (518 + 5 + 5). `v2` HEAD = `00eae32`.
+- **Решение:** запуск повторного **QA (T-37)** на `00eae32` (верификация B-01…B-04 + регресс + a11y/NFR), затем повторное ревью Guardian на новой ревизии.
+
+## 2026-10-18 — Orchestrator: Сборка билда для ручного тестирования (запрос человека)
+
+- **Запрос человека:** собрать билд игры, протестирует сам (QA-субагент дважды отменялся).
+- **Состояние:** `v2` HEAD `00eae32` (все фиксы Fix-1…4b, GUT 528/528). Экспорт-пресеты Windows/Linux (T-02), release-режим, PCK встроен, GUT/tests исключены.
+- **Решение:** делегировать сборку (devops) — экспорт **Windows Desktop** (основной для ручного теста) + **Linux**, на ревизии `00eae32`, с smoke-проверкой артефактов.
+
+## 2026-10-18 — Orchestrator: Билд готов + дефект экспорта (фракции), запуск фикса
+
+- **Сборка:** Windows `game/build/windows/AshenBastion.exe` (94,3 MB, MZ) + Linux `game/build/linux/AshenBastion.x86_64` (67,8 MB, ELF). Smoke exit 0, меню рендерится, тесты/GUT в паке отсутствуют.
+- **⚠️ Дефект экспорта (pre-existing):** `FactionManager._load_factions()` использует `DirAccess.get_files()` + фильтр `.tres`; в экспортированном PCK ресурсы — `*.tres.remap` → грузится 0 фракций (репутация/торговцы/квесты/концовка не работают в билде; в editor — работает).
+- **Решение:** запуск фикса (явная загрузка данных фракций + проверка прочих `DirAccess`-загрузчиков на ту же проблему) + пересборка Windows/Linux.
+
 ## 2026-10-19 — Integration-04: Fix-3a влит в `v2` (tasker-backend)
 
 - **Skills:** загружен `godot` — верификация Godot-проекта headless (import/GUT/smoke) требует знания CLI-флагов GUT и поведения `--quit-after`; других skills не требовалось (изменений кода нет).

@@ -7,6 +7,13 @@ extends RefCounted
 ## Поиск: сначала `<id>.tres`, затем перебор файлов по полю `id`.
 
 const DIALOGUE_DIR: String = "res://data/dialogue"
+## Явный манифест: в экспорте ресурсы лежат как `*.tres.remap`, перебор
+## каталога через `DirAccess` их не видит.
+const DIALOGUE_PATHS: Array[String] = [
+	"res://data/dialogue/elder_lira.tres",
+	"res://data/dialogue/order_guard.tres",
+	"res://data/dialogue/quartermaster_helga.tres",
+]
 
 static var _cache: Dictionary = {}
 
@@ -25,17 +32,7 @@ static func load_dialogue(dialogue_id: StringName) -> DialogueData:
 			_cache[dialogue_id] = direct
 			return direct
 
-	var directory: DirAccess = DirAccess.open(DIALOGUE_DIR)
-	if directory == null:
-		push_warning("DialogueCatalog: cannot open %s" % DIALOGUE_DIR)
-		return null
-
-	var file_names: PackedStringArray = directory.get_files()
-	file_names.sort()
-	for file_name: String in file_names:
-		if not file_name.ends_with(".tres"):
-			continue
-		var path: String = DIALOGUE_DIR.path_join(file_name)
+	for path: String in DIALOGUE_PATHS:
 		var candidate: DialogueData = load(path) as DialogueData
 		if candidate == null:
 			continue
@@ -49,18 +46,8 @@ static func load_dialogue(dialogue_id: StringName) -> DialogueData:
 ## Все валидные диалоги, отсортированные по id (для тестов/инструментов).
 static func get_dialogue_ids() -> Array[StringName]:
 	var ids: Array[StringName] = []
-	var directory: DirAccess = DirAccess.open(DIALOGUE_DIR)
-	if directory == null:
-		return ids
-
-	var file_names: PackedStringArray = directory.get_files()
-	file_names.sort()
-	for file_name: String in file_names:
-		if not file_name.ends_with(".tres"):
-			continue
-		var dialogue: DialogueData = load(
-			DIALOGUE_DIR.path_join(file_name)
-		) as DialogueData
+	for path: String in DIALOGUE_PATHS:
+		var dialogue: DialogueData = load(path) as DialogueData
 		if dialogue != null and dialogue.is_valid():
 			ids.append(dialogue.id)
 	ids.sort()

@@ -1,0 +1,9 @@
+{
+  "mcp": {
+    "servers": {
+      "godot": {
+        "disabled": false,
+      },
+    },
+  },
+}

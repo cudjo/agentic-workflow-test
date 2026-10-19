@@ -30,6 +30,13 @@ extends Node2D
 ## получение навыка — `ability_acquired`.
 
 const TEACHERS_DIR: String = "res://data/balance/teachers"
+## Явный манифест учителей: в экспорте ресурсы лежат как `*.tres.remap`,
+## поэтому перебор каталога через `DirAccess` для поиска по id не работает.
+const TEACHER_PATHS: Array[String] = [
+	"res://data/balance/teachers/elder.tres",
+	"res://data/balance/teachers/huntress.tres",
+	"res://data/balance/teachers/quartermaster.tres",
+]
 ## Группа для QA/интеграции: `PlayerInteraction` ищет NPC отдельно, а учителя
 ## находятся одним запросом (`get_nodes_in_group("teachers")`).
 const GROUP: StringName = &"teachers"
@@ -641,14 +648,7 @@ func _load_teacher(id: StringName) -> TeacherData:
 		if direct != null and direct.is_valid() and direct.id == id:
 			return direct
 
-	var directory: DirAccess = DirAccess.open(TEACHERS_DIR)
-	if directory == null:
-		push_warning("Teacher: cannot open %s" % TEACHERS_DIR)
-		return null
-	for file_name: String in directory.get_files():
-		if not file_name.ends_with(".tres"):
-			continue
-		var path: String = TEACHERS_DIR.path_join(file_name)
+	for path: String in TEACHER_PATHS:
 		var candidate: TeacherData = load(path) as TeacherData
 		if candidate != null and candidate.id == id and candidate.is_valid():
 			return candidate

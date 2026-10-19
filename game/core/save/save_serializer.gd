@@ -33,6 +33,13 @@ extends RefCounted
 ## известные ключи нормализуются, незнакомые проходят через `_json_safe()`.
 
 const WEAPONS_DIR: String = "res://data/weapons"
+## Явный манифест оружия: в экспорте ресурсы лежат как `*.tres.remap`,
+## поэтому перебор каталога через `DirAccess` для fallback по id не работает.
+const WEAPON_PATHS: Array[String] = [
+	"res://data/weapons/light_dagger.tres",
+	"res://data/weapons/one_handed_sword.tres",
+	"res://data/weapons/two_handed_axe.tres",
+]
 const DEFAULT_WEAPON_PATH: String = "res://data/weapons/one_handed_sword.tres"
 
 const CHECKSUM_LENGTH: int = 64
@@ -308,14 +315,10 @@ static func resolve_weapon(weapon_id: String, weapon_path: String) -> WeaponData
 			return by_path
 
 	if not weapon_id.is_empty():
-		var directory: DirAccess = DirAccess.open(WEAPONS_DIR)
-		if directory != null:
-			for file_name: String in directory.get_files():
-				if not file_name.ends_with(".tres") and not file_name.ends_with(".res"):
-					continue
-				var candidate: WeaponData = load(WEAPONS_DIR.path_join(file_name)) as WeaponData
-				if candidate != null and String(candidate.id) == weapon_id:
-					return candidate
+		for path: String in WEAPON_PATHS:
+			var candidate: WeaponData = load(path) as WeaponData
+			if candidate != null and String(candidate.id) == weapon_id:
+				return candidate
 
 	push_warning("SaveSerializer: weapon '%s' not found, falling back to default" % weapon_id)
 	return load(DEFAULT_WEAPON_PATH) as WeaponData

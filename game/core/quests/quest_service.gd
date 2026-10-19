@@ -13,6 +13,14 @@ extends RefCounted
 ## дважды.
 
 const QUESTS_DIR: String = "res://data/quests"
+## Явный манифест: в экспорте ресурсы лежат как `*.tres.remap`, перебор
+## каталога через `DirAccess` их не видит.
+const QUEST_PATHS: Array[String] = [
+	"res://data/quests/quest_ash_ritual.tres",
+	"res://data/quests/quest_clear_swamp.tres",
+	"res://data/quests/quest_free_smuggle.tres",
+	"res://data/quests/quest_guard_patrol.tres",
+]
 
 static var _cache: Dictionary = {}
 
@@ -31,17 +39,8 @@ static func get_quest(quest_id: StringName) -> QuestData:
 			_cache[quest_id] = direct
 			return direct
 
-	var directory: DirAccess = DirAccess.open(QUESTS_DIR)
-	if directory == null:
-		return null
-	var file_names: PackedStringArray = directory.get_files()
-	file_names.sort()
-	for file_name: String in file_names:
-		if not file_name.ends_with(".tres"):
-			continue
-		var candidate: QuestData = load(
-			QUESTS_DIR.path_join(file_name)
-		) as QuestData
+	for path: String in QUEST_PATHS:
+		var candidate: QuestData = load(path) as QuestData
 		if candidate != null and candidate.id == quest_id and candidate.is_valid():
 			_cache[quest_id] = candidate
 			return candidate
@@ -59,15 +58,8 @@ static func get_quest_title(quest_id: StringName, language: String = "ru") -> St
 
 static func get_quest_ids() -> Array[StringName]:
 	var ids: Array[StringName] = []
-	var directory: DirAccess = DirAccess.open(QUESTS_DIR)
-	if directory == null:
-		return ids
-	var file_names: PackedStringArray = directory.get_files()
-	file_names.sort()
-	for file_name: String in file_names:
-		if not file_name.ends_with(".tres"):
-			continue
-		var data: QuestData = load(QUESTS_DIR.path_join(file_name)) as QuestData
+	for path: String in QUEST_PATHS:
+		var data: QuestData = load(path) as QuestData
 		if data != null and data.is_valid():
 			ids.append(data.id)
 	ids.sort()

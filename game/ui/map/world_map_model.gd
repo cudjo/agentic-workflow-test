@@ -17,6 +17,15 @@ extends RefCounted
 
 const ZONE_DIR: String = "res://data/zones"
 const ZONE_TEMPLATE_FILE: String = "zone_template.tres"
+## Явный манифест зон (шаблон `zone_template.tres` в него не входит).
+## В экспорте ресурсы лежат как `*.tres.remap`, перебор каталога их не видит.
+const ZONE_PATHS: Array[String] = [
+	"res://data/zones/zone_01_village.tres",
+	"res://data/zones/zone_02_swamp.tres",
+	"res://data/zones/zone_03_mountains.tres",
+	"res://data/zones/zone_04_ruins.tres",
+	"res://data/zones/zone_05_finale.tres",
+]
 ## Сетка миникарты 96x54 при комнате 8x6 (DESIGN §4.3).
 const GRID_SIZE := Vector2i(12, 9)
 const FALLBACK_ROOM_ID: StringName = &"room"
@@ -43,18 +52,10 @@ func reload() -> void:
 	_zones_by_id.clear()
 	_loaded = true
 
-	var dir := DirAccess.open(ZONE_DIR)
-	if dir == null:
-		push_error("WorldMapModel: cannot open %s" % ZONE_DIR)
-		return
-
-	var files: PackedStringArray = dir.get_files()
-	files.sort()
-	for file: String in files:
-		if not file.ends_with(".tres") or file == ZONE_TEMPLATE_FILE:
-			continue
-		var data := load("%s/%s" % [ZONE_DIR, file]) as ZoneData
+	for path: String in ZONE_PATHS:
+		var data := load(path) as ZoneData
 		if data == null or data.id == &"":
+			push_error("WorldMapModel: cannot load zone data at %s" % path)
 			continue
 		zones.append(data)
 		_zones_by_id[data.id] = data
