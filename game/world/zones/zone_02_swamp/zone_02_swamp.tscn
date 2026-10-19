@@ -149,11 +149,20 @@ scale = Vector2(2, 2)
 collision_mask = 0
 gate_id = &"swamp_dash_gate"
 metadata/ability_gate = &"dash"
+metadata/ability_source = &"zone_02_swamp"
 metadata/future_gate = "T-09"
 
 [node name="AbilityPickupDash" type="Area2D" parent="Props" instance=ExtResource("16_pickup")]
 position = Vector2(112, 214)
 ability_id = &"dash"
+metadata/source = &"teacher_npc"
+metadata/home_zone = &"zone_02_swamp"
+
+[node name="AbilityPickupWallClimb" type="Area2D" parent="Props" instance=ExtResource("16_pickup")]
+position = Vector2(416, 150)
+ability_id = &"wall_climb"
+metadata/source = &"optional_secret"
+metadata/home_zone = &"zone_02_swamp"
 
 [node name="Enemies" type="Node2D" parent="."]
 

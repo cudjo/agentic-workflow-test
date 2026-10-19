@@ -1,4 +1,4 @@
-[gd_scene load_steps=34 format=4]
+[gd_scene load_steps=35 format=4]
 
 [ext_resource type="Script" path="res://world/zones/zone_scene.gd" id="1_vk41c"]
 [ext_resource type="Resource" path="res://data/zones/zone_01_village.tres" id="2_q6kwn"]
@@ -23,6 +23,7 @@
 [ext_resource type="PackedScene" path="res://entities/enemies/swift/swift_enemy.tscn" id="22_swift"]
 [ext_resource type="PackedScene" path="res://entities/enemies/heavy/heavy_enemy.tscn" id="23_heavy"]
 [ext_resource type="PackedScene" path="res://entities/enemies/ranged/ranged_enemy.tscn" id="24_ranged"]
+[ext_resource type="PackedScene" path="res://entities/npc/teacher.tscn" id="25_teacher"]
 
 [sub_resource type="Gradient" id="Gradient_mcwiw"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
@@ -168,11 +169,14 @@ scale = Vector2(1.5, 2.5)
 collision_mask = 0
 gate_id = &"village_ledge"
 metadata/ability_gate = &"double_jump"
+metadata/ability_source = &"zone_01_village"
 metadata/future_gate = "T-09"
 
 [node name="AbilityPickupDoubleJump" type="Area2D" parent="Props" instance=ExtResource("19_pickup")]
 position = Vector2(180, 214)
 ability_id = &"double_jump"
+metadata/source = &"story"
+metadata/home_zone = &"zone_01_village"
 
 [node name="Enemies" type="Node2D" parent="."]
 
@@ -225,6 +229,33 @@ prices = {
 "healing_herb": 25,
 "iron_dagger": 60
 }
+
+[node name="TeacherMarkerQuartermaster" type="Marker2D" parent="NPCs"]
+position = Vector2(52, 214)
+metadata/role = &"teacher"
+metadata/teacher_id = &"quartermaster"
+
+[node name="TeacherMarkerHuntress" type="Marker2D" parent="NPCs"]
+position = Vector2(84, 214)
+metadata/role = &"teacher"
+metadata/teacher_id = &"huntress"
+
+[node name="TeacherMarkerElder" type="Marker2D" parent="NPCs"]
+position = Vector2(330, 214)
+metadata/role = &"teacher"
+metadata/teacher_id = &"elder"
+
+[node name="TeacherQuartermaster" type="Node2D" parent="NPCs" instance=ExtResource("25_teacher")]
+position = Vector2(52, 214)
+teacher_id = &"quartermaster"
+
+[node name="TeacherHuntress" type="Node2D" parent="NPCs" instance=ExtResource("25_teacher")]
+position = Vector2(84, 214)
+teacher_id = &"huntress"
+
+[node name="TeacherElder" type="Node2D" parent="NPCs" instance=ExtResource("25_teacher")]
+position = Vector2(330, 214)
+teacher_id = &"elder"
 
 [node name="Entries" type="Node2D" parent="."]
 unique_name_in_owner = true

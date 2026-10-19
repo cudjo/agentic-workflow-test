@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://entities/enemies/base/enemy.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://core/combat/hitbox.gd" id="2_hitbox"]
 [ext_resource type="Script" path="res://core/combat/hurtbox.gd" id="3_hurtbox"]
+[ext_resource type="Script" path="res://entities/enemies/base/enemy_outline_sprite.gd" id="4_outline"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(12, 20)
@@ -27,6 +28,7 @@ shape = SubResource("RectangleShape2D_body")
 [node name="Visual" type="Sprite2D" parent="."]
 modulate = Color(0.6, 0.5, 0.4, 1)
 texture = SubResource("PlaceholderTexture2D_visual")
+script = ExtResource("4_outline")
 
 [node name="LedgeRay" type="RayCast2D" parent="."]
 position = Vector2(-7, 0)

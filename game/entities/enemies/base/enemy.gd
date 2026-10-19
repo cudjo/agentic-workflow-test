@@ -331,6 +331,21 @@ func get_health_ratio() -> float:
 	return clampf(hp / data.max_hp, 0.0, 1.0)
 
 
+## Fix-3a/N4: тот же контурный материал, что у героя (T-35), но для врага.
+## Тумблер общий — `Config.silhouette_readability`. Материал вешает
+## `EnemyOutlineSprite` на `Visual`, здесь — только публичные запросы.
+func get_outline_material() -> ShaderMaterial:
+	if visual != null and visual.has_method(&"get_outline_material"):
+		return visual.call(&"get_outline_material") as ShaderMaterial
+	return null
+
+
+func is_silhouette_outline_enabled() -> bool:
+	if visual != null and visual.has_method(&"is_silhouette_outline_enabled"):
+		return bool(visual.call(&"is_silhouette_outline_enabled"))
+	return false
+
+
 ## Переустановка точки спавна (spawner/телепорт зоны).
 func set_home_position(position: Vector2) -> void:
 	home_position = position
@@ -516,11 +531,21 @@ func _is_no_flash() -> bool:
 	return config != null and bool(config.get("no_flash"))
 
 
+## Плейсхолдер с 1-px прозрачной рамкой: контурный шейдер T-35 расширяет
+## силуэт по alpha-границе, поэтому сплошной прямоугольник без рамки не даёт
+## видимого контура (силуэт врага должен читаться и в тёмной палитре).
+func _build_visual_texture(size: Vector2) -> Texture2D:
+	var body_width: int = maxi(int(round(size.x)), 1)
+	var body_height: int = maxi(int(round(size.y)), 1)
+	var image := Image.create(body_width + 2, body_height + 2, false, Image.FORMAT_RGBA8)
+	image.fill(Color(1.0, 1.0, 1.0, 0.0))
+	image.fill_rect(Rect2i(1, 1, body_width, body_height), Color.WHITE)
+	return ImageTexture.create_from_image(image)
+
+
 func _apply_data() -> void:
 	if visual != null:
-		var texture := PlaceholderTexture2D.new()
-		texture.size = data.body_size
-		visual.texture = texture
+		visual.texture = _build_visual_texture(data.body_size)
 		visual.modulate = data.get_body_color()
 		visual.scale = Vector2.ONE
 	_set_rect_shape(body_shape, data.body_size)

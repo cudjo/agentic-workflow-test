@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=4]
+[gd_scene load_steps=30 format=4]
 
 [ext_resource type="Script" path="res://world/zones/zone_03_mountains/zone_03_scene.gd" id="1_1vsv8"]
 [ext_resource type="Resource" path="res://data/zones/zone_03_mountains.tres" id="2_aawns"]
@@ -14,7 +14,6 @@
 [ext_resource type="PackedScene" path="res://world/zones/zone_banner.tscn" id="13_y51h0"]
 [ext_resource type="Script" path="res://world/zones/zone_banner.gd" id="14_ymd2k"]
 [ext_resource type="PackedScene" path="res://entities/bosses/zone_03/boss_arena_zone_03.tscn" id="15_arena"]
-[ext_resource type="PackedScene" path="res://world/props/ability_pickup.tscn" id="16_pickup"]
 [ext_resource type="PackedScene" path="res://entities/enemies/base/enemy_spawner.tscn" id="17_spawner"]
 [ext_resource type="Script" path="res://entities/enemies/base/enemy_spawn_entry.gd" id="18_spawn_entry"]
 [ext_resource type="PackedScene" path="res://entities/enemies/swift/swift_enemy.tscn" id="19_swift"]
@@ -155,6 +154,7 @@ scale = Vector2(2, 2.5)
 collision_mask = 0
 gate_id = &"mountains_wall_climb"
 metadata/ability_gate = &"wall_climb"
+metadata/ability_source = &"zone_02_swamp"
 metadata/future_gate = "T-09"
 
 [node name="DashGate" type="StaticBody2D" parent="Props" instance=ExtResource("10_2soet")]
@@ -163,11 +163,8 @@ scale = Vector2(1, 2)
 collision_mask = 0
 gate_id = &"mountains_dash_ledge"
 metadata/ability_gate = &"dash"
+metadata/ability_source = &"zone_02_swamp"
 metadata/future_gate = "T-09"
-
-[node name="AbilityPickupWallClimb" type="Area2D" parent="Props" instance=ExtResource("16_pickup")]
-position = Vector2(64, 214)
-ability_id = &"wall_climb"
 
 [node name="Enemies" type="Node2D" parent="."]
 

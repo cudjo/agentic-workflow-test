@@ -10,16 +10,24 @@ extends Node
 ## Fix-1: сюжетный триггер выбора фракции (US-06) и EC-13 — пауза при потере
 ## фокуса окна. Оба поведения живут здесь, потому что Main переживает смену зон
 ## и не вмешивается в UI-экраны (`ui/**`).
+##
+## Fix-3a (N1): отмена `FactionChoice` (Esc/B) больше не «съедает» выбор
+## навсегда. Экран сообщает о закрытии сигналом `closed`; если фракция так и не
+## выбрана, запрос снимается и может быть повторён следующим сюжетным событием
+## (`quest_completed`) или закрытием диалога. Подтверждённый выбор не сбрасывается.
 
 const THEME_PATH := "res://ui/theme/main_theme.tres"
 ## Слой паузы — поверх любого игрового слоя (Overlay=40), поэтому 50.
 const PAUSE_LAYER: int = 50
+## Узел экрана выбора фракции монтируется в Main.tscn (T-24).
+const FACTION_CHOICE_PATH := "FactionChoice"
 
 ## Квест завершён, но экран выбора фракции ещё не показан (ждём закрытия диалога).
 var _faction_choice_pending: bool = false
 ## Выбор уже запрошен в этом забеге — второй раз не открываем.
 var _faction_choice_requested: bool = false
 
+var _faction_choice_screen: Node = null
 var _pause_menu: CanvasLayer = null
 var _pause_owned: bool = false
 
@@ -44,6 +52,7 @@ func _exit_tree() -> void:
 		EventBus.quest_completed.disconnect(_on_quest_completed)
 	if EventBus.dialogue_finished.is_connected(_on_dialogue_finished):
 		EventBus.dialogue_finished.disconnect(_on_dialogue_finished)
+	_disconnect_faction_choice()
 	if _pause_owned:
 		get_tree().paused = false
 		_pause_owned = false
@@ -58,6 +67,31 @@ func _connect_flow_events() -> void:
 		EventBus.quest_completed.connect(_on_quest_completed)
 	if not EventBus.dialogue_finished.is_connected(_on_dialogue_finished):
 		EventBus.dialogue_finished.connect(_on_dialogue_finished)
+	_connect_faction_choice()
+
+
+## Экран выбора фракции живёт в Main.tscn; сигнал `closed` нужен, чтобы отличить
+## подтверждение от отмены и не блокировать US-06 после Esc/B (N1).
+func _connect_faction_choice() -> void:
+	_faction_choice_screen = get_node_or_null(FACTION_CHOICE_PATH)
+	if _faction_choice_screen == null:
+		return
+	if not _faction_choice_screen.has_signal(&"closed"):
+		return
+	var callback := Callable(self, &"_on_faction_choice_closed")
+	if not _faction_choice_screen.is_connected(&"closed", callback):
+		_faction_choice_screen.connect(&"closed", callback)
+
+
+func _disconnect_faction_choice() -> void:
+	if _faction_choice_screen == null or not is_instance_valid(_faction_choice_screen):
+		_faction_choice_screen = null
+		return
+	var callback := Callable(self, &"_on_faction_choice_closed")
+	if _faction_choice_screen.has_signal(&"closed") \
+			and _faction_choice_screen.is_connected(&"closed", callback):
+		_faction_choice_screen.disconnect(&"closed", callback)
+	_faction_choice_screen = null
 
 
 ## Ключевой квест завершён: после закрытия диалога сюжет требует присяги.
@@ -73,6 +107,19 @@ func _on_quest_completed(_quest_id: StringName, _title: String) -> void:
 func _on_dialogue_finished(_dialogue_id: StringName, _npc_id: StringName) -> void:
 	if _faction_choice_pending:
 		_request_faction_choice.call_deferred()
+
+
+## Отмена/закрытие экрана без присяги: снимаем флаг, чтобы повторный
+## `quest_completed` (или закрытие следующего диалога) снова открыл выбор.
+## После подтверждения `FactionManager.is_faction_chosen()` уже true — флаг
+## остаётся, повторный запрос не возникает.
+func _on_faction_choice_closed() -> void:
+	if FactionManager.is_faction_chosen():
+		return
+	_faction_choice_requested = false
+	# Выбор остаётся доступен и без нового квеста: достаточно поговорить с NPC
+	# (экран откроется после `dialogue_finished`), а не сразу после Esc.
+	_faction_choice_pending = true
 
 
 ## Открывает `FactionChoice` через шину событий. Пока диалог открыт, запрос
